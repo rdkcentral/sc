@@ -30,6 +30,7 @@ setup(
     package_dir={"": "src"},
     install_requires=[
         'Click',
+        'setuptools',
     ],
     entry_points={
         'console_scripts': [
