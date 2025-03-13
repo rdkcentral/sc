@@ -17,22 +17,15 @@ SC is an CLI entry point that loads SC python plugin packages.
 
 ```shell
 pip install git+https://github.com/rdkcentral/sc.git@main
-
-# Look below for our official plugins
-pip install git+https://github.com/rdkcentral/sc-docker.git@main
-
-# Upon installing the above plugin we can use its commands
-sc docker [options]
 ```
+
+Now look below for our official plugins.
 
 SC officially supports Python 3.10+.
 
 ## Official Plugins
 ### sc-docker
 Run docker containers in a standardised manner. For more information click [here](https://github.com/rdkcentral/sc-docker).
-```shell
-python -m pip install sc-docker
-```
 
 ## Create Your Own Plugin
 [Create Your Own Plugin](docs/pages/plugin_creation.md)
