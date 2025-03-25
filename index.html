@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SC Official Plugins</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 40px;
+      background-color: #f8f9fa;
+      color: #333;
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+
+    .plugin-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      justify-content: center;
+    }
+
+    .plugin-card {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      padding: 20px;
+      width: 300px;
+      transition: transform 0.2s;
+    }
+
+    .plugin-card:hover {
+      transform: translateY(-4px);
+    }
+
+    .plugin-card h2 {
+      margin-top: 0;
+      font-size: 1.3em;
+    }
+
+    .plugin-card p {
+      margin-bottom: 0;
+    }
+
+    .plugin-card a {
+      text-decoration: none;
+      color: #0366d6;
+    }
+
+    .plugin-card a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <h1>SC Official Plugins</h1>
+  <div class="plugin-list">
+    <div class="plugin-card">
+      <h2>sc-docker</h2>
+      <p>A Docker-based plugin for SC.</p>
+      <p><a href="https://github.com/rdkcentral/sc-docker" target="_blank">View on GitHub →</a></p>
+    </div>
+    
+    <div class="plugin-card">
+      <h2>sc-clone</h2>
+      <p>A git-repo wrapper (Not yet available).</p>
+      <p><a href="https://github.com/rdkcentral/sc-clone" target="_blank">View on GitHub →</a></p>
+    </div>
+
+    <!-- Add more plugin cards here -->
+  </div>
+</body>
+</html>
