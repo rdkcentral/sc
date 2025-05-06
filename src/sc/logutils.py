@@ -1,15 +1,21 @@
 import logging
 
-COLOURS = {
-    'DEBUG':    '\x1b[90m',   # Grey
-    'INFO':     '\x1b[32m',   # Green
-    'WARNING':  '\x1b[33m',   # Yellow
-    'ERROR':    '\x1b[31m',   # Red
-}
-RESET = '\x1b[0m'
+from rich.logging import RichHandler
 
-DEFAULT_FMT = '[%(levelname)s] [%(plugin)s] %(message)s'
-DEBUG_FMT = '[%(levelname)s] [%(plugin)s] %(name)s: %(message)s'
+DEBUG = logging.DEBUG
+INFO = logging.INFO
+WARNING = logging.WARNING
+ERROR = logging.ERROR
+
+LEVELS = {
+    'DEBUG': DEBUG,
+    'INFO': INFO,
+    'WARNING': WARNING,
+    'ERROR': ERROR
+}
+
+DEFAULT_FMT = '[%(plugin)s] %(message)s'
+DEBUG_FMT = '[%(plugin)s] %(name)s: %(message)s'
 
 class ScLoggerFormatter(logging.Formatter):
     """Custom formatter that injects a plugin name into each log record."""
@@ -19,10 +25,7 @@ class ScLoggerFormatter(logging.Formatter):
 
     def format(self, record):
         record.plugin = self.plugin_name
-        colour = COLOURS.get(record.levelname, RESET)
-        record.levelname = f"{colour}{record.levelname}{RESET}"
-
-        if ScLoggerManager.get_level() == logging.DEBUG:
+        if ScLoggerManager.get_level() == DEBUG:
             self._style._fmt = DEBUG_FMT
         else:
             self._style._fmt = DEFAULT_FMT
@@ -38,7 +41,7 @@ class ScLoggerManager:
         manager = ScLoggerManager("my_plugin")
         manager.add_loggers(["my_plugin", "tracked_logger"])
     """
-    _level = logging.INFO
+    _level = INFO
 
     def __init__(self, plugin_name: str):
         self.plugin_name = plugin_name
@@ -52,6 +55,22 @@ class ScLoggerManager:
         return cls._level
 
     def add_loggers(self, logger_names: list[str]):
+        """Register one or more logger names to be managed for your plugin.
+        
+        Logger names should match those used in `logging.getLogger(name)`
+        This is typically the module's `__name__` which resolves to the full import
+        path (e.g. 'my_package.my_module') when the module is imported.
+
+        You can register just the top level package name (e.g. 'my_package) to
+        manage all loggers under that namespace, as child loggers inherit settings
+        unless overridden.
+        """
+        if (
+            not isinstance(logger_names, str) or 
+            not all(isinstance(name, str) for name in logger_names)
+        ):
+            raise TypeError("logger_names must be list of strings!")
+
         handler = self._create_handler()
         for name in logger_names:
             logger = logging.getLogger(name)
@@ -60,7 +79,7 @@ class ScLoggerManager:
             logger.propagate = False
 
     def _create_handler(self) -> logging.Handler:
-        handler = logging.StreamHandler()
+        handler = RichHandler(show_time=False, show_path=False)
         formatter = ScLoggerFormatter(plugin_name=self.plugin_name)
         handler.setFormatter(formatter)
         return handler
