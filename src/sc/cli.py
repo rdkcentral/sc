@@ -21,8 +21,7 @@ from pathlib import Path
 import pkg_resources
 
 import click
-
-from sc.logutils import ScLoggerManager
+from rich.logging import RichHandler 
 
 CONFIG_DIR = Path(Path.home(), '.sc_config')
 CONFIG_PATH = Path(CONFIG_DIR, 'config.yaml')
@@ -30,7 +29,6 @@ CONFIG_PATH = Path(CONFIG_DIR, 'config.yaml')
 # Use entry_point instead of pointing directly at cli due to needing to load
 # plugins before the click group is ran.
 def entry_point():
-    setup_logging()
     CONFIG_DIR.mkdir(parents=True, exist_ok=True)
     CONFIG_PATH.touch()
     load_plugins()
@@ -45,18 +43,52 @@ def version():
     """Display SC Version."""
     click.echo(metadata.version("sc"))
 
-def setup_logging():
-    if os.environ.get("SC_DEBUG") == 1:
-        ScLoggerManager.set_level(logging.DEBUG)
-
 def load_plugins():
     """Load plugins with 'sc-' prefix and merge their CLI commands"""
     for dist in pkg_resources.working_set:
         if dist.project_name.startswith("sc-"):
             try:
-                plugin_module = import_module(dist.project_name.replace('-','_'))
+                module_name = dist.project_name.replace('-','_')
+                plugin_module = import_module(module_name)
 
                 if hasattr(plugin_module, "cli") and isinstance(plugin_module.cli, click.Group):
                     cli.add_command(plugin_module.cli, name=dist.project_name.replace("sc-", ""))
+                    setup_logging_for_plugin(dist.project_name, module_name)
             except Exception as e:
                 print(e)
+
+def setup_logging_for_plugin(plugin_name:str, module_name: str):
+    """Setup the logging for a plugin by its module name.
+    
+    This will automatically pick up any loggers = logging.getLogger(__name__) in the 
+    loaded plugin.
+
+    Args:
+        plugin_name (str): The name of the plugin to be added to the start of logs.
+        module_name (str): The actual name of the plugins module separated so name can 
+            have hyphens while module name needs underscores.
+    """
+    plugin_logger = logging.getLogger(module_name)
+    formatter = ScLoggerFormatter(plugin_name)
+
+    handler = RichHandler(show_time=False, show_path=False)
+    handler.setFormatter(formatter)
+    plugin_logger.addHandler(handler)
+
+class ScLoggerFormatter(logging.Formatter):
+    """Custom formatter that injects a plugin name into each log record."""
+    DEFAULT_FMT = '[%(plugin)s] %(message)s'
+    DEBUG_FMT = '[%(plugin)s] %(name)s: %(message)s'
+
+    def __init__(self, plugin_name: str):
+        self.plugin_name = plugin_name
+        super().__init__()
+
+    def format(self, record):
+        record.plugin = self.plugin_name
+        if os.environ.get("SC_DEBUG") == 1:
+            self._style._fmt = self.DEBUG_FMT
+        else:
+            self._style._fmt = self.DEFAULT_FMT
+        return super().format(record)
+    
