@@ -27,6 +27,11 @@ from rich.logging import RichHandler
 CONFIG_DIR = Path(Path.home(), '.sc_config')
 CONFIG_PATH = Path(CONFIG_DIR, 'config.yaml')
 
+if os.environ.get("SC_DEBUG") == 1:
+    DEBUG_MODE = True
+else:
+    DEBUG_MODE = False
+
 # Use entry_point instead of pointing directly at cli due to needing to load
 # plugins before the click group is ran.
 def entry_point():
@@ -76,6 +81,10 @@ def setup_logging_for_plugin(plugin_name:str, module_name: str):
             have hyphens while module name needs underscores.
     """
     plugin_logger = logging.getLogger(module_name)
+    if DEBUG_MODE:
+        plugin_logger.setLevel(logging.DEBUG)
+    else:
+        plugin_logger.setLevel(logging.INFO)
     formatter = ScLoggerFormatter(plugin_name)
 
     handler = RichHandler(show_time=False, show_path=False)
@@ -93,7 +102,7 @@ class ScLoggerFormatter(logging.Formatter):
 
     def format(self, record):
         record.plugin = self.plugin_name
-        if os.environ.get("SC_DEBUG") == 1:
+        if record.levelno == logging.DEBUG:
             self._style._fmt = self.DEBUG_FMT
         else:
             self._style._fmt = self.DEFAULT_FMT
