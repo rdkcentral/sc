@@ -29,8 +29,9 @@ setup(
     packages=['sc'],
     package_dir={"": "src"},
     install_requires=[
-        'Click',
-        'setuptools',
+        'Click>=8',
+        'setuptools>=80',
+        'rich>=14',
     ],
     entry_points={
         'console_scripts': [
