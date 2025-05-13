@@ -19,6 +19,7 @@ import logging
 import os
 from pathlib import Path
 import pkg_resources
+import sys
 
 import click
 from rich.logging import RichHandler 
@@ -57,7 +58,13 @@ def load_plugins():
                 plugin_module = import_module(module_name)
 
                 if hasattr(plugin_module, "cli") and isinstance(plugin_module.cli, click.Group):
-                    cli.add_command(plugin_module.cli, name=dist.project_name.replace("sc-", ""))
+                    for cmd_name, cmd in plugin_module.cli.commands.items():
+                        if cmd_name not in cli.commands:
+                            cli.commands[cmd_name] = cmd
+                        else:
+                            click.secho(
+                                f"ERROR: Command {cmd_name} in two plugins!", fg="red")
+                            sys.exit(1)
                     setup_logging_for_plugin(dist.project_name, module_name)
             except Exception as e:
                 print(e)
