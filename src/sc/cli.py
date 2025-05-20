@@ -15,13 +15,22 @@
 # limitations under the License.
 
 from importlib import metadata, import_module
+import logging
+import os
 from pathlib import Path
 import pkg_resources
+import sys
 
 import click
+from rich.logging import RichHandler 
 
 CONFIG_DIR = Path(Path.home(), '.sc_config')
 CONFIG_PATH = Path(CONFIG_DIR, 'config.yaml')
+
+if os.environ.get("SC_DEBUG") == 1:
+    DEBUG_MODE = True
+else:
+    DEBUG_MODE = False
 
 # Use entry_point instead of pointing directly at cli due to needing to load
 # plugins before the click group is ran.
@@ -45,9 +54,57 @@ def load_plugins():
     for dist in pkg_resources.working_set:
         if dist.project_name.startswith("sc-"):
             try:
-                plugin_module = import_module(dist.project_name.replace('-','_'))
+                module_name = dist.project_name.replace('-','_')
+                plugin_module = import_module(module_name)
 
                 if hasattr(plugin_module, "cli") and isinstance(plugin_module.cli, click.Group):
-                    cli.add_command(plugin_module.cli, name=dist.project_name.replace("sc-", ""))
+                    for cmd_name, cmd in plugin_module.cli.commands.items():
+                        if cmd_name not in cli.commands:
+                            cli.commands[cmd_name] = cmd
+                        else:
+                            click.secho(
+                                f"ERROR: Command {cmd_name} in two plugins!", fg="red")
+                            sys.exit(1)
+                    setup_logging_for_plugin(dist.project_name, module_name)
             except Exception as e:
                 print(e)
+
+def setup_logging_for_plugin(plugin_name:str, module_name: str):
+    """Setup the logging for a plugin by its module name.
+    
+    This will automatically pick up any loggers = logging.getLogger(__name__) in the 
+    loaded plugin.
+
+    Args:
+        plugin_name (str): The name of the plugin to be added to the start of logs.
+        module_name (str): The actual name of the plugins module separated so name can 
+            have hyphens while module name needs underscores.
+    """
+    plugin_logger = logging.getLogger(module_name)
+    if DEBUG_MODE:
+        plugin_logger.setLevel(logging.DEBUG)
+    else:
+        plugin_logger.setLevel(logging.INFO)
+    formatter = ScLoggerFormatter(plugin_name)
+
+    handler = RichHandler(show_time=False, show_path=False)
+    handler.setFormatter(formatter)
+    plugin_logger.addHandler(handler)
+
+class ScLoggerFormatter(logging.Formatter):
+    """Custom formatter that injects a plugin name into each log record."""
+    DEFAULT_FMT = '[%(plugin)s] %(message)s'
+    DEBUG_FMT = '[%(plugin)s] %(name)s: %(message)s'
+
+    def __init__(self, plugin_name: str):
+        self.plugin_name = plugin_name
+        super().__init__()
+
+    def format(self, record):
+        record.plugin = self.plugin_name
+        if record.levelno == logging.DEBUG:
+            self._style._fmt = self.DEBUG_FMT
+        else:
+            self._style._fmt = self.DEFAULT_FMT
+        return super().format(record)
+    
