@@ -31,6 +31,7 @@ setup(
     install_requires=[
         'Click>=8',
         'setuptools>=80',
+        'pyyaml~=6.0',
         'rich>=14',
     ],
     entry_points={
