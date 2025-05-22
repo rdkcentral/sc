@@ -18,20 +18,27 @@ This file will contain the commands your plugin will contain. Below is an exampl
 import click
 
 # This is your overarching group. It MUST be called cli()
+# The groups and commands below this group are added to sc directly
+# putting any functionality in this function will do nothing and be skipped.
 @click.group()
 def cli():
-    """My plugin help message!"""
     pass
 
-@cli.command()
+# This will add a command namely command1 to sc 
+# e.g you can run `sc command1` to run this group.
+@cli.group()
 def command1():
-    """Your plugins functionality on running sc plugin command1"""
+    """"""
+
+@command1.command()
+def subcommand1():
+    """Your plugins functionality on running sc command1 subcommand1"""
     do_something()
 
-@cli.command()
+@command1.command()
 @click.argument('argument1')
-def command2(argument1):
-    """Plugin functionality on running sc plugin command2 [argument1]"""
+def subcommand2(argument1):
+    """Plugin functionality on running sc command1 subcommand2 [argument1]"""
 ```
 
 There is much more to Click but above is the bare minimum for setting up a cli for your plugin. Read Click's docs [here](https://click.palletsprojects.com/en/stable/#).
