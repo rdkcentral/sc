@@ -27,7 +27,7 @@ from rich.logging import RichHandler
 CONFIG_DIR = Path(Path.home(), '.sc_config')
 CONFIG_PATH = Path(CONFIG_DIR, 'config.yaml')
 
-if os.environ.get("SC_DEBUG") == 1:
+if os.environ.get("SC_DEBUG") == "1":
     DEBUG_MODE = True
 else:
     DEBUG_MODE = False
@@ -51,10 +51,10 @@ def version():
 
 def load_plugins():
     """Load plugins with 'sc-' prefix and merge their CLI commands"""
-    for dist in pkg_resources.working_set:
-        if dist.project_name.startswith("sc-"):
+    for dist in metadata.distributions():
+        if dist.metadata["Name"].startswith("sc-"):
             try:
-                module_name = dist.project_name.replace('-','_')
+                module_name = dist.metadata["Name"].replace('-','_')
                 plugin_module = import_module(module_name)
 
                 if hasattr(plugin_module, "cli") and isinstance(plugin_module.cli, click.Group):
@@ -65,7 +65,7 @@ def load_plugins():
                             click.secho(
                                 f"ERROR: Command {cmd_name} in two plugins!", fg="red")
                             sys.exit(1)
-                    setup_logging_for_plugin(dist.project_name, module_name)
+                    setup_logging_for_plugin(dist.metadata["Name"], module_name)
             except Exception as e:
                 print(e)
 
