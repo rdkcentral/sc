@@ -30,7 +30,6 @@ setup(
     package_dir={"": "src"},
     install_requires=[
         'Click>=8',
-        'setuptools>=80',
         'pyyaml~=6.0',
         'rich>=14',
     ],
