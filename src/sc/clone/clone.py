@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 DEBUG_PROJECT_LIST_PATH = os.getenv("SC_DEBUG_PATH")
 
 class CliOverrides(TypedDict):
+    rev: str | None
     no_tags: bool
     manifest: str | None
     verify: bool
@@ -36,7 +37,8 @@ class SCClone:
     def clone(
             self, 
             project_name: str, 
-            directory: str | None = None, 
+            directory: str | None = None,
+            rev: str | None = None,
             force_overwrite: bool = False,
             no_tags: bool = False, 
             manifest: str | None = None,
@@ -66,6 +68,7 @@ class SCClone:
         )
 
         cli_overrides: CliOverrides = {
+            'rev': rev,
             'no_tags': no_tags,
             'manifest': manifest,
             'verify': verify

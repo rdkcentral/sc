@@ -3,15 +3,14 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
+import sys
 
-import git
 from pydantic import BaseModel
 
-from git_flow_library import GitFlowLibrary
+from .cloner import Cloner, RefType
 from repo_library import RepoLibrary
-from .cloner import Cloner
 from sc.branching import SCBranching
-from sc_manifest_parser import ScManifest, ProjectElementInterface
+from sc_manifest_parser import ScManifest
 
 logger = logging.getLogger(__name__)
 
@@ -96,10 +95,17 @@ class RepoCloner(Cloner):
         groups = "default,-notcached" if mirror else None
         
         no_repo_verify = True if self.config.repo_url or self.config.repo_rev else False
+        
+        ref_type = self._is_branch_tag_or_sha(self.config.uri, self.config.branch)
+        
+        if ref_type == RefType.TAG:
+            ref = f"refs/tags/{self.config.branch}"
+        else:
+            ref = self.config.branch
 
         RepoLibrary.init(
             self.config.uri, 
-            branch = self.config.branch,
+            branch = ref,
             directory = directory,
             manifest = self.config.manifest,
             mirror = mirror,

@@ -1,10 +1,14 @@
+import logging
 from pathlib import Path
+import sys
 
 import click
-from git import Repo
+from git import GitCommandError, Repo
 from pydantic import BaseModel
 
-from .cloner import Cloner
+from .cloner import Cloner, RefType
+
+logger = logging.getLogger(__name__)
 
 class GitClonerConfig(BaseModel):
     uri: str
@@ -43,9 +47,24 @@ class GitCloner(Cloner):
 
         click.secho(" ".join(cmd), fg="green")
 
-        Repo.clone_from(
-            self.config.uri, 
-            directory, 
-            branch=self.config.branch, 
-            multi_options=["--no-tags"] if self.config.no_tags else None
-        )
+        ref_type = self._is_branch_tag_or_sha(self.config.uri, self.config.branch)
+
+        try:
+            if ref_type == RefType.SHA:
+                repo = Repo.clone_from(
+                    self.config.uri, 
+                    directory, 
+                    multi_options=["--no-tags"] if self.config.no_tags else None
+                )
+                repo.git.fetch("origin", self.config.branch)
+                repo.git.checkout(self.config.branch)
+            else:
+                repo = Repo.clone_from(
+                    self.config.uri, 
+                    directory, 
+                    branch=self.config.branch,
+                    multi_options=["--no-tags"] if self.config.no_tags else None
+                )
+        except GitCommandError as e:
+            logger.error(f"Git error {e}")
+            sys.exit(1)

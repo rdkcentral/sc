@@ -44,9 +44,12 @@ class ClonerRunner:
             no_tags = bool(cli_overrides.get('no_tags'))
         )
 
+        if rev := cli_overrides.get("rev"):
+            cloner_config.branch = rev 
+
         if cli_overrides.get("no_tags"):
             logger.info("Option [--no-tags]")
-
+        
         return cloner_config
     
     def _make_repo_cloner_config(
@@ -67,6 +70,9 @@ class ClonerRunner:
             repo_url = project_config.repo_url,
             repo_rev = project_config.repo_rev,
         )
+
+        if rev := cli_overrides.get("rev"):
+            cloner_config.branch = rev 
 
         if cli_overrides.get("no_tags"):
             logger.info("Option [--no-tags]: disabled cache")

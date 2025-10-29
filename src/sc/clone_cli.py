@@ -10,6 +10,7 @@ def cli():
 @cli.command()
 @click.argument('project', required=False)
 @click.argument('directory', required=False)
+@click.option('-r', '--rev', help='Clone a revision. Accepts branch name, tag name, or full SHA.')
 @click.option('-n', '--no-tags', is_flag=True, help='Clone without tags.')
 @click.option('-m', '--manifest', help='Clone with specific manifest name.')
 @click.option('-f', '--force', is_flag=True, help="Automatically overwrite directory.")
@@ -19,6 +20,7 @@ def clone(
         ctx, 
         project: str | None, 
         directory: str | None, 
+        rev: str | None,
         no_tags: bool,
         manifest: str | None, 
         force: bool,
@@ -29,6 +31,7 @@ def clone(
         SCClone().clone(
             project_name=project, 
             directory=directory, 
+            rev=rev,
             no_tags=no_tags, 
             manifest=manifest,
             force_overwrite=force,
