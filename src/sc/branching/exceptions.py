@@ -1,0 +1,2 @@
+class ScInitError(RuntimeError):
+    pass
