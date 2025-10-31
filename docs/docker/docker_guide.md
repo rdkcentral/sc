@@ -13,7 +13,7 @@ To work with private Docker registries, such as those used within our projects, 
 
 * `sc docker login`
     * VIEW THE [LOGIN GUIDE!](login.md)
-    * Enter your registry e.g. ghcr.io/comcast-sky
+    * Enter your registry e.g. ghcr.io/organisation
     * Enter your registry type e.g. github
     * Are your credentials in your netrc? e.g n
     * Enter username

@@ -24,6 +24,6 @@ SC is a collection of CLI tools, centered around version control and docker work
 ## Installing
 
 ```shell
-pip install git+https://github.com/rdkcentral/sc.git@main
+pip install git+https://github.com/rdkcentral/sc.git@master
 ```
 
