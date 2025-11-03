@@ -36,9 +36,9 @@ setup(
         'docker~=7.0',
         'gitpython>=3',
         'pydantic>=2',
-        'repo_library @ git+ssh://git@github.com/rdkcentral/sc-repo-library.git@master',
-        'git_flow_library @ git+ssh://git@github.com/rdkcentral/sc-git-flow-library.git@master',
-        'sc_manifest_parser @ git+ssh://git@github.com/rdkcentral/sc-manifest-parser.git@main'
+        'repo_library @ git+https://github.com/rdkcentral/sc-repo-library.git@master',
+        'git_flow_library @ git+https://github.com/rdkcentral/sc-git-flow-library.git@master',
+        'sc_manifest_parser @ git+https://github.com/rdkcentral/sc-manifest-parser.git@main'
     ],
     entry_points={
         'console_scripts': [
