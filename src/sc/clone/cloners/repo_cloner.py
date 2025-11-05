@@ -94,8 +94,6 @@ class RepoCloner(Cloner):
         # If mirror is true we're creating a cache
         groups = "default,-notcached" if mirror else None
         
-        no_repo_verify = True if self.config.repo_url or self.config.repo_rev else False
-        
         ref_type = self._is_branch_tag_or_sha(self.config.uri, self.config.branch)
         
         if ref_type == RefType.TAG:
@@ -112,7 +110,7 @@ class RepoCloner(Cloner):
             reference = reference,
             groups = groups,
             repo_url = self.config.repo_url,
-            no_repo_verify = no_repo_verify,
+            no_repo_verify = True,
             repo_rev = self.config.repo_rev,
             verify=self.config.verify
         )
