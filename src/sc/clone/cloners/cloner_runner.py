@@ -85,6 +85,7 @@ class ClonerRunner:
             cloner_config.manifest = cli_overrides.get("manifest")
         
         if cli_overrides.get("verify"):
+            logger.info("Option [--verify]: Run repo hooks without prompts")
             cloner_config.verify = True
 
         return cloner_config

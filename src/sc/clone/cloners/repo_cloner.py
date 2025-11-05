@@ -102,19 +102,23 @@ class RepoCloner(Cloner):
         else:
             ref = self.config.branch
 
-        RepoLibrary.init(
-            self.config.uri, 
-            branch = ref,
-            directory = directory,
-            manifest = self.config.manifest,
-            mirror = mirror,
-            reference = reference,
-            groups = groups,
-            repo_url = self.config.repo_url,
-            no_repo_verify = self.config.no,
-            repo_rev = self.config.repo_rev,
-            verify=self.config.verify
-        )
+        try:
+            RepoLibrary.init(
+                self.config.uri, 
+                branch = ref,
+                directory = directory,
+                manifest = self.config.manifest,
+                mirror = mirror,
+                reference = reference,
+                groups = groups,
+                repo_url = self.config.repo_url,
+                no_repo_verify = self.config.no_repo_verify,
+                repo_rev = self.config.repo_rev,
+                verify=self.config.verify
+            )
+        except subprocess.CalledProcessError as e:
+            logger.error(f"repo init error: {e}")
+            sys.exit(1)
 
     def _get_manifest_hostname(self, url: str) -> str:
         """Extracts the hostname from a given URL. 
