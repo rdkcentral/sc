@@ -69,6 +69,7 @@ class ClonerRunner:
             cache = project_config.effective_cache,
             repo_url = project_config.repo_url,
             repo_rev = project_config.repo_rev,
+            no_repo_verify = project_config.no_repo_verify
         )
 
         if rev := cli_overrides.get("rev"):
@@ -82,5 +83,9 @@ class ClonerRunner:
             logger.info(
                 f"Option [-m] override manifest with [{cli_overrides.get('manifest')}]")
             cloner_config.manifest = cli_overrides.get("manifest")
+        
+        if cli_overrides.get("verify"):
+            logger.info("Option [--verify]: Run repo hooks without prompts")
+            cloner_config.verify = True
 
         return cloner_config

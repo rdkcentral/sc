@@ -27,6 +27,7 @@ class Project(BaseModel):
     cache: bool = True
     repo_url: str | None = None
     repo_rev: str | None = None
+    no_repo_verify: bool = False
     inherited: str | None = None
 
     @model_validator(mode='after')
