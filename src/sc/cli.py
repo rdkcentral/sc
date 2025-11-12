@@ -20,7 +20,7 @@ from pathlib import Path
 
 import click
 
-from . import branching_cli, clone_cli, docker_cli, sc_logging
+from . import branching_cli, clone_cli, docker_cli, review_cli, sc_logging
 
 CONFIG_DIR = Path(Path.home(), '.sc_config')
 CONFIG_PATH = Path(CONFIG_DIR, 'config.yaml')
@@ -45,6 +45,7 @@ def entry_point():
     add_commands_under_cli(branching_cli.cli)
     add_commands_under_cli(clone_cli.cli)
     add_commands_under_cli(docker_cli.cli)
+    add_commands_under_cli(review_cli.cli)
 
     cli()
 
