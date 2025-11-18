@@ -19,8 +19,9 @@ class JiraInstance(TicketingInstance):
     """A class to handle operations on Jira tickets.
 
     Args:
-            url (str): URL of Jira instance.
-            password (str): Password to authenticate with.
+        url (str): URL of Jira instance.
+        password (str): Password to authenticate with.
+        cert (str | None): Path to a cert file.
 
     Common KWargs:
         verify (bool): Whether to use ssl verification. Default True
@@ -30,7 +31,7 @@ class JiraInstance(TicketingInstance):
         TicketingInstanceUnreachable: If the ticketing instance cannot be connected to.
     """
 
-    def __init__(self, url: str, password: str, **kwargs):
+    def __init__(self, url: str, password: str, cert: str | None, **kwargs):
         self._default_jira_setup = {
             'server': '',
             'verify': True,
@@ -44,13 +45,13 @@ class JiraInstance(TicketingInstance):
         # If the user does not want to use SSL verification disable the warnings about it being insecure.
         if self._default_jira_setup.get('verify') is False:
             disable_warnings(InsecureRequestWarning)
-        # 9.0.0. is an arbitrary version that hasn't been release yet
+        # 9.0.0. is an arbitrary version that hasn't been released yet
         # Jira is currently readying version 3 of the api so we should be ready for it
         if kwargs.get('version') and self._version_check(
                 '9.0.0', kwargs.get('version', '0.0.0')) in ('same', 'later'):
             self._default_jira_setup['rest_api_version'] = '3'
-        if kwargs.get('cert') or kwargs.get('certificate'):
-            self._set_cert(kwargs.get('cert', kwargs.get('certificate')))
+        if cert:
+            self._default_jira_setup['client_cert'] = cert
         try:
             self._instance = JIRA(
                 options=self._default_jira_setup,
@@ -99,7 +100,7 @@ class JiraInstance(TicketingInstance):
         """Creates a ticket on the Jira instance
 
         Args:
-            project_key (str): The projects key on th Jira instance
+            project_key (str): The project's key on the Jira instance
             issue_type (str): The type of issue to raise
             titlr (str): Title of the ticket to raise
         """
@@ -207,13 +208,3 @@ class JiraInstance(TicketingInstance):
             ticket_id (str, optional): The id of the ticket to delete. Defaults to None.
         """
         self._instance.issue(ticket_id).delete()
-
-    def _set_cert(self, cert_path):
-        cert = self._get_cert(cert_path)
-        self._default_jira_setup['client_cert'] = cert
-
-    def _get_cert(self, cert_path):
-        cert_file = self._get_file(cert_path,
-                                   output_location='/tmp/',
-                                   obfuscate=True)
-        return cert_file

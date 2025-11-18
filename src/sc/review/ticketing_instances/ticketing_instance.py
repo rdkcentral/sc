@@ -148,14 +148,3 @@ class TicketingInstance(ABC):
                 if int(instance_bug) > int(required_bug):
                     return 'later'
         return 'earlier'
-
-    def _get_file(self,
-                  file_location: str,
-                  output_location: str = None,
-                  obfuscate: bool = False):
-        filepath = abspath(file_location) if exists(file_location) else None
-        if filepath is None and self._downloader:
-            filepath = self._downloader.download(file_location,
-                                                 output_dir=output_location,
-                                                 obfuscate=obfuscate)
-        return filepath

@@ -34,7 +34,7 @@ class ReviewConfig:
     def get_ticket_host_data(self, identifier: str) -> TicketHostCfg:
         data = self._ticket_config.get_config().get(identifier)
         if not data:
-            raise KeyError(f"Git instance config doesn't contain entry for {identifier}")
+            raise KeyError(f"Ticket instance config doesn't contain entry for {identifier}")
         try:
             return TicketHostCfg(**data)
         except ValidationError as e:
