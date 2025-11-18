@@ -8,12 +8,15 @@ def cli():
 
 @cli.command()
 def review():
+    """Add commit/PR information to your ticket."""
     main.review()
 
 @cli.command()
-def add_vcs_instance():
-    main.add_vcs_instance()
+def add_git_instance():
+    """Add a VCS instance for sc review."""
+    main.add_git_instance()
 
 @cli.command()
 def add_ticketing_instance():
+    """Add a ticketing instance for sc review."""
     main.add_ticketing_instance()

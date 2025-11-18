@@ -78,6 +78,21 @@ class JiraInstance(TicketingInstance):
     @property
     def engine(self) -> str:
         return 'jira'
+    
+    def validate_connection(self) -> bool:
+        """Check that the Jira instance and credentials are valid."""
+        try:
+            # Simple lightweight call that requires authentication
+            self._instance.myself()
+            return True
+
+        except JIRAError as e:
+            if e.status_code in (401, 403):
+                raise ConnectionError("Invalid Jira credentials or insufficient permissions.") from e
+            raise ConnectionAbortedError(f"Jira API error: HTTP {e.status_code}") from e
+
+        except RequestException as e:
+            raise ConnectionError("Unable to reach Jira server.") from e
 
     def create_ticket(self, project_key: str, issue_type: str, title: str,
                       **kwargs):
@@ -192,3 +207,13 @@ class JiraInstance(TicketingInstance):
             ticket_id (str, optional): The id of the ticket to delete. Defaults to None.
         """
         self._instance.issue(ticket_id).delete()
+
+    def _set_cert(self, cert_path):
+        cert = self._get_cert(cert_path)
+        self._default_jira_setup['client_cert'] = cert
+
+    def _get_cert(self, cert_path):
+        cert_file = self._get_file(cert_path,
+                                   output_location='/tmp/',
+                                   obfuscate=True)
+        return cert_file

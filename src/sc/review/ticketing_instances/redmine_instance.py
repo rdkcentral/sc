@@ -3,8 +3,8 @@ from urllib3 import disable_warnings
 from urllib3.exceptions import InsecureRequestWarning
 
 from redminelib import Redmine
-from redminelib.exceptions import ForbiddenError, ResourceNotFoundError, AuthError
-from requests.exceptions import SSLError
+from redminelib.exceptions import BaseRedmineError, ForbiddenError, ResourceNotFoundError, AuthError
+from requests.exceptions import RequestException, SSLError
 
 from ..exceptions import TicketNotFound, TicketingInstanceUnreachable, PermissionsError
 from .ticketing_instance import TicketingInstance
@@ -38,7 +38,21 @@ class RedmineInstance(TicketingInstance):
         return 'redmine'
     
     def validate_connection(self) -> bool:
-        pass
+        """Check if the Redmine instance and API key are valid."""
+        try:
+            # Minimal authenticated request
+            self._instance.auth()  # redminelib verifies credentials
+            return True
+
+        except (AuthError, ForbiddenError) as e:
+            ConnectionError("Invalid Redmine API key or insufficient permssions.")
+        
+        except BaseRedmineError as e:
+            raise ConnectionError(f"Redmine API error: {e}")
+
+        except RequestException as e:
+            raise ConnectionError("Failed to reach Redmine server.") from e
+
 
     def create_ticket(self, project_name: str, title: str, **kwargs) -> Ticket:
         """Create a ticket on the redmine instance

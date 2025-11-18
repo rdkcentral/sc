@@ -1,9 +1,9 @@
 
 from .github_instance import GithubInstance
 from .gitlab_instance import GitlabInstance
-from .vcs_instance import VcsInstance
+from .git_instance import GitInstance
 
-class VcsFactory:
+class GitFactory:
     _registry = {
         "github": GithubInstance,
         "gitlab": GitlabInstance
@@ -14,7 +14,7 @@ class VcsFactory:
         return list(cls._registry.keys())
 
     @classmethod
-    def create(cls, name: str, token: str, base_url: str | None) -> VcsInstance:
+    def create(cls, name: str, token: str, base_url: str | None) -> GitInstance:
         try:
             return cls._registry[name.lower()](token=token, base_url=base_url)
         except KeyError:

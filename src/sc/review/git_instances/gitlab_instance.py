@@ -2,9 +2,9 @@ import requests
 import urllib.parse
 
 from .pull_request import PullRequest, PRStatus
-from .vcs_instance import VcsInstance
+from .git_instance import GitInstance
 
-class GitlabInstance(VcsInstance):
+class GitlabInstance(GitInstance):
     def __init__(self, token: str, base_url: str):
         super().__init__(token, base_url)
     
@@ -12,13 +12,19 @@ class GitlabInstance(VcsInstance):
         return {"Private-Token": self.token}
     
     def validate_connection(self) -> bool:
+        url = f"{self.base_url}/api/v4/user"
         try:
-            url = f"{self.base_url}/api/v4/user"
-            r = requests.get(url, headers=self._headers(), timeout=5)
-            r.raise_for_status()
+            r = requests.get(url, headers=self._headers(), timeout=10)
+            if r.status_code == 401 or r.status_code == 403:
+                raise ConnectionError("Invalid GitLab token or insufficient permissions.")
+            elif r.status_code >= 400:
+                raise ConnectionError(f"GitLab API error: {r.status_code}")
             return True
-        except requests.RequestException:
-            return False
+        except requests.exceptions.Timeout as e:
+            raise ConnectionError("GitLab API request timed out.") from e
+        except requests.exceptions.ConnectionError as e:
+            raise ConnectionError("Network connection to GitLab failed.") from e
+
     
     def get_pull_request(self, repo: str, source_branch: str) -> PullRequest:
         safe_repo = urllib.parse.quote(repo, safe='')
