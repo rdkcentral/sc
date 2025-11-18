@@ -28,6 +28,18 @@ class TicketingInstance(ABC):
         pass
 
     @abstractmethod
+    def validate_connection(self) -> bool:
+        """Abstract Method:
+        Validate connection to the ticketing instance.
+
+        Raises:
+            ConnectionError: If the connection is unsuccessful.
+
+        Returns:
+            bool: True if connection is successful.
+        """
+
+    @abstractmethod
     def create_ticket(self) -> Ticket:
         """Abstract Method:
         Create a ticket on the ticketing instance.
@@ -136,3 +148,14 @@ class TicketingInstance(ABC):
                 if int(instance_bug) > int(required_bug):
                     return 'later'
         return 'earlier'
+
+    def _get_file(self,
+                  file_location: str,
+                  output_location: str = None,
+                  obfuscate: bool = False):
+        filepath = abspath(file_location) if exists(file_location) else None
+        if filepath is None and self._downloader:
+            filepath = self._downloader.download(file_location,
+                                                 output_dir=output_location,
+                                                 obfuscate=obfuscate)
+        return filepath

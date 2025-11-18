@@ -19,9 +19,10 @@ class TicketingInstanceFactory:
         provider: str,
         url: str,
         token: str,
+        cert: str | None = None
     ) -> TicketingInstance:
         try:
-            return cls._registry[provider](url=url, password=token)
+            return cls._registry[provider](url=url, password=token, cert=cert)
         except KeyError:
             raise TicketIdentifierNotFound(
                 f"Provider {provider} doesn't match any ticketing instance!")

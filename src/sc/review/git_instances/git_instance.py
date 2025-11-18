@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 
 from .pull_request import PullRequest
 
-class VcsInstance(ABC):
+class GitInstance(ABC):
     @abstractmethod
     def __init__(self, token: str, base_url: str | None):
         self.token = token
@@ -10,6 +10,15 @@ class VcsInstance(ABC):
     
     @abstractmethod
     def validate_connection(self) -> bool:
+        """Abstract Method:
+        Validates if connection to the git instance is successful.
+
+        Raises:
+            ConnectionError: If the connection is unsuccesful.
+
+        Returns:
+            bool: True if connection is successful.
+        """        
         pass
 
     @abstractmethod

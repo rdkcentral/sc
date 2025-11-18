@@ -11,12 +11,12 @@ from git import Repo
 from git_flow_library import GitFlowLibrary
 
 from sc_manifest_parser import ScManifest
-from .exceptions import RemoteUrlNotFound, TicketIdentifierNotFound, TicketNotFound
-from .review_config import ReviewConfig
+from .exceptions import RemoteUrlNotFound, TicketIdentifierNotFound
+from .review_config import ReviewConfig, TicketHostCfg
 from .ticketing_instances.ticket_instance_factory import TicketingInstanceFactory
 from .ticketing_instances.ticketing_instance import TicketingInstance
-from .vcs_instances.vcs_factory import VcsFactory
-from .vcs_instances.vcs_instance import VcsInstance
+from .git_instances.git_factory import GitFactory
+from .git_instances.git_instance import GitInstance
 
 logger = logging.getLogger(__name__)
 
@@ -32,40 +32,7 @@ class CommentData:
     commit_author: str
     commit_date: datetime
     commit_message: str
-
-    def generate_comment(self, formatted: bool = False) -> str:
-        header = [
-            f"Branch: [{self.branch}]",
-            f"Directory: [{self.directory}]",
-            f"Git: [{self.remote_url}]",
-        ]
-        
-        review = [
-            f"Review Status: [{self.review_status}]",
-            f"Review URL: [{self.review_url}]" if self.review_url else
-            f"Create Review URL: [{self.create_pr_url}]"
-        ]
-
-        commit = (
-            f"Last Commit: [{self.commit_sha}]",
-            f"Author: [{self.commit_author}]",
-            f"Date: [{self.commit_date}]",
-            "",
-            f"{self.commit_message}"
-        )
-
-        if formatted:
-            commit = ["<pre>", *commit, "</pre>"]
-        
-        return "\n".join(
-            [
-                *header,
-                "",
-                *review,
-                "",
-                *commit
-            ]
-        )
+    
 
 class Review:
     def __init__(self, top_dir: str):
@@ -86,35 +53,26 @@ class Review:
             identifier, ticket_num = None, None
 
         if identifier and ticket_num:
-            ticket_host_data = self._config.get_ticket_host_data(identifier)
-            ticketing_instance: TicketingInstance = TicketingInstanceFactory.create(
-                ticket_host_data.class_name,
-                ticket_host_data.url, 
-                ticket_host_data.api_key, 
-                ticket_host_data.username
-            )
+            ticketing_instance, ticketing_cfg = self._load_ticketing(identifier)
             
-            ticket_id = f"{ticket_host_data.project_prefix or ''}{ticket_num}"
+            ticket_id = f"{ticketing_cfg.project_prefix or ''}{ticket_num}"
             ticket = ticketing_instance.read_ticket(ticket_id)
         else:
             ticketing_instance = None
             ticket = None
         
-        vcs_instance = self._create_vcs_instance(Repo(self.top_dir).remote().url)
-        comment_data = self._create_comment_data(Repo(self.top_dir), vcs_instance)
+        git_instance = self._create_git_instance(Repo(self.top_dir).remote().url)
+        comment_data = self._create_comment_data(Repo(self.top_dir), git_instance)
 
         logger.info(f"Ticket URL: [{ticket.url if ticket else 'None'}]")
         logger.info("Ticket info: ")
-        print(comment_data.generate_comment())
+        print(self._generate_terminal_comment(comment_data))
         
         if self._prompt_yn("Update ticket?"):
-            if ticketing_instance and ticket_id:
-                ticketing_instance.add_comment_to_ticket(
-                    ticket_id, comment_data.generate_comment(formatted=True))
-            else:
+            ticket_comment = self._generate_ticket_comment(comment_data)
+            if not (ticketing_instance and ticket_id):
                 ticketing_instance, ticket_id = self._prompt_ticket_selection()
-                ticketing_instance.add_comment_to_ticket(
-                    ticket_id, comment_data.generate_comment(formatted=True))
+            ticketing_instance.add_comment_to_ticket(ticket_id, ticket_comment)
         
     def run_repo_command(self):
         manifest_repo = Repo(self.top_dir / '.repo' / 'manifests')
@@ -131,15 +89,9 @@ class Review:
             identifier, ticket_num = None, None
 
         if identifier and ticket_num: 
-            ticket_host_data = self._config.get_ticket_host_data(identifier)
-            ticketing_instance = TicketingInstanceFactory.create(
-                ticket_host_data.class_name,
-                ticket_host_data.url,
-                ticket_host_data.api_key,
-                ticket_host_data.username
-            )
+            ticketing_instance, ticketing_cfg = self._load_ticketing(identifier)
             
-            ticket_id = f"{ticket_host_data.project_prefix or ''}{ticket_num}"
+            ticket_id = f"{ticketing_cfg.project_prefix or ''}{ticket_num}"
             ticket = ticketing_instance.read_ticket(ticket_id)
         else:
             ticketing_instance, ticket_id = None, None
@@ -150,28 +102,31 @@ class Review:
         manifest = ScManifest.from_repo_root(self.top_dir / '.repo')
         comments = []
         for project in manifest.projects:
+            if project.lock_status:
+                continue
+
             proj_repo = Repo(self.top_dir / project.path)
-            proj_vcs = self._create_vcs_instance(proj_repo.remotes[proj_repo.remote].url)
+            #Don't generate for projects that haven't got an upstream
+            if not proj_repo.active_branch.tracking_branch():
+                continue
+
+            proj_git = self._create_git_instance(proj_repo.remotes[project.remote].url)
             comment_data = self._create_comment_data(
-                proj_repo, proj_vcs)
+                proj_repo, proj_git)
             comments.append(comment_data)
 
-        manifest_vcs = self._create_vcs_instance(manifest_repo.remote().url)
+        manifest_git = self._create_git_instance(manifest_repo.remote().url)
         comment_data = self._create_comment_data(
-            manifest_repo, manifest_vcs)
+            manifest_repo, manifest_git)
         comments.append(comment_data)       
 
-        multi_repo_comment = self._generate_multi_comment(comments)
-        print(multi_repo_comment)
+        print(self._generate_combined_terminal_comment(comments))
 
         if self._prompt_yn("Update ticket?"):
-            if ticketing_instance and ticket_id:
-                ticketing_instance.add_comment_to_ticket(
-                    ticket_id, multi_repo_comment)
-            else:
+            ticket_comment = self._generate_combined_ticket_comment(comments)
+            if not (ticketing_instance and ticket_id):
                 ticketing_instance, ticket_id = self._prompt_ticket_selection()
-                ticketing_instance.add_comment_to_ticket(
-                    ticket_id, multi_repo_comment)
+            ticketing_instance.add_comment_to_ticket(ticket_id, ticket_comment)
     
     def _match_branch(
         self, 
@@ -200,32 +155,32 @@ class Review:
             f"Branch {branch_name} doesn't match any ticketing instances! "
             f"Found instances {', '.join(host_identifiers)}")
     
-    def _create_vcs_instance(self, remote_url: str) -> VcsInstance:
-        vcs_url_patterns = self._config.get_vcs_patterns()
+    def _create_git_instance(self, remote_url: str) -> GitInstance:
+        git_url_patterns = self._config.get_git_patterns()
         try:
             remote_pattern = self._match_remote_url(
-                remote_url, vcs_url_patterns)
+                remote_url, git_url_patterns)
         except RemoteUrlNotFound as e:
             raise RemoteUrlNotFound(
-                e + f"\nRemotes patterns found: {', '.join(vcs_url_patterns)}"
+                str(e) + f"\nRemotes patterns found: {', '.join(git_url_patterns)}"
             )
-        vcs_data = self._config.get_vcs_data(remote_pattern)
-        return VcsFactory.create(
-            vcs_data.provider,
-            token=vcs_data.token,
-            base_url=vcs_data.url
+        git_data = self._config.get_git_data(remote_pattern)
+        return GitFactory.create(
+            git_data.provider,
+            token=git_data.token,
+            base_url=git_data.url
         )
     
     def _match_remote_url(
             self,
             remote_url: str,
-            vcs_patterns: Iterable[str]
+            git_patterns: Iterable[str]
         ) -> str:
-        """Match the remote url to a pattern in the vcs config.
+        """Match the remote url to a pattern in the git instance config.
 
         Args:
             remote_url (str): The remote url of the git repository.
-            vcs_patterns (Iterable[str]): An iterable of patterns to check against.
+            git_patterns (Iterable[str]): An iterable of patterns to check against.
 
         Raises:
             RemoteUrlNotFound: Raised when the remote url matches no patterns.
@@ -233,7 +188,7 @@ class Review:
         Returns:
             str: The matched pattern.
         """        
-        for pattern in vcs_patterns:
+        for pattern in git_patterns:
             if pattern in remote_url:
                 return pattern
         raise RemoteUrlNotFound(f"{remote_url} doesn't match any patterns!")
@@ -257,24 +212,24 @@ class Review:
     def _prompt_yn(self, msg: str) -> bool:
         return input(f"{msg} (y/n): ").strip().lower() == 'y'
     
-    def _create_comment_data(self, repo: Repo, vcs_instance: VcsInstance) -> CommentData:
+    def _create_comment_data(self, repo: Repo, git_instance: GitInstance) -> CommentData:
         branch_name = repo.active_branch.name
-        repo_slug = self._get_repo_slug(repo.remote().url)
-        pr = vcs_instance.get_pull_request(repo_slug, branch_name)
+        repo_slug = self._get_repo_slug(repo.remotes[0].url)
+        pr = git_instance.get_pull_request(repo_slug, branch_name)
 
-        target_branch = self._get_target_branch(self.top_dir, branch_name)
-        create_pr_url = vcs_instance.get_create_pr_url(
+        target_branch = self._get_target_branch(repo.working_dir, branch_name)
+        create_pr_url = git_instance.get_create_pr_url(
             repo_slug, branch_name, target_branch)
         
         commit = repo.head.commit
 
-        review_status = pr.status if pr else "Not Created"
+        review_status = str(pr.status) if pr else "Not Created"
         review_url = pr.url if pr else None
 
         return CommentData(
             branch=branch_name,
             directory=repo.working_dir,
-            remote_url=repo.remote().url,
+            remote_url=repo.remotes[0].url,
             review_status=review_status,
             review_url=review_url,
             create_pr_url=create_pr_url,
@@ -284,13 +239,12 @@ class Review:
             commit_message=commit.message.strip()
         )
     
-    def _generate_combined_comment(
-            comments: list[CommentData], formatted: bool = False) -> str:
-        parts = []
-        for c in comments:
-            parts.append(f"{c.generate_comment(formatted=formatted)}\n")
-        return "\n".join(parts)
-
+    def _load_ticketing(self, identifier: str) -> tuple[TicketingInstance, TicketHostCfg]:
+        cfg = self._config.get_ticket_host_data(identifier)
+        inst = TicketingInstanceFactory.create(
+            cfg.provider, cfg.url, cfg.api_key, cfg.cert)
+        return inst, cfg
+    
     def _prompt_ticket_selection(self) -> tuple[TicketingInstance, str]:
         """Prompt the user to select a ticketing instance and enter a ticket number.
 
@@ -310,20 +264,91 @@ class Review:
         
         input_id = input("> ")
 
-        ticket_instance_conf = ticket_conf.get(input_id)
-        if not ticket_instance_conf: 
-            raise TicketIdentifierNotFound(f"No prefix matches: {input_id}")
-
-        ticketing_instance = TicketingInstanceFactory.create(
-            ticket_instance_conf.class_name,
-            ticket_instance_conf.url,
-            ticket_instance_conf.api_key,
-            ticket_instance_conf.username
-        )
+        ticketing_instance, ticketing_conf = self._load_ticketing(input_id)
 
         logger.info("Please enter your ticket number:")
         input_num = input("> ")
 
-        ticket_id = f"{ticket_instance_conf.project_prefix or ''}{input_num}"
+        ticket_id = f"{ticketing_conf.project_prefix or ''}{input_num}"
 
         return ticketing_instance, ticket_id
+
+    def _generate_combined_terminal_comment(self, comments: list[CommentData]) -> str:
+        return "\n\n".join(self._generate_terminal_comment(c) for c in comments)
+
+    def _generate_combined_ticket_comment(self, comments: list[CommentData]) -> str:
+        return "\n\n".join(self._generate_ticket_comment(c) for c in comments)
+
+    def _generate_terminal_comment(self, data: CommentData) -> str:
+        """Generate the information for one repo to be displayed in the terminal.
+
+        Args:
+            data (CommentData): The data collated from one repo.
+
+        Returns:
+            str: Information from one repo to be displayed in the terminal.
+        """        
+        def c(code, text):
+            return f"\033[{code}m{text}\033[0m"
+
+        header = [
+            f"Branch: [{data.branch}]",
+            f"Directory: [{data.directory}]",
+            f"Git: [{data.remote_url}]",
+        ]
+
+        logger.info(f"Data: {str(data)}")
+        if data.review_url:
+            review_status = f"Review Status: [{c('32', data.review_status)}]"
+            review_link = f"Review URL: [{c('32', data.review_url)}]"
+        else:
+            review_status = f"Review Status: [{c('31', data.review_status)}]"
+            review_link = f"Create Review URL: [{c('33', data.create_pr_url)}]"
+
+        review = [review_status, review_link]
+
+        commit = (
+            f"Last Commit: [{data.commit_sha}]",
+            f"Author: [{data.commit_author}]",
+            f"Date: [{data.commit_date}]",
+            "",
+            f"{data.commit_message}"
+        )
+
+        return "\n".join([*header, "", *review, "", *commit])
+    
+    def _generate_ticket_comment(self, data: CommentData) -> str:
+        """Generate the information for one repo formatted for a ticket comment.
+
+        Args:
+            data (CommentData): The data collated for one repo.
+
+        Returns:
+            str: A formatted ticket comment.
+        """        
+        header = [
+            f"Branch: [{data.branch}]",
+            f"Directory: [{data.directory}]",
+            f"Git: [{data.remote_url}]",
+        ]
+
+        if data.review_url:
+            review_status = f"Review Status: [{data.review_status}]"
+            review_link = f"Review URL: [{data.review_url}]"
+        else:
+            review_status = f"Review Status: [{data.review_status}]"
+            review_link = f"Create Review URL: [{data.create_pr_url}]"
+
+        review = [review_status, review_link]
+
+        commit = (
+            "<pre>",
+            f"Last Commit: [{data.commit_sha}]",
+            f"Author: [{data.commit_author}]",
+            f"Date: [{data.commit_date}]",
+            "",
+            f"{data.commit_message}"
+            "</pre>"
+        )
+
+        return "\n".join([*header, "", *review, "", *commit])
