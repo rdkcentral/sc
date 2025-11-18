@@ -36,7 +36,7 @@ def add_git_instance():
 
     if provider == "github":
         url = "http://api.github.com"
-        logger.info("Enter a pattern for to identify Git from remote url: ")
+        logger.info("Enter a pattern to identify Git from remote url: ")
         logger.info(
             "E.G. github.com for all github instances or "
             "github.com/org for a particular organisation")
@@ -112,7 +112,7 @@ def add_ticketing_instance():
         logger.error(f"Failed to connect! {e}")
         sys.exit(1)
 
-    logger.info("Connection succesful!")
+    logger.info("Connection successful!")
 
     ticket_cfg = TicketHostCfg(
         url=base_url, 

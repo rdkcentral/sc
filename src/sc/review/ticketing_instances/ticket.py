@@ -43,4 +43,4 @@ class Ticket():
         return self._contents.get('url')
 
     def get(self, undeclared_property):
-        return self._contents['contents'].get(undeclared_property)
+        return self._contents.get(undeclared_property)

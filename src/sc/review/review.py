@@ -347,7 +347,7 @@ class Review:
             f"Author: [{data.commit_author}]",
             f"Date: [{data.commit_date}]",
             "",
-            f"{data.commit_message}"
+            f"{data.commit_message}",
             "</pre>"
         )
 

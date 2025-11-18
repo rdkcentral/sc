@@ -22,30 +22,36 @@ class RedmineInstance(TicketingInstance):
         # If the user does not want to use SSL verification disable the warnings about it being insecure.
         if kwargs.get('verify') is False:
             disable_warnings(InsecureRequestWarning)
-        try:
-            self._instance = Redmine(url,
-                                     key=self._credentials.get('password'),
-                                     requests={
-                                         'verify': kwargs.get('verify', True),
-                                         'proxies': kwargs.get('proxies', {})
-                                     },
-                                     version=kwargs.get('version', None))
-        except:
-            raise TicketingInstanceUnreachable(url)
+        self._instance = Redmine(
+            url,
+            key=self._credentials.get('password'),
+            requests={
+                'verify': kwargs.get('verify', True),
+                'proxies': kwargs.get('proxies', {})
+            },
+            version=kwargs.get('version', None)
+        )
 
     @property
     def engine(self) -> str:
         return 'redmine'
     
     def validate_connection(self) -> bool:
-        """Check if the Redmine instance and API key are valid."""
+        """Check if the Redmine instance and API key are valid.
+        
+        Raises:
+            ConnectionError: If the connection is invalid.
+
+        Returns:
+            bool: True if connection is valid.
+        """
         try:
             # Minimal authenticated request
             self._instance.auth()  # redminelib verifies credentials
             return True
 
         except (AuthError, ForbiddenError) as e:
-            ConnectionError("Invalid Redmine API key or insufficient permssions.")
+            raise ConnectionError("Invalid Redmine API key or insufficient permssions.")
         
         except BaseRedmineError as e:
             raise ConnectionError(f"Redmine API error: {e}")
@@ -72,7 +78,7 @@ class RedmineInstance(TicketingInstance):
         except (ResourceNotFoundError, SSLError) as exception:
             raise TicketingInstanceUnreachable(
                 self.url,
-                additional_information=''.join(
+                additional_info=''.join(
                     arg for arg in exception.args)) from exception
         except ForbiddenError as exception:
             raise PermissionsError(
@@ -138,8 +144,7 @@ class RedmineInstance(TicketingInstance):
             PermissionsError: User does not have permission to access the ticket on the instances
             TicketingInstanceUnreachable: The redmine instance is unreachable
         """
-        issue_url = '{url}/issues/{ticket_number}'.format(
-            url=self.url, ticket_number=ticket_id)
+        issue_url = f'{self.url}/issues/{ticket_id}'
         try:
             self._instance.issue.update(ticket_id, **kwargs)
         except ResourceNotFoundError as exception:
@@ -161,7 +166,8 @@ class RedmineInstance(TicketingInstance):
             comment_message (str): The message to add as a comment
             ticket_id (str): The ticket number to add the comment to.
         """
-        ticket = self.update_ticket(ticket_id,notes=self._convert_html_colours(comment_message))
+        ticket = self.update_ticket(
+            ticket_id, notes=self._convert_html_colours(comment_message))
         return ticket
 
     def _convert_html_colours(self, string: str) -> str:
@@ -189,15 +195,14 @@ class RedmineInstance(TicketingInstance):
             PermissionsError: User does not have permission to access the ticket on the instances
             TicketingInstanceUnreachable: The redmine instance is unreachable
         """
-        issue_url = '{url}/issues/{ticket_number}'.format(
-            url=self._instance.url, ticket_number=self.ticket_id)
+        issue_url = f'{self.url}/issues/{ticket_id}'
         try:
-            self._instance.issue.delete(self.ticket_id)
+            self._instance.issue.delete(ticket_id)
         except ResourceNotFoundError as exception:
             raise TicketNotFound(issue_url) from exception
         except ForbiddenError as exception:
             raise PermissionsError(
-                '{url}/issues/{ticket_number}'.format(url=self._url),
+                f'{self._instance.url}/issues/{ticket_id}',
                 'Please contact the dev-support team') from exception
         except SSLError as exception:
             raise TicketingInstanceUnreachable(
