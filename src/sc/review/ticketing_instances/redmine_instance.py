@@ -7,9 +7,8 @@ from redminelib.exceptions import BaseRedmineError, ForbiddenError, ResourceNotF
 from requests.exceptions import RequestException, SSLError
 
 from ..exceptions import TicketNotFound, TicketingInstanceUnreachable, PermissionsError
-from .ticketing_instance import TicketingInstance
-from .ticket import Ticket
-
+from ..core.ticketing_instance import TicketingInstance
+from ..core.ticket import Ticket
 
 class RedmineInstance(TicketingInstance):
     """
@@ -35,10 +34,10 @@ class RedmineInstance(TicketingInstance):
     @property
     def engine(self) -> str:
         return 'redmine'
-    
+
     def validate_connection(self) -> bool:
         """Check if the Redmine instance and API key are valid.
-        
+
         Raises:
             ConnectionError: If the connection is invalid.
 
@@ -52,7 +51,7 @@ class RedmineInstance(TicketingInstance):
 
         except (AuthError, ForbiddenError) as e:
             raise ConnectionError("Invalid Redmine API key or insufficient permssions.")
-        
+
         except BaseRedmineError as e:
             raise ConnectionError(f"Redmine API error: {e}")
 

@@ -1,7 +1,6 @@
 
-from .github_instance import GithubInstance
-from .gitlab_instance import GitlabInstance
-from .git_instance import GitInstance
+from ..git_instances import GithubInstance, GitlabInstance
+from ..core.git_instance import GitInstance
 
 class GitFactory:
     _registry = {

@@ -1,7 +1,6 @@
 from sc.review.exceptions import TicketIdentifierNotFound
-from .jira_instance import JiraInstance
-from .redmine_instance import RedmineInstance
-from .ticketing_instance import TicketingInstance
+from ..ticketing_instances import JiraInstance, RedmineInstance
+from ..core.ticketing_instance import TicketingInstance
 
 class TicketingInstanceFactory:
     _registry = {

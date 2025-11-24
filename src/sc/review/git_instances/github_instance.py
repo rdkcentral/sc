@@ -1,7 +1,7 @@
 import requests
 
-from .pull_request import PRStatus, PullRequest
-from .git_instance import GitInstance
+from ..core.code_review import CRStatus, CodeReview
+from ..core.git_instance import GitInstance
 
 class GithubInstance(GitInstance):
     def __init__(self, token: str, base_url: str | None):
@@ -12,7 +12,7 @@ class GithubInstance(GitInstance):
             "Accept": "application/vnd.github.v3+json",
             "Authorization": f"Bearer {self.token}"
         }
-    
+
     def validate_connection(self) -> bool:
         url = f"{self.base_url}/user"
         try:
@@ -27,31 +27,30 @@ class GithubInstance(GitInstance):
         except requests.exceptions.ConnectionError as e:
             raise ConnectionError("Network connection to GitHub failed.") from e
 
-    def get_pull_request(self, repo: str, source_branch: str) -> PullRequest | None:
+    def get_code_review(self, repo: str, source_branch: str) -> CodeReview | None:
         url = f"{self.base_url}/repos/{repo}/pulls"
         owner = repo.split("/")[0]
         params = {"state": "all", "head": f"{owner}:{source_branch}"}
         r = requests.get(url, headers=self._headers(), params=params, timeout=10)
         r.raise_for_status()
         prs = r.json()
-        print(r.json())
         if not prs:
             return None
         pr = prs[0]
         # GitHub marks merged PRs as state="closed", merged=True
         if pr.get("merged"):
-            status = PRStatus.MERGED
+            status = CRStatus.MERGED
         elif pr["state"] == "open":
-            status = PRStatus.OPEN
+            status = CRStatus.OPEN
         else:
-            status = PRStatus.CLOSED
-        
-        return PullRequest(url=pr["html_url"], status=status)
+            status = CRStatus.CLOSED
 
-    def get_create_pr_url(
-        self, 
-        repo: str, 
-        source_branch: str, 
+        return CodeReview(url=pr["html_url"], status=status)
+
+    def get_create_cr_url(
+        self,
+        repo: str,
+        source_branch: str,
         target_branch: str = "develop"
     ) -> str:
         return f"https://github.com/{repo}/compare/{target_branch}...{source_branch}"

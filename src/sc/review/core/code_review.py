@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from enum import Enum
 
-class PRStatus(str, Enum):
+class CRStatus(str, Enum):
     OPEN = "Open"
     CLOSED = "Closed"
     MERGED = "Merged"
@@ -10,6 +10,6 @@ class PRStatus(str, Enum):
         return self.value
 
 @dataclass
-class PullRequest:
+class CodeReview:
     url: str
-    status: PRStatus
+    status: CRStatus

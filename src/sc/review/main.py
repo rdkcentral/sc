@@ -7,9 +7,9 @@ from git_flow_library import GitFlowLibrary
 from repo_library import RepoLibrary
 from .exceptions import ReviewException
 from .review import Review
-from .review_config import ReviewConfig, TicketHostCfg, GitInstanceCfg
-from .ticketing_instances.ticket_instance_factory import TicketingInstanceFactory
-from .git_instances.git_factory import GitFactory
+from .core.review_config import ReviewConfig, TicketHostCfg, GitInstanceCfg
+from .factories.ticket_instance_factory import TicketingInstanceFactory
+from .factories.git_factory import GitFactory
 
 logger = logging.getLogger(__name__)
 
@@ -51,8 +51,8 @@ def add_git_instance():
         pattern = url.replace("https://", "").replace("http://", "")
     else:
         logger.error("Provider matches none in the list!")
-    
-    
+
+
     logger.info("Enter your api token: ")
     api_key = input("> ")
     print("")
@@ -64,9 +64,9 @@ def add_git_instance():
     except ConnectionError as e:
         logger.error(f"Failed to connect! {e}")
         sys.exit(1)
-    
+
     logger.info("Connection validated!")
-    
+
     git_cfg = GitInstanceCfg(url=url, token=api_key, provider=provider)
     ReviewConfig().write_git_data(pattern, git_cfg)
 
@@ -82,13 +82,13 @@ def add_ticketing_instance():
     if provider not in ("jira", "redmine"):
         logger.error(f"Provider {provider} not supported!")
         sys.exit(1)
-    
+
     logger.info("Enter the branch prefix (e.g ABC for feature/ABC-123_ticket): ")
     branch_prefix = input("> ")
     print("")
 
     if provider == "jira":
-        
+
         project_prefix = f"{branch_prefix}-"
     else:
         project_prefix = None
@@ -102,7 +102,7 @@ def add_ticketing_instance():
     print("")
 
     instance = TicketingInstanceFactory.create(
-        provider=provider, 
+        provider=provider,
         url=base_url,
         token=api_token
     )
@@ -115,12 +115,12 @@ def add_ticketing_instance():
     logger.info("Connection successful!")
 
     ticket_cfg = TicketHostCfg(
-        url=base_url, 
-        provider=provider, 
-        api_key=api_token, 
+        url=base_url,
+        provider=provider,
+        api_key=api_token,
         project_prefix=project_prefix
     )
-    
+
     ReviewConfig().write_ticketing_data(branch_prefix, ticket_cfg)
 
     logger.info("Added ticketing instance!")

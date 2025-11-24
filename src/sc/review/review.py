@@ -12,11 +12,11 @@ from git_flow_library import GitFlowLibrary
 
 from sc_manifest_parser import ScManifest
 from .exceptions import RemoteUrlNotFound, TicketIdentifierNotFound
-from .review_config import ReviewConfig, TicketHostCfg
-from .ticketing_instances.ticket_instance_factory import TicketingInstanceFactory
-from .ticketing_instances.ticketing_instance import TicketingInstance
-from .git_instances.git_factory import GitFactory
-from .git_instances.git_instance import GitInstance
+from .core.review_config import ReviewConfig, TicketHostCfg
+from .factories.ticket_instance_factory import TicketingInstanceFactory
+from .core.ticketing_instance import TicketingInstance
+from .factories.git_factory import GitFactory
+from .core.git_instance import GitInstance
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +32,7 @@ class CommentData:
     commit_author: str
     commit_date: datetime
     commit_message: str
-    
+
 
 class Review:
     def __init__(self, top_dir: str):
@@ -41,60 +41,46 @@ class Review:
         self._config = ReviewConfig()
 
     def run_git_command(self):
-        ticket_host_ids = self._config.get_ticket_host_ids()
         branch_name = Repo(self.top_dir).active_branch.name
         try:
-            identifier, ticket_num = self._match_branch(
-                branch_name,
-                ticket_host_ids
-            )
-        except TicketIdentifierNotFound as e:
-            logger.warning(e)
-            identifier, ticket_num = None, None
-
-        if identifier and ticket_num:
+            identifier, ticket_num = self._match_branch(branch_name)
             ticketing_instance, ticketing_cfg = self._load_ticketing(identifier)
-            
+
             ticket_id = f"{ticketing_cfg.project_prefix or ''}{ticket_num}"
             ticket = ticketing_instance.read_ticket(ticket_id)
-        else:
+        except TicketIdentifierNotFound as e:
+            logger.warning(e)
             ticketing_instance = None
+            ticket_id = None
             ticket = None
-        
+
         git_instance = self._create_git_instance(Repo(self.top_dir).remote().url)
         comment_data = self._create_comment_data(Repo(self.top_dir), git_instance)
 
         logger.info(f"Ticket URL: [{ticket.url if ticket else 'None'}]")
         logger.info("Ticket info: ")
         print(self._generate_terminal_comment(comment_data))
-        
+
         if self._prompt_yn("Update ticket?"):
             ticket_comment = self._generate_ticket_comment(comment_data)
             if not (ticketing_instance and ticket_id):
                 ticketing_instance, ticket_id = self._prompt_ticket_selection()
             ticketing_instance.add_comment_to_ticket(ticket_id, ticket_comment)
-        
+
     def run_repo_command(self):
         manifest_repo = Repo(self.top_dir / '.repo' / 'manifests')
 
-        ticket_host_ids = self._config.get_ticket_host_ids()
-
         try:
-            identifier, ticket_num = self._match_branch(
-                manifest_repo.active_branch.name,
-                ticket_host_ids
-            )
-        except TicketIdentifierNotFound as e:
-            logger.warning(e)
-            identifier, ticket_num = None, None
-
-        if identifier and ticket_num: 
+            identifier, ticket_num = self._match_branch(manifest_repo.active_branch.name)
             ticketing_instance, ticketing_cfg = self._load_ticketing(identifier)
-            
+
             ticket_id = f"{ticketing_cfg.project_prefix or ''}{ticket_num}"
             ticket = ticketing_instance.read_ticket(ticket_id)
-        else:
-            ticketing_instance, ticket_id = None, None
+        except TicketIdentifierNotFound as e:
+            logger.warning(e)
+            ticketing_instance = None
+            ticket_id = None
+            ticket = None
 
         logger.info(f"Ticket URL: [{ticket.url if ticket else ''}]")
         logger.info("Ticket info: ")
@@ -118,7 +104,7 @@ class Review:
         manifest_git = self._create_git_instance(manifest_repo.remote().url)
         comment_data = self._create_comment_data(
             manifest_repo, manifest_git)
-        comments.append(comment_data)       
+        comments.append(comment_data)
 
         print(self._generate_combined_terminal_comment(comments))
 
@@ -127,17 +113,12 @@ class Review:
             if not (ticketing_instance and ticket_id):
                 ticketing_instance, ticket_id = self._prompt_ticket_selection()
             ticketing_instance.add_comment_to_ticket(ticket_id, ticket_comment)
-    
-    def _match_branch(
-        self, 
-        branch_name: str, 
-        host_identifiers: Iterable[str]
-    ) -> tuple[str, str]:
+
+    def _match_branch(self, branch_name: str) -> tuple[str, str]:
         """Match the branch to an identifier in the config.
 
         Args:
             branch_name (str): The current branch name.
-            host_identifiers (Iterable[str]): An iterable of ticket host identifiers.
 
         Raises:
             TicketIdentifierNotFound: Raised when the branch doesn't match any
@@ -145,7 +126,8 @@ class Review:
 
         Returns:
             tuple[str, str]: (matched_identifier, ticket_number)
-        """        
+        """
+        host_identifiers = self._config.get_ticket_host_ids()
         for identifier in host_identifiers:
             # Matches the identifier, followed by - or _, followed by a number
             if m := re.search(fr'{identifier}[-_]?(\d+)', branch_name):
@@ -154,7 +136,7 @@ class Review:
         raise TicketIdentifierNotFound(
             f"Branch {branch_name} doesn't match any ticketing instances! "
             f"Found instances {', '.join(host_identifiers)}")
-    
+
     def _create_git_instance(self, remote_url: str) -> GitInstance:
         git_url_patterns = self._config.get_git_patterns()
         try:
@@ -170,7 +152,7 @@ class Review:
             token=git_data.token,
             base_url=git_data.url
         )
-    
+
     def _match_remote_url(
             self,
             remote_url: str,
@@ -187,44 +169,44 @@ class Review:
 
         Returns:
             str: The matched pattern.
-        """        
+        """
         for pattern in git_patterns:
             if pattern in remote_url:
                 return pattern
         raise RemoteUrlNotFound(f"{remote_url} doesn't match any patterns!")
-    
+
     def _get_repo_slug(self, remote_url: str) -> str:
         """Return the repository slug (e.g. "org/repo") from a remote url."""
         if remote_url.startswith("git@"):
             slug = remote_url.split(":", 1)[1]
         else:
             slug = parse.urlparse(remote_url).path.lstrip("/")
-        
+
         if slug.endswith(".git"):
             slug = slug[:-4]
-        
+
         return slug
 
     def _get_target_branch(self, directory: Path, source_branch: str) -> str:
         base = GitFlowLibrary.get_branch_base(source_branch, directory)
         return base if base else GitFlowLibrary.get_develop_branch(directory)
-    
+
     def _prompt_yn(self, msg: str) -> bool:
         return input(f"{msg} (y/n): ").strip().lower() == 'y'
-    
+
     def _create_comment_data(self, repo: Repo, git_instance: GitInstance) -> CommentData:
         branch_name = repo.active_branch.name
         repo_slug = self._get_repo_slug(repo.remotes[0].url)
-        pr = git_instance.get_pull_request(repo_slug, branch_name)
+        cr = git_instance.get_code_review(repo_slug, branch_name)
 
         target_branch = self._get_target_branch(repo.working_dir, branch_name)
-        create_pr_url = git_instance.get_create_pr_url(
+        create_pr_url = git_instance.get_create_cr_url(
             repo_slug, branch_name, target_branch)
-        
+
         commit = repo.head.commit
 
-        review_status = str(pr.status) if pr else "Not Created"
-        review_url = pr.url if pr else None
+        review_status = str(cr.status) if cr else "Not Created"
+        review_url = cr.url if cr else None
 
         return CommentData(
             branch=branch_name,
@@ -238,13 +220,13 @@ class Review:
             commit_date=commit.committed_datetime,
             commit_message=commit.message.strip()
         )
-    
+
     def _load_ticketing(self, identifier: str) -> tuple[TicketingInstance, TicketHostCfg]:
         cfg = self._config.get_ticket_host_data(identifier)
         inst = TicketingInstanceFactory.create(
             cfg.provider, cfg.url, cfg.api_key, cfg.cert)
         return inst, cfg
-    
+
     def _prompt_ticket_selection(self) -> tuple[TicketingInstance, str]:
         """Prompt the user to select a ticketing instance and enter a ticket number.
 
@@ -261,7 +243,7 @@ class Review:
         logger.info("PREFIX --- INSTANCE URL --- DESCRIPTION")
         for id, conf in ticket_conf.items():
             logger.info(f"{id} --- {conf.url} --- {conf.description or ''}")
-        
+
         input_id = input("> ")
 
         ticketing_instance, ticketing_conf = self._load_ticketing(input_id)
@@ -287,7 +269,7 @@ class Review:
 
         Returns:
             str: Information from one repo to be displayed in the terminal.
-        """        
+        """
         def c(code, text):
             return f"\033[{code}m{text}\033[0m"
 
@@ -297,7 +279,6 @@ class Review:
             f"Git: [{data.remote_url}]",
         ]
 
-        logger.info(f"Data: {str(data)}")
         if data.review_url:
             review_status = f"Review Status: [{c('32', data.review_status)}]"
             review_link = f"Review URL: [{c('32', data.review_url)}]"
@@ -316,7 +297,7 @@ class Review:
         )
 
         return "\n".join([*header, "", *review, "", *commit])
-    
+
     def _generate_ticket_comment(self, data: CommentData) -> str:
         """Generate the information for one repo formatted for a ticket comment.
 
@@ -325,7 +306,7 @@ class Review:
 
         Returns:
             str: A formatted ticket comment.
-        """        
+        """
         header = [
             f"Branch: [{data.branch}]",
             f"Directory: [{data.directory}]",

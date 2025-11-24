@@ -11,9 +11,8 @@ from jira import JIRA
 from jira.exceptions import JIRAError
 
 from ..exceptions import PermissionsError, TicketingInstanceUnreachable, TicketNotFound
-from .ticket import Ticket
-from .ticketing_instance import TicketingInstance
-
+from ..core.ticket import Ticket
+from ..core.ticketing_instance import TicketingInstance
 
 class JiraInstance(TicketingInstance):
     """A class to handle operations on Jira tickets.
@@ -79,7 +78,7 @@ class JiraInstance(TicketingInstance):
     @property
     def engine(self) -> str:
         return 'jira'
-    
+
     def validate_connection(self) -> bool:
         """Check that the Jira instance and credentials are valid."""
         try:
