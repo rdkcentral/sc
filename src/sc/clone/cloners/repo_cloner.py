@@ -23,7 +23,7 @@ class RepoClonerConfig(BaseModel):
         branch (str | None): The branch to clone. If None, the default branch is used.
         manifest (str | None): The name of the manifest file used for cloning.
             Defaults to "default.xml".
-        no_tags (bool, optional): If True, disables fetching tags during cloning. 
+        no_tags (bool, optional): If True, disables fetching tags during cloning.
             Defaults to False.
         repo_url (str | None): The repo url to be initialised and used for cloning.
         no_repo_verify (bool): Stops repo checking the validity of the version of repo
@@ -63,15 +63,18 @@ class RepoCloner(Cloner):
         reference = self._cache() if self.config.cache else None
 
         self._init_repo(directory=directory, reference=reference)
-        RepoLibrary.sync(directory, self.config.no_tags)
-        
+        RepoLibrary.sync(
+            directory,
+            verify=self.config.verify
+        )
+
         SCBranching.init(directory)
 
         manifest = ScManifest.from_repo_root(directory / '.repo')
         manifests_dir = Path(directory, '.repo', 'manifests')
         for hook in manifest.post_sync_scripts:
             self._run_post_sync_script(manifests_dir / hook.path)
-    
+
     def _cache(self) -> Path:
         """Creates a cache of a project.
 
@@ -88,15 +91,18 @@ class RepoCloner(Cloner):
             shutil.rmtree(host_cache_dir / '.repo')
 
         self._init_repo(host_cache_dir, mirror=True)
-        RepoLibrary.sync(directory=host_cache_dir)
+        RepoLibrary.sync(
+            directory=host_cache_dir,
+            verify=self.config.verify
+        )
         return host_cache_dir
 
     def _init_repo(self, directory: Path, mirror: bool = False, reference: Path | None = None):
         # If mirror is true we're creating a cache
         groups = "default,-notcached" if mirror else None
-        
+
         ref_type = self._is_branch_tag_or_sha(self.config.uri, self.config.branch)
-        
+
         if ref_type == RefType.TAG:
             ref = f"refs/tags/{self.config.branch}"
         else:
@@ -104,7 +110,7 @@ class RepoCloner(Cloner):
 
         try:
             RepoLibrary.init(
-                self.config.uri, 
+                self.config.uri,
                 branch = ref,
                 directory = directory,
                 manifest = self.config.manifest,
@@ -114,24 +120,23 @@ class RepoCloner(Cloner):
                 repo_url = self.config.repo_url,
                 no_repo_verify = self.config.no_repo_verify,
                 repo_rev = self.config.repo_rev,
-                verify=self.config.verify
             )
         except subprocess.CalledProcessError as e:
             logger.error(f"repo init error: {e}")
             sys.exit(1)
 
     def _get_manifest_hostname(self, url: str) -> str:
-        """Extracts the hostname from a given URL. 
+        """Extracts the hostname from a given URL.
 
         Example:
             _get_manifest_hostname("ssh://user@github.com:repo/path") -> "github.com"
         """
-        url = url.split("://", 1)[-1]        
-        url = url.split("@", 1)[-1]        
+        url = url.split("://", 1)[-1]
+        url = url.split("@", 1)[-1]
         url = url.split(":", 1)[0]
         url = url.split("/", 1)[0]
         return url
-    
+
     def _run_post_sync_script(self, path: Path):
         if not path:
             logger.warning(
