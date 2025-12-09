@@ -1,6 +1,16 @@
-#!/usr/bin/env python3
-from urllib3 import disable_warnings
-from urllib3.exceptions import InsecureRequestWarning
+# Copyright 2025 RDK Management
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 from redminelib import Redmine
 from redminelib.exceptions import BaseRedmineError, ForbiddenError, ResourceNotFoundError, AuthError
@@ -15,21 +25,11 @@ class RedmineInstance(TicketingInstance):
     A class to handle operations on Redmine tickets.
     """
 
-    def __init__(self, url, password: str, **kwargs):
-        # Only an api key is necessary for Redmine therefore the username can be empty.
-        super().__init__(url, password=password, **kwargs)
-        # If the user does not want to use SSL verification disable the warnings about it being insecure.
-        if kwargs.get('verify') is False:
-            disable_warnings(InsecureRequestWarning)
-        self._instance = Redmine(
-            url,
-            key=self._credentials.get('password'),
-            requests={
-                'verify': kwargs.get('verify', True),
-                'proxies': kwargs.get('proxies', {})
-            },
-            version=kwargs.get('version', None)
-        )
+    def __init__(
+            self,
+            instance: Redmine
+        ):
+        self._instance = instance
 
     @property
     def engine(self) -> str:
@@ -57,35 +57,6 @@ class RedmineInstance(TicketingInstance):
 
         except RequestException as e:
             raise ConnectionError("Failed to reach Redmine server.") from e
-
-
-    def create_ticket(self, project_name: str, title: str, **kwargs) -> Ticket:
-        """Create a ticket on the redmine instance
-
-        Args:
-            project_name (str): The project to create the ticket under
-            title (str): The title of the ticket
-
-        Raises:
-            PermissionsError: User does not have permission to access the ticket on the instances
-            TicketingInstanceUnreachable: The redmine instance is unreachable
-        """
-        try:
-            new_ticket = self._instance.issue.create(project_id=project_name,
-                                                     subject=title,
-                                                     **kwargs)
-        except (ResourceNotFoundError, SSLError) as exception:
-            raise TicketingInstanceUnreachable(
-                self.url,
-                additional_info=''.join(
-                    arg for arg in exception.args)) from exception
-        except ForbiddenError as exception:
-            raise PermissionsError(
-                '{url}/{project}'.format(url=self.url, project=project_name),
-                'Please contact the dev-support team')
-        ticket_id = new_ticket
-        ticket = self.read_ticket(ticket_id)
-        return ticket
 
     def read_ticket(self, ticket_id: str) -> Ticket:
         """Read the information from a ticket and put it's contents in this object contents dict
@@ -135,7 +106,7 @@ class RedmineInstance(TicketingInstance):
                         target_version=target_version)
         return ticket
 
-    def update_ticket(self, ticket_id, **kwargs):
+    def update_ticket(self, ticket_id: str, **kwargs):
         """Writes the changed fields from the kwargs, back to the ticket
 
         Raises:
@@ -182,29 +153,3 @@ class RedmineInstance(TicketingInstance):
         string = string.replace('">', '}')
         string = string.replace('</p>', r'%')
         return string
-
-    def delete_ticket(self, ticket_id: str):
-        """Delete a ticket from the redmine instance
-
-        Args:
-            ticket_id (str, optional): The ticket number to delete. Defaults to None.
-
-        Raises:
-            TicketNotFound: Ticket not found on the redmine instance
-            PermissionsError: User does not have permission to access the ticket on the instances
-            TicketingInstanceUnreachable: The redmine instance is unreachable
-        """
-        issue_url = f'{self.url}/issues/{ticket_id}'
-        try:
-            self._instance.issue.delete(ticket_id)
-        except ResourceNotFoundError as exception:
-            raise TicketNotFound(issue_url) from exception
-        except ForbiddenError as exception:
-            raise PermissionsError(
-                f'{self._instance.url}/issues/{ticket_id}',
-                'Please contact the dev-support team') from exception
-        except SSLError as exception:
-            raise TicketingInstanceUnreachable(
-                issue_url,
-                additional_info=''.join(str(arg) for arg in exception.args))
-        return True

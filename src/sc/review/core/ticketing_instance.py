@@ -1,27 +1,26 @@
-#!/usr/bin/env python3
+# Copyright 2025 RDK Management
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from abc import ABC, abstractmethod
-from os.path import abspath, exists
 
 from .ticket import Ticket
-
 
 class TicketingInstance(ABC):
     """
     A class to handle the ticket(s) that the source control commands are
     operating on.
     """
-
-    @abstractmethod
-    def __init__(self, url: str, **kwargs):
-        self._credentials = {}
-        self._url = url
-        if 'username' and 'password' in kwargs.keys():
-            self.set_credentials(kwargs.get('username'), kwargs.get('password'))
-
-    @property
-    def url(self):
-        return self._url
-
     @property
     @abstractmethod
     def engine(self) -> str:
@@ -66,20 +65,6 @@ class TicketingInstance(ABC):
         pass
 
     @abstractmethod
-    def update_ticket(self, ticket_id, **kwargs) -> Ticket:
-        """Abstract Method:
-        Updates the contents dictionary.
-        Should update the tickets with the changes in the kwargs.
-        Reads the updated ticket and returns it as a new ticket object
-
-        Args:
-            ticket_id (str): The id of the ticket to update.
-        Returns:
-            ticket (Ticket): New ticket object with update applied.
-        """
-        pass
-
-    @abstractmethod
     def add_comment_to_ticket(self, ticket_id: str,
                               comment_message: str) -> Ticket:
         """Abstract Method:
@@ -108,43 +93,3 @@ class TicketingInstance(ABC):
             result (bool): True if ticket removed successfully.
         """
         pass
-
-    def set_credentials(self, username: str, password: str):
-        """Set the username and password for in the credentials dictionary.
-
-        Args:
-            username (str): Username of the user to login to the ticketing instance with
-            password (str): Password/API key of the user to login to the ticketing instance with
-        """
-        self._credentials = {'username': username, 'password': password}
-
-    def _version_check(self, required_version: str,
-                       instance_version: str) -> str:
-        """Compares the versions.
-
-        Args:
-            required_version (str): Version to compare against
-            instance_version (str): Version to check
-
-        Returns:
-            str: (later, same, ealier) depending on the comparison of the versions
-        """
-        if required_version.count('.') < 2:
-            required_version += '.0.0'
-        if instance_version.count('.') < 2:
-            instance_version += '.0.0'
-        required_major, required_minor, required_bug = required_version.split(
-            '.')
-        instance_major, instance_minor, instance_bug = instance_version.split(
-            '.')
-        if instance_version == required_version:
-            return 'same'
-        if int(instance_major) > int(required_major):
-            return 'later'
-        elif int(instance_major) == int(required_major):
-            if int(instance_minor) > int(required_minor):
-                return 'later'
-            elif int(instance_minor) == int(required_minor):
-                if int(instance_bug) > int(required_bug):
-                    return 'later'
-        return 'earlier'

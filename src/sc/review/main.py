@@ -1,3 +1,17 @@
+# Copyright 2025 RDK Management
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import getpass
 import logging
 from pathlib import Path
@@ -88,10 +102,26 @@ def add_ticketing_instance():
     print("")
 
     if provider == "jira":
-
         project_prefix = f"{branch_prefix}-"
+
+        logger.info("Auth type:")
+        logger.info("token")
+        logger.info("basic")
+        auth_type = input("> ")
+        print("")
+
+        if auth_type not in ("token", "basic"):
+            logger.error(f"Auth type {auth_type} not supported!")
+            sys.exit(1)
+
+        if auth_type == "basic":
+            logger.info("Username:")
+            username = input("> ")
+            print("")
+
     else:
         project_prefix = None
+        username = None
 
     logger.info("Enter the base URL: ")
     base_url = input("> ")
@@ -104,7 +134,9 @@ def add_ticketing_instance():
     instance = TicketingInstanceFactory.create(
         provider=provider,
         url=base_url,
-        token=api_token
+        token=api_token,
+        auth_type=auth_type,
+        username=username
     )
     try:
         instance.validate_connection()
@@ -118,6 +150,8 @@ def add_ticketing_instance():
         url=base_url,
         provider=provider,
         api_key=api_token,
+        username=username,
+        auth_type=auth_type,
         project_prefix=project_prefix
     )
 
