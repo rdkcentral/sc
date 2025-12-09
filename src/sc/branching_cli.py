@@ -1,5 +1,18 @@
+# Copyright 2025 RDK Management
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import logging
-from pathlib import Path
 
 import click
 
@@ -26,14 +39,14 @@ def clean():
 def status():
     """Show the working tree status."""
     SCBranching.sc_status()
-   
+
 
 
 @cli.command()
 def reset():
     """Clean and Reset all modules to remote manifest. (git reset --hard REMOTE)"""
     SCBranching.sc_reset()
-    
+
 
 
 @cli.command()
@@ -51,10 +64,12 @@ def sync(no_checkout, force_broken, force_sync):
 
 
 # Feature branch commands
-@cli.group()
-def feature():
+@cli.group(invoke_without_command=True)
+@click.pass_context
+def feature(ctx: click.Context):
     """Feature branch subcommands"""
-    pass
+    if ctx.invoked_subcommand is None:
+        SCBranching.list(BranchType.FEATURE)
 
 
 @feature.command()
@@ -150,10 +165,12 @@ def checkout(force, verify):
 
 
 # Release branch commands
-@cli.group()
-def release():
+@cli.group(invoke_without_command=True)
+@click.pass_context
+def release(ctx: click.Context):
     """Manage release branches."""
-    pass
+    if ctx.invoked_subcommand is None:
+        SCBranching.list(BranchType.RELEASE)
 
 
 @release.command()
@@ -186,10 +203,12 @@ def checkout(name, force, verify):
 
 
 # Hotfix branch commands
-@cli.group()
-def hotfix():
+@cli.group(invoke_without_command=True)
+@click.pass_context
+def hotfix(ctx: click.Context):
     """Hotfix branch subcommands"""
-    pass
+    if ctx.invoked_subcommand is None:
+        SCBranching.list(BranchType.HOTFIX)
 
 
 @hotfix.command()
@@ -233,10 +252,12 @@ def finish(tag_name, base):
 
 
 # Support branch commands
-@cli.group()
-def support():
+@cli.group(invoke_without_command=True)
+@click.pass_context
+def support(ctx: click.Context):
     """Support branch subcommands"""
-    pass
+    if ctx.invoked_subcommand is None:
+        SCBranching.list(BranchType.SUPPORT)
 
 
 @support.command()
