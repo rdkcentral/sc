@@ -64,13 +64,10 @@ def sync(no_checkout, force_broken, force_sync):
 
 
 # Feature branch commands
-@cli.group(invoke_without_command=True)
-@click.pass_context
-def feature(ctx: click.Context):
+@cli.group()
+def feature():
     """Feature branch subcommands"""
-    if ctx.invoked_subcommand is None:
-        SCBranching.list(BranchType.FEATURE)
-
+    pass
 
 @feature.command()
 @click.argument('name')
@@ -109,6 +106,10 @@ def finish(name):
     """Merge the feature branch into develop"""
     SCBranching.finish(BranchType.FEATURE, name)
 
+@feature.command()
+def list():
+    """List feature branches."""
+    SCBranching.list(BranchType.FEATURE)
 
 # Develop branch commands
 @cli.group()
@@ -165,13 +166,10 @@ def checkout(force, verify):
 
 
 # Release branch commands
-@cli.group(invoke_without_command=True)
-@click.pass_context
-def release(ctx: click.Context):
+@cli.group()
+def release():
     """Manage release branches."""
-    if ctx.invoked_subcommand is None:
-        SCBranching.list(BranchType.RELEASE)
-
+    pass
 
 @release.command()
 @click.argument('version')
@@ -201,15 +199,16 @@ def checkout(name, force, verify):
     """Checkout the release branch by tag name"""
     SCBranching.checkout(BranchType.RELEASE, name, force, verify)
 
+@release.command()
+def list():
+    """List release branches."""
+    SCBranching.list(BranchType.RELEASE)
 
 # Hotfix branch commands
-@cli.group(invoke_without_command=True)
-@click.pass_context
-def hotfix(ctx: click.Context):
+@cli.group()
+def hotfix():
     """Hotfix branch subcommands"""
-    if ctx.invoked_subcommand is None:
-        SCBranching.list(BranchType.HOTFIX)
-
+    pass
 
 @hotfix.command()
 @click.argument('version')
@@ -250,15 +249,16 @@ def finish(tag_name, base):
     logger.info(f"tag_name {tag_name}, base {base}")
     SCBranching.finish(BranchType.HOTFIX, tag_name, base)
 
+@hotfix.command()
+def list():
+    """List hotfix branches."""
+    SCBranching.list(BranchType.HOTFIX)
 
 # Support branch commands
-@cli.group(invoke_without_command=True)
-@click.pass_context
-def support(ctx: click.Context):
+@cli.group()
+def support():
     """Support branch subcommands"""
-    if ctx.invoked_subcommand is None:
-        SCBranching.list(BranchType.SUPPORT)
-
+    pass
 
 @support.command()
 @click.argument('version')
@@ -280,6 +280,10 @@ def pull(name: str | None):
     """Pull from the remote support branch"""
     SCBranching.pull(BranchType.SUPPORT, name)
 
+@support.command()
+def list():
+    """List support branches."""
+    SCBranching.list(BranchType.SUPPORT)
 
 if __name__ == '__main__':
     cli()
