@@ -39,20 +39,6 @@ class TicketingInstance(ABC):
         """
 
     @abstractmethod
-    def create_ticket(self) -> Ticket:
-        """Abstract Method:
-        Create a ticket on the ticketing instance.
-        Read it's contents return the new ticket object
-
-        Returns:
-            ticket (Ticket): The newly created ticket object
-        """
-        # create ticket
-        # read tickets contents
-        # return ticket object
-        pass
-
-    @abstractmethod
     def read_ticket(self, ticket_id: str) -> Ticket:
         """Abstract Method:
         Read the ticket and return it as a ticket object
@@ -78,18 +64,5 @@ class TicketingInstance(ABC):
 
         Returns:
             ticket (Ticket): New ticket object with comment added
-        """
-        pass
-
-    @abstractmethod
-    def delete_ticket(self, ticket_id: str) -> bool:
-        """Abstract Method:
-        Should remove the ticket from the instance
-
-        Args:
-            ticket_id (str, optional): The id of the ticket to remove.
-
-        Returns:
-            result (bool): True if ticket removed successfully.
         """
         pass

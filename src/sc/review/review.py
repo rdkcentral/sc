@@ -202,8 +202,11 @@ class Review:
         return slug
 
     def _get_target_branch(self, directory: Path, source_branch: str) -> str:
-        base = GitFlowLibrary.get_branch_base(source_branch, directory)
-        return base if base else GitFlowLibrary.get_develop_branch(directory)
+        if GitFlowLibrary.is_gitflow_enabled(directory):
+            base = GitFlowLibrary.get_branch_base(source_branch, directory)
+            return base if base else GitFlowLibrary.get_develop_branch(directory)
+        else:
+            return "develop"
 
     def _prompt_yn(self, msg: str) -> bool:
         return input(f"{msg} (y/n): ").strip().lower() == 'y'
@@ -238,7 +241,13 @@ class Review:
     def _load_ticketing(self, identifier: str) -> tuple[TicketingInstance, TicketHostCfg]:
         cfg = self._config.get_ticket_host_data(identifier)
         inst = TicketingInstanceFactory.create(
-            cfg.provider, cfg.url, cfg.api_key, cfg.cert)
+            provider=cfg.provider,
+            url=cfg.url,
+            token=cfg.api_key,
+            auth_type=cfg.auth_type,
+            username=cfg.username,
+            cert=cfg.cert
+        )
         return inst, cfg
 
     def _prompt_ticket_selection(self) -> tuple[TicketingInstance, str]:

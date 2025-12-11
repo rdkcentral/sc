@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from redminelib import Redmine
+from redminelib.resources import Issue
 from redminelib.exceptions import BaseRedmineError, ForbiddenError, ResourceNotFoundError, AuthError
 from requests.exceptions import RequestException, SSLError
 
@@ -45,8 +46,7 @@ class RedmineInstance(TicketingInstance):
             bool: True if connection is valid.
         """
         try:
-            # Minimal authenticated request
-            self._instance.auth()  # redminelib verifies credentials
+            self._instance.auth()
             return True
 
         except (AuthError, ForbiddenError) as e:
@@ -68,43 +68,39 @@ class RedmineInstance(TicketingInstance):
             PermissionsError: User does not have permission to access the ticket on the instances
             TicketingInstanceUnreachable: The redmine instance is unreachable
         """
-        ticket_url = self.url + '/issues/' + ticket_id
+        ticket_url = self._instance.url + '/issues/' + ticket_id
         try:
-            issue = self._instance.issue.get(ticket_id, include=['journals'])
-        except ResourceNotFoundError as exception:
-            raise TicketNotFound(ticket_url) from exception
-        except (AuthError, ForbiddenError) as exception:
+            issue: Issue = self._instance.issue.get(ticket_id, include=['journals'])
+        except ResourceNotFoundError as e:
+            raise TicketNotFound(ticket_url) from e
+        except (AuthError, ForbiddenError) as e:
             raise PermissionsError(
                 ticket_url,
-                'Please contact the dev-support team') from exception
-        except SSLError as exception:
+                'Please contact the dev-support team') from e
+        except SSLError as e:
             raise TicketingInstanceUnreachable(
                 ticket_url,
-                additional_info=''.join(str(arg) for arg in exception.args))
-        issue_contents = dict((k, v) for k, v in list(issue))
-        author = issue_contents['author'].get('name')
-        try:
-            assignee = issue_contents['assigned_to'].get('name')
-        except KeyError:
-            assignee = None
-        comments = issue_contents.get('journals')
-        status = issue_contents['status'].get('name')
-        try:
-            target_version = issue_contents['fixed_version'].get('name')
-        except KeyError:
-            target_version = None
-        title = issue_contents.get('subject')
-        ticket = Ticket(ticket_url,
-                        author=author,
-                        assignee=assignee,
-                        comments=comments,
-                        contents=issue_contents,
-                        id=ticket_id,
-                        status=status,
-                        title=title,
-                        url=ticket_url,
-                        target_version=target_version)
-        return ticket
+                additional_info=''.join(str(arg) for arg in e.args))
+
+        issue_contents = issue.__dict__
+
+        author = issue_contents.get("author", {}).get("name")
+        assignee = issue_contents.get("assigned_to", {}).get("name")
+        comments = issue_contents.get("journals")
+        status = issue_contents.get("status", {}).get("name")
+        target_version = issue_contents.get("fixed_version", {}).get("name")
+        title = issue_contents.get("subject")
+
+        return Ticket(
+            ticket_url,
+            author=author,
+            assignee=assignee,
+            comments=comments,
+            id=ticket_id,
+            status=status,
+            title=title,
+            target_version=target_version
+        )
 
     def update_ticket(self, ticket_id: str, **kwargs):
         """Writes the changed fields from the kwargs, back to the ticket
@@ -114,7 +110,7 @@ class RedmineInstance(TicketingInstance):
             PermissionsError: User does not have permission to access the ticket on the instances
             TicketingInstanceUnreachable: The redmine instance is unreachable
         """
-        issue_url = f'{self.url}/issues/{ticket_id}'
+        issue_url = f'{self._instance.url}/issues/{ticket_id}'
         try:
             self._instance.issue.update(ticket_id, **kwargs)
         except ResourceNotFoundError as exception:

@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import urllib3
 
 from sc.review.exceptions import TicketIdentifierNotFound
 from ..ticketing_instances import JiraInstance, RedmineInstance
@@ -31,9 +32,11 @@ class TicketingInstanceFactory:
         cert: str | None = None
     ) -> TicketingInstance:
         if provider == "redmine":
+            urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
             instance = Redmine(
                 url,
-                key=token
+                key=token,
+                requests={'verify': False}
             )
             return RedmineInstance(instance)
 

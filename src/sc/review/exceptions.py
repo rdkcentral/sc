@@ -45,7 +45,7 @@ class PermissionsError(ReviewException):
     """
     def __init__(self, resource: str, resolution_message: str = ''):
         super().__init__(
-            f'You do not have permission to access {resource}.\n{resolution_message}'
+            f'You do not have permission to access {resource}\n{resolution_message}'
         )
 
 class TicketIdentifierNotFound(ReviewException):
