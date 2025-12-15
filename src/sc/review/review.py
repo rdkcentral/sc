@@ -21,9 +21,9 @@ import re
 from urllib import parse
 
 from git import Repo
+from rich import print
 
 from git_flow_library import GitFlowLibrary
-
 from sc_manifest_parser import ScManifest
 from .exceptions import RemoteUrlNotFound, TicketIdentifierNotFound
 from .core.review_config import ReviewConfig, TicketHostCfg
@@ -58,15 +58,14 @@ class Review:
         branch_name = Repo(self.top_dir).active_branch.name
         try:
             identifier, ticket_num = self._match_branch(branch_name)
-            ticketing_instance, ticketing_cfg = self._load_ticketing(identifier)
-
-            ticket_id = f"{ticketing_cfg.project_prefix or ''}{ticket_num}"
-            ticket = ticketing_instance.read_ticket(ticket_id)
         except TicketIdentifierNotFound as e:
             logger.warning(e)
-            ticketing_instance = None
-            ticket_id = None
-            ticket = None
+            identifier, ticket_num = self._prompt_ticket_selection()
+
+        ticketing_instance, ticketing_cfg = self._load_ticketing(identifier)
+
+        ticket_id = f"{ticketing_cfg.project_prefix or ''}{ticket_num}"
+        ticket = ticketing_instance.read_ticket(ticket_id)
 
         git_instance = self._create_git_instance(Repo(self.top_dir).remote().url)
         comment_data = self._create_comment_data(Repo(self.top_dir), git_instance)
@@ -86,15 +85,14 @@ class Review:
 
         try:
             identifier, ticket_num = self._match_branch(manifest_repo.active_branch.name)
-            ticketing_instance, ticketing_cfg = self._load_ticketing(identifier)
-
-            ticket_id = f"{ticketing_cfg.project_prefix or ''}{ticket_num}"
-            ticket = ticketing_instance.read_ticket(ticket_id)
         except TicketIdentifierNotFound as e:
             logger.warning(e)
-            ticketing_instance = None
-            ticket_id = None
-            ticket = None
+            identifier, ticket_num = self._prompt_ticket_selection()
+
+        ticketing_instance, ticketing_cfg = self._load_ticketing(identifier)
+
+        ticket_id = f"{ticketing_cfg.project_prefix or ''}{ticket_num}"
+        ticket = ticketing_instance.read_ticket(ticket_id)
 
         logger.info(f"Ticket URL: [{ticket.url if ticket else ''}]")
         logger.info("Ticket info: ")
@@ -124,8 +122,6 @@ class Review:
 
         if self._prompt_yn("Update ticket?"):
             ticket_comment = self._generate_combined_ticket_comment(comments)
-            if not (ticketing_instance and ticket_id):
-                ticketing_instance, ticket_id = self._prompt_ticket_selection()
             ticketing_instance.add_comment_to_ticket(ticket_id, ticket_comment)
 
     def _match_branch(self, branch_name: str) -> tuple[str, str]:
@@ -258,8 +254,8 @@ class Review:
                 in the config.
 
         Returns:
-            tuple[TicketingInstance, str]: The selected ticketing instance and ticket
-                ID.
+            tuple[str, str]: The selected ticketing instance identifier and ticket
+                number.
         """
         ticket_conf = self._config.get_ticketing_config()
         logger.info("Please enter the prefix of the ticket instance:")
@@ -268,15 +264,14 @@ class Review:
             logger.info(f"{id} --- {conf.url} --- {conf.description or ''}")
 
         input_id = input("> ")
-
-        ticketing_instance, ticketing_conf = self._load_ticketing(input_id)
+        while input_id not in ticket_conf.keys:
+            logger.info("Prefix {input_id} not found in instances.")
+            input_id = input("> ")
 
         logger.info("Please enter your ticket number:")
         input_num = input("> ")
 
-        ticket_id = f"{ticketing_conf.project_prefix or ''}{input_num}"
-
-        return ticketing_instance, ticket_id
+        return input_id, input_num
 
     def _generate_combined_terminal_comment(self, comments: list[CommentData]) -> str:
         return "\n\n".join(self._generate_terminal_comment(c) for c in comments)
@@ -291,10 +286,11 @@ class Review:
             data (CommentData): The data collated from one repo.
 
         Returns:
-            str: Information from one repo to be displayed in the terminal.
+            str: Information from one repo to be displayed in the terminal
+                formatted with markup to be printed with rich.
         """
-        def c(code, text):
-            return f"\033[{code}m{text}\033[0m"
+        def c(colour, text):
+            return f"[{colour}]{text}[/{colour}]"
 
         header = [
             f"Branch: [{data.branch}]",
@@ -303,11 +299,11 @@ class Review:
         ]
 
         if data.review_url:
-            review_status = f"Review Status: [{c('32', data.review_status)}]"
-            review_link = f"Review URL: [{c('32', data.review_url)}]"
+            review_status = f"Review Status: [{c('green', data.review_status)}]"
+            review_link = f"Review URL: [{c('green', data.review_url)}]"
         else:
-            review_status = f"Review Status: [{c('31', data.review_status)}]"
-            review_link = f"Create Review URL: [{c('33', data.create_pr_url)}]"
+            review_status = f"Review Status: [{c('red', data.review_status)}]"
+            review_link = f"Create Review URL: [{c('yellow', data.create_pr_url)}]"
 
         review = [review_status, review_link]
 
