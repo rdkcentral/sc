@@ -1,3 +1,17 @@
+# Copyright 2025 RDK Management
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from enum import Enum
 import logging
 from pathlib import Path
@@ -11,6 +25,7 @@ from .commands.clean import Clean
 from .commands.command import Command
 from .commands.finish import Finish, FinishOperationError
 from .commands.init import Init
+from .commands.list import List
 from .commands.pull import Pull
 from .commands.push import Push
 from .commands.start import Start
@@ -37,22 +52,22 @@ class SCBranching:
         top_dir, project_type = detect_project(run_dir)
         branch = create_branch(project_type, top_dir, branch_type, name)
         run_command_by_project_type(
-            Pull(top_dir, branch), 
+            Pull(top_dir, branch),
             project_type
         )
-    
+
     @staticmethod
     def start(branch_type: BranchType, name: str, base: str, run_dir: Path = Path.cwd()):
         top_dir, project_type = detect_project(run_dir)
         branch = create_branch(project_type, top_dir, branch_type, name)
         run_command_by_project_type(
-            Start(top_dir, branch, base), 
+            Start(top_dir, branch, base),
             project_type
         )
-    
+
     @staticmethod
     def checkout(
-        branch_type: BranchType, 
+        branch_type: BranchType,
         name: str | None = None,
         force: bool = False,
         verify: bool = False,
@@ -62,45 +77,45 @@ class SCBranching:
         top_dir, project_type = detect_project(run_dir)
         branch = create_branch(project_type, top_dir, branch_type, name)
         run_command_by_project_type(
-            Checkout(top_dir, branch, force=force, verify=verify), 
+            Checkout(top_dir, branch, force=force, verify=verify),
             project_type
         )
-    
-    @staticmethod 
+
+    @staticmethod
     def sc_status(
         run_dir: Path = Path.cwd(),
     ):
         top_dir, project_type = detect_project(run_dir)
         run_command_by_project_type(
-            Status(top_dir), 
+            Status(top_dir),
             project_type
         )
-        
-    @staticmethod 
+
+    @staticmethod
     def sc_clean(
         run_dir: Path = Path.cwd(),
     ):
         top_dir, project_type = detect_project(run_dir)
         run_command_by_project_type(
-            Clean(top_dir), 
+            Clean(top_dir),
             project_type
         )
 
-    @staticmethod 
+    @staticmethod
     def sc_reset(
         run_dir: Path = Path.cwd(),
     ):
         top_dir, project_type = detect_project(run_dir)
         run_command_by_project_type(
-            Reset(top_dir), 
+            Reset(top_dir),
             project_type
         )
 
 
     @staticmethod
     def push(
-        branch_type: BranchType, 
-        name: str | None = None, 
+        branch_type: BranchType,
+        name: str | None = None,
         run_dir: Path = Path.cwd()
     ):
         top_dir, project_type = detect_project(run_dir)
@@ -109,7 +124,7 @@ class SCBranching:
             Push(top_dir, branch),
             project_type
         )
-    
+
     @staticmethod
     def finish(
         branch_type: BranchType,
@@ -128,6 +143,14 @@ class SCBranching:
             logger.error(e)
             sys.exit(1)
 
+    @staticmethod
+    def list(branch_type: BranchType, run_dir: Path = Path.cwd()):
+        top_dir, project_type = detect_project(run_dir)
+        run_command_by_project_type(
+            List(top_dir, branch_type),
+            project_type
+        )
+
 def detect_project(run_dir: Path) -> tuple[Path | ProjectType]:
     if root := RepoLibrary.get_repo_root_dir(run_dir):
         return root.parent, ProjectType.REPO
@@ -137,25 +160,25 @@ def detect_project(run_dir: Path) -> tuple[Path | ProjectType]:
     sys.exit(1)
 
 def create_branch(
-        proj_type: ProjectType, 
+        proj_type: ProjectType,
         top_dir: Path,
-        branch_type: BranchType, 
+        branch_type: BranchType,
         name: str | None = None
     ) -> Branch:
     if name:
         return Branch(branch_type, name)
-    
+
     if branch_type in {BranchType.DEVELOP, BranchType.MASTER}:
         return Branch(branch_type)
-    
+
     if proj_type == ProjectType.GIT:
         original_branch = Repo(top_dir).active_branch.name
     elif proj_type == ProjectType.REPO:
         original_branch = RepoLibrary.get_manifest_branch(top_dir)
-    
+
     if original_branch.startswith(branch_type):
         return Branch(*original_branch.split('/', 1))
-    
+
     logger.error(f"Branch not of type {branch_type}!")
     sys.exit(1)
 
