@@ -30,22 +30,19 @@ class List(Command):
 
     def run_git_command(self):
         repo = Repo(self.top_dir)
-        local_branches = self._get_local_branches(repo)
-        remote_branches = [
-            b for b in self._get_remote_branches(repo) if b not in local_branches]
-
-        logger.info(f"Local {self.branch_type} branches: \n" + "\n".join(local_branches))
-        logger.info(f"Remote {self.branch_type} branches: \n" + "\n".join(remote_branches))
+        self._list_branches(repo)
 
     def run_repo_command(self):
         repo = Repo(self.top_dir / '.repo' / 'manifests')
+        self._list_branches(repo)
+
+    def _list_branches(self, repo: Repo):
         local_branches = self._get_local_branches(repo)
         remote_branches = [
             b for b in self._get_remote_branches(repo) if b not in local_branches]
 
         logger.info(f"Local {self.branch_type} branches: \n" + "\n".join(local_branches))
         logger.info(f"Remote {self.branch_type} branches: \n" + "\n".join(remote_branches))
-
 
     def _get_local_branches(self, repo: Repo):
         return [
