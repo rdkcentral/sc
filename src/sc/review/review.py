@@ -48,8 +48,8 @@ class CommentData:
 
 
 class Review:
-    def __init__(self, top_dir: str):
-        self.top_dir = top_dir
+    def __init__(self, top_dir: Path | str):
+        self.top_dir = Path(top_dir)
 
         self._config = ReviewConfig()
 
@@ -101,7 +101,7 @@ class Review:
                 continue
 
             proj_repo = Repo(self.top_dir / project.path)
-            #Don't generate for projects that haven't got an upstream
+            # Don't generate for projects that haven't got an upstream
             if not proj_repo.active_branch.tracking_branch():
                 continue
 
@@ -262,7 +262,7 @@ class Review:
 
         input_id = input("> ")
         while input_id not in ticket_conf.keys():
-            logger.info("Prefix {input_id} not found in instances.")
+            logger.info(f"Prefix {input_id} not found in instances.")
             input_id = input("> ")
 
         logger.info("Please enter your ticket number:")

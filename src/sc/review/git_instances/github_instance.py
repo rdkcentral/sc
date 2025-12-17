@@ -47,9 +47,22 @@ class GithubInstance(GitInstance):
         url = f"{self.base_url}/repos/{repo}/pulls"
         owner = repo.split("/")[0]
         params = {"state": "all", "head": f"{owner}:{source_branch}"}
-        r = requests.get(url, headers=self._headers(), params=params, timeout=10)
-        r.raise_for_status()
-        prs = r.json()
+
+        try:
+            r = requests.get(url, headers=self._headers(), params=params, timeout=10)
+            r.raise_for_status()
+            prs = r.json()
+        except requests.Timeout as e:
+            raise RuntimeError("GitHub request timed out") from e
+        except requests.HTTPError as e:
+            raise RuntimeError(
+                f"GitHub API error {r.status_code}: {r.text}"
+            ) from e
+        except ValueError as e:  # JSON decode error
+            raise RuntimeError("Invalid JSON from GitHub API") from e
+        except requests.RequestException as e:
+            raise RuntimeError("GitHub request failed") from e
+
         if not prs:
             return None
         pr = prs[0]

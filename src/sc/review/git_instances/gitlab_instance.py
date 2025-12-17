@@ -46,9 +46,21 @@ class GitlabInstance(GitInstance):
         safe_repo = urllib.parse.quote(repo, safe='')
         url = f"{self.base_url}/api/v4/projects/{safe_repo}/merge_requests"
         params = {"state": "all", "source_branch": source_branch}
-        r = requests.get(url, headers=self._headers(), params=params, timeout=10)
-        r.raise_for_status()
-        prs = r.json()
+        try:
+            r = requests.get(url, headers=self._headers(), params=params, timeout=10)
+            r.raise_for_status()
+            prs = r.json()
+        except requests.Timeout as e:
+            raise RuntimeError("Gitlab request timed out") from e
+        except requests.HTTPError as e:
+            raise RuntimeError(
+                f"Gitlab API error {r.status_code}: {r.text}"
+            ) from e
+        except ValueError as e: # JSON decode error
+            raise RuntimeError("Invalid JSON from Gitlab API") from e
+        except requests.RequestException as e:
+            raise RuntimeError("Gitlab request failed") from e
+
         if not prs:
             return None
         pr = prs[0]
@@ -63,7 +75,12 @@ class GitlabInstance(GitInstance):
 
         return CodeReview(url=pr["web_url"], status=status)
 
-    def get_create_cr_url(self, repo, source_branch, target_branch = "develop"):
+    def get_create_cr_url(
+            self,
+            repo: str,
+            source_branch: str,
+            target_branch: str="develop"
+        ):
         params = {
             "merge_request[source_branch]": source_branch,
             "merge_request[target_branch]": target_branch,

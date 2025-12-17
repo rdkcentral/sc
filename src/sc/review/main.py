@@ -49,7 +49,7 @@ def add_git_instance():
     print("")
 
     if provider == "github":
-        url = "http://api.github.com"
+        url = "https://api.github.com"
         logger.info("Enter a pattern to identify Git from remote url: ")
         logger.info(
             "E.G. github.com for all github instances or "
@@ -122,6 +122,7 @@ def add_ticketing_instance():
     else:
         project_prefix = None
         username = None
+        auth_type = "token"
 
     logger.info("Enter the base URL: ")
     base_url = input("> ")
