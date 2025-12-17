@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from requests.exceptions import RequestException
+from typing import Literal
 
 from jira import JIRA
 from jira.exceptions import JIRAError
@@ -38,9 +39,28 @@ class JiraInstance(TicketingInstance):
 
     def __init__(
             self,
-            instance: JIRA
+            url: str,
+            token: str,
+            auth_type: Literal["token", "basic"] = "token",
+            username: str | None = None,
+            cert: str | None = None
         ):
-        self._instance = instance
+            self.url = url
+            options = {}
+            if cert:
+                options["client_cert"] = cert
+            if auth_type == "token":
+                self._instance = JIRA(
+                    server=url,
+                    token_auth=token,
+                    options=options
+                )
+            elif auth_type == "basic":
+                self._instance = JIRA(
+                    server=url,
+                    basic_auth=(username, token),
+                    options=options
+                )
 
     @property
     def engine(self) -> str:
@@ -87,8 +107,7 @@ class JiraInstance(TicketingInstance):
         versions = getattr(f, "fixVersions", [])
         target_version = ", ".join(v.name for v in versions)
 
-        base_url = self._instance._options["server"]
-        ticket_url = f'{base_url}/browse/{ticket_id}'
+        ticket_url = f'{self.url}/browse/{ticket_id}'
 
         return Ticket(
             url=ticket_url,
@@ -110,19 +129,6 @@ class JiraInstance(TicketingInstance):
         """
         comment = self._convert_from_html(comment_message)
         return self._instance.add_comment(ticket_id, comment=comment)
-
-    def _update_ticket(self, ticket_id: str, **kwargs):
-        """Updates the ticket with the new value for the fields based on the kwargs
-
-        Args:
-            ticket_id (str): The id of the ticket to update. Defaults to None.
-        """
-        try:
-            self._instance.issue(ticket_id).update(**kwargs)
-        except JIRAError as e:
-            raise TicketNotFound(e.url)
-        ticket = self.read_ticket(ticket_id)
-        return ticket
 
     def _convert_from_html(self, string: str) -> str:
         string = string.replace('<p style="', '{')

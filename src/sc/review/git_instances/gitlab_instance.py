@@ -29,13 +29,16 @@ class GitlabInstance(GitInstance):
         url = f"{self.base_url}/api/v4/user"
         try:
             r = requests.get(url, headers=self._headers(), timeout=10)
-            if r.status_code == 401 or r.status_code == 403:
-                raise ConnectionError("Invalid GitLab token or insufficient permissions.")
-            elif r.status_code >= 400:
-                raise ConnectionError(f"GitLab API error: {r.status_code}")
+            r.raise_for_status()
             return True
         except requests.exceptions.Timeout as e:
             raise ConnectionError("GitLab API request timed out.") from e
+        except requests.exceptions.HTTPError as e:
+            status = e.response.status_code
+            if status == 401 or status == 403:
+                raise ConnectionError(
+                    "Invalid GitLab token or insufficient permissions.") from e
+            raise ConnectionError(f"GitLab API error: {status}") from e
         except requests.exceptions.ConnectionError as e:
             raise ConnectionError("Network connection to GitLab failed.") from e
 

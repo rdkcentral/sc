@@ -37,6 +37,15 @@ class GitInstance(ABC):
 
     @abstractmethod
     def get_code_review(self, repo: str, source_branch: str) -> CodeReview:
+        """Get information about about a branches code review.
+
+        Args:
+            repo (str): An identifier of the repo in the instance e.g "org/repo".
+            source_branch (str): The branch the code review is made from.
+
+        Returns:
+            CodeReview: dataclass with information about the code review.
+        """
         pass
 
     @abstractmethod
@@ -46,4 +55,15 @@ class GitInstance(ABC):
         source_branch: str,
         target_branch: str = "develop"
     ) -> str:
+        """Get the URL to create a code review for a repo and branch.
+
+        Args:
+            repo (str): An identifier of the repo in the instance e.g "org/repo".
+            source_branch (str): The branch the code review will be made from.
+            target_branch (str, optional): The branch the code review will
+                merge into. Defaults to "develop".
+
+        Returns:
+            str: The URL to create a code review.
+        """
         pass

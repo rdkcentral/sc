@@ -31,13 +31,15 @@ class GithubInstance(GitInstance):
         url = f"{self.base_url}/user"
         try:
             r = requests.get(url, headers=self._headers(), timeout=10)
-            if r.status_code == 401:
-                raise ConnectionError("Invalid GitHub token.")
-            elif r.status_code >= 400:
-                raise ConnectionError(f"GitHub API error: {r.status_code}")
+            r.raise_for_status()
             return True
         except requests.exceptions.Timeout as e:
             raise ConnectionError("GitHub API request timed out.") from e
+        except requests.exceptions.HTTPError as e:
+            status = e.response.status_code
+            if status == 400:
+                raise ConnectionError("Invalid GitHub token.") from e
+            raise ConnectionError(f"GitHub API error: {status}") from e
         except requests.exceptions.ConnectionError as e:
             raise ConnectionError("Network connection to GitHub failed.") from e
 

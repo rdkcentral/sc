@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import urllib3
 
 from redminelib import Redmine
 from redminelib.resources import Issue
@@ -28,9 +29,17 @@ class RedmineInstance(TicketingInstance):
 
     def __init__(
             self,
-            instance: Redmine
+            url: str,
+            token: str,
+            verify_ssl: bool = False
         ):
-        self._instance = instance
+        self._instance = Redmine(
+            url,
+            key=token,
+            requests={'verify': verify_ssl}
+        )
+        if not verify_ssl:
+            urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
     @property
     def engine(self) -> str:
@@ -102,7 +111,18 @@ class RedmineInstance(TicketingInstance):
             target_version=target_version
         )
 
-    def update_ticket(self, ticket_id: str, **kwargs):
+    def add_comment_to_ticket(self, ticket_id: str, comment_message: str) -> None:
+        """Add a comment to a ticket on the redmine instance
+
+        Args:
+            comment_message (str): The message to add as a comment
+            ticket_id (str): The ticket number to add the comment to.
+        """
+        ticket = self._update_ticket(
+            ticket_id, notes=self._convert_html_colours(comment_message))
+        return ticket
+
+    def _update_ticket(self, ticket_id: str, **kwargs):
         """Writes the changed fields from the kwargs, back to the ticket
 
         Raises:
@@ -123,17 +143,6 @@ class RedmineInstance(TicketingInstance):
                 issue_url,
                 additional_info=''.join(str(arg) for arg in exception.args))
         ticket = self.read_ticket(ticket_id)
-        return ticket
-
-    def add_comment_to_ticket(self, ticket_id: str, comment_message: str) -> None:
-        """Add a comment to a ticket on the redmine instance
-
-        Args:
-            comment_message (str): The message to add as a comment
-            ticket_id (str): The ticket number to add the comment to.
-        """
-        ticket = self.update_ticket(
-            ticket_id, notes=self._convert_html_colours(comment_message))
         return ticket
 
     def _convert_html_colours(self, string: str) -> str:

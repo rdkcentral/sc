@@ -43,27 +43,35 @@ class ReviewConfig:
         self._git_config = ConfigManager('git_instances')
 
     def get_ticketing_config(self) -> dict[str, TicketHostCfg]:
+        """Return all ticketing instance configs keyed by identifier."""
         return {k: TicketHostCfg(**v) for k,v in self._ticket_config.get_config().items()}
 
-    def get_ticket_host_ids(self) -> set[str]:
+    def get_ticket_host_identifiers(self) -> set[str]:
+        """Return all configured ticketing instance identifiers."""
         return self._ticket_config.get_config().keys()
 
     def get_ticket_host_data(self, identifier: str) -> TicketHostCfg:
+        """Return the ticketing config for a specific identifier."""
         data = self._ticket_config.get_config().get(identifier)
         if not data:
-            raise KeyError(f"Ticket instance config doesn't contain entry for {identifier}")
+            raise KeyError(
+                f"Ticket instance config doesn't contain entry for {identifier}")
         try:
             return TicketHostCfg(**data)
         except ValidationError as e:
             raise ValueError(f"Invalid config for {identifier}: {e}")
 
     def write_ticketing_data(self, branch_prefix: str, ticket_data: TicketHostCfg):
-        self._ticket_config.update_config({branch_prefix: ticket_data.model_dump(exclude_none=True)})
+        """Persist ticketing config for a branch prefix."""
+        self._ticket_config.update_config(
+            {branch_prefix: ticket_data.model_dump(exclude_none=True)})
 
     def get_git_patterns(self) -> set[str]:
+        """Return all configured git URL patterns."""
         return self._git_config.get_config().keys()
 
     def get_git_data(self, url_pattern: str) -> GitInstanceCfg:
+        """Return the git config for a specific URL pattern."""
         data = self._git_config.get_config().get(url_pattern)
         if not data:
             raise KeyError(f"Git config doesn't contain entry for {url_pattern}")
@@ -73,4 +81,5 @@ class ReviewConfig:
             raise ValueError(f"Invalid config for {url_pattern}: {e}")
 
     def write_git_data(self, pattern: str, git_config: GitInstanceCfg):
+        """Persist the config for a specific git host."""
         self._git_config.update_config({pattern: git_config.model_dump(exclude_none=True)})

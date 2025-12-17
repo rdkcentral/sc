@@ -21,7 +21,6 @@ import re
 from urllib import parse
 
 from git import Repo
-from rich import print
 
 from git_flow_library import GitFlowLibrary
 from sc_manifest_parser import ScManifest
@@ -76,8 +75,6 @@ class Review:
 
         if self._prompt_yn("Update ticket?"):
             ticket_comment = self._generate_ticket_comment(comment_data)
-            if not (ticketing_instance and ticket_id):
-                ticketing_instance, ticket_id = self._prompt_ticket_selection()
             ticketing_instance.add_comment_to_ticket(ticket_id, ticket_comment)
 
     def run_repo_command(self):
@@ -137,7 +134,7 @@ class Review:
         Returns:
             tuple[str, str]: (matched_identifier, ticket_number)
         """
-        host_identifiers = self._config.get_ticket_host_ids()
+        host_identifiers = self._config.get_ticket_host_identifiers()
         for identifier in host_identifiers:
             # Matches the identifier, followed by - or _, followed by a number
             if m := re.search(fr'{identifier}[-_]?(\d+)', branch_name):
@@ -264,7 +261,7 @@ class Review:
             logger.info(f"{id} --- {conf.url} --- {conf.description or ''}")
 
         input_id = input("> ")
-        while input_id not in ticket_conf.keys:
+        while input_id not in ticket_conf.keys():
             logger.info("Prefix {input_id} not found in instances.")
             input_id = input("> ")
 
@@ -286,11 +283,10 @@ class Review:
             data (CommentData): The data collated from one repo.
 
         Returns:
-            str: Information from one repo to be displayed in the terminal
-                formatted with markup to be printed with rich.
+            str: Information from one repo to be displayed in the terminal.
         """
-        def c(colour, text):
-            return f"[{colour}]{text}[/{colour}]"
+        def c(code, text):
+            return f"\033[{code}m{text}\033[0m"
 
         header = [
             f"Branch: [{data.branch}]",
@@ -299,11 +295,11 @@ class Review:
         ]
 
         if data.review_url:
-            review_status = f"Review Status: [{c('green', data.review_status)}]"
-            review_link = f"Review URL: [{c('green', data.review_url)}]"
+            review_status = f"Review Status: [{c('32', data.review_status)}]"
+            review_link = f"Review URL: [{c('32', data.review_url)}]"
         else:
-            review_status = f"Review Status: [{c('red', data.review_status)}]"
-            review_link = f"Create Review URL: [{c('yellow', data.create_pr_url)}]"
+            review_status = f"Review Status: [{c('31', data.review_status)}]"
+            review_link = f"Create Review URL: [{c('33', data.create_pr_url)}]"
 
         review = [review_status, review_link]
 

@@ -14,7 +14,7 @@
 from dataclasses import dataclass
 
 @dataclass
-class Ticket():
+class Ticket:
     url: str
     author: str | None = None
     assignee: str | None = None
@@ -23,4 +23,3 @@ class Ticket():
     status: str | None = None
     target_version: str | None = None
     title: str | None = None
-    url: str | None = None

@@ -32,31 +32,18 @@ class TicketingInstanceFactory:
         cert: str | None = None
     ) -> TicketingInstance:
         if provider == "redmine":
-            urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-            instance = Redmine(
+            return RedmineInstance(
                 url,
-                key=token,
-                requests={'verify': False}
+                token=token
             )
-            return RedmineInstance(instance)
-
         elif provider == "jira":
-            options = {}
-            if cert:
-                options["client_cert"] = cert
-            if auth_type == "token":
-                instance = JIRA(
-                    server=url,
-                    token_auth=token,
-                    options=options
-                )
-            elif auth_type == "basic":
-                instance = JIRA(
-                    server=url,
-                    basic_auth=(username, token),
-                    options=options
-                )
-            return JiraInstance(instance)
+            return JiraInstance(
+                url,
+                token=token,
+                auth_type=auth_type,
+                username=username,
+                cert=cert
+            )
         else:
             raise TicketIdentifierNotFound(
                 f"Provider {provider} doesn't match any ticketing instance!")

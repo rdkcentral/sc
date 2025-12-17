@@ -22,7 +22,7 @@ class GitFactory:
     }
 
     @classmethod
-    def names(cls) -> list[str]:
+    def types(cls) -> list[str]:
         return list(cls._registry.keys())
 
     @classmethod
