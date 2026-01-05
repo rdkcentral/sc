@@ -15,8 +15,8 @@
 import requests
 import urllib.parse
 
-from ..core.code_review import CodeReview, CRStatus
-from ..core.git_instance import GitInstance
+from ..code_review import CodeReview, CRStatus
+from .git_instance import GitInstance
 
 class GitlabInstance(GitInstance):
     def __init__(self, token: str, base_url: str):

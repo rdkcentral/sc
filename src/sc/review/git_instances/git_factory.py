@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ..git_instances import GithubInstance, GitlabInstance
-from ..core.git_instance import GitInstance
+from . import GithubInstance, GitlabInstance
+from .git_instance import GitInstance
 
 class GitFactory:
     _registry = {

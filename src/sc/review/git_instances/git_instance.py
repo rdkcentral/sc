@@ -14,7 +14,7 @@
 
 from abc import ABC, abstractmethod
 
-from .code_review import CodeReview
+from ..code_review import CodeReview
 
 class GitInstance(ABC):
     @abstractmethod

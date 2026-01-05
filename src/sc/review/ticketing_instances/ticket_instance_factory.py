@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from sc.review.exceptions import TicketIdentifierNotFound
-from ..ticketing_instances import JiraInstance, RedmineInstance
-from ..core.ticketing_instance import TicketingInstance
+from . import JiraInstance, RedmineInstance
+from .ticketing_instance import TicketingInstance
 
 class TicketingInstanceFactory:
     @classmethod

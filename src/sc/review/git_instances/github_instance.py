@@ -14,8 +14,8 @@
 
 import requests
 
-from ..core.code_review import CRStatus, CodeReview
-from ..core.git_instance import GitInstance
+from ..code_review import CRStatus, CodeReview
+from .git_instance import GitInstance
 
 class GithubInstance(GitInstance):
     def __init__(self, token: str, base_url: str | None):

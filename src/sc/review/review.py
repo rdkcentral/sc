@@ -25,11 +25,11 @@ from git import Repo
 from git_flow_library import GitFlowLibrary
 from sc_manifest_parser import ScManifest
 from .exceptions import RemoteUrlNotFound, TicketIdentifierNotFound
-from .core.review_config import ReviewConfig, TicketHostCfg
-from .factories.ticket_instance_factory import TicketingInstanceFactory
-from .core.ticketing_instance import TicketingInstance
-from .factories.git_factory import GitFactory
-from .core.git_instance import GitInstance
+from .review_config import ReviewConfig, TicketHostCfg
+from .ticketing_instances.ticket_instance_factory import TicketingInstanceFactory
+from .ticketing_instances.ticketing_instance import TicketingInstance
+from .git_instances.git_factory import GitFactory
+from .git_instances.git_instance import GitInstance
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +61,8 @@ class Review:
             logger.warning(e)
             identifier, ticket_num = self._prompt_ticket_selection()
 
-        ticketing_instance, ticketing_cfg = self._load_ticketing(identifier)
+        ticketing_cfg = self._config.get_ticket_host_data(identifier)
+        ticketing_instance = self._create_ticketing_instance(identifier)
 
         ticket_id = f"{ticketing_cfg.project_prefix or ''}{ticket_num}"
         ticket = ticketing_instance.read_ticket(ticket_id)
@@ -86,7 +87,8 @@ class Review:
             logger.warning(e)
             identifier, ticket_num = self._prompt_ticket_selection()
 
-        ticketing_instance, ticketing_cfg = self._load_ticketing(identifier)
+        ticketing_cfg = self._config.get_ticket_host_data(identifier)
+        ticketing_instance = self._create_ticketing_instance(identifier)
 
         ticket_id = f"{ticketing_cfg.project_prefix or ''}{ticket_num}"
         ticket = ticketing_instance.read_ticket(ticket_id)
@@ -231,8 +233,7 @@ class Review:
             commit_message=commit.message.strip()
         )
 
-    def _load_ticketing(self, identifier: str) -> tuple[TicketingInstance, TicketHostCfg]:
-        cfg = self._config.get_ticket_host_data(identifier)
+    def _create_ticketing_instance(self, cfg: TicketHostCfg) -> TicketingInstance:
         inst = TicketingInstanceFactory.create(
             provider=cfg.provider,
             url=cfg.url,
@@ -241,7 +242,7 @@ class Review:
             username=cfg.username,
             cert=cfg.cert
         )
-        return inst, cfg
+        return inst
 
     def _prompt_ticket_selection(self) -> tuple[TicketingInstance, str]:
         """Prompt the user to select a ticketing instance and enter a ticket number.

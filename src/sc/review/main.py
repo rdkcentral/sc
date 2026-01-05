@@ -21,9 +21,9 @@ from git_flow_library import GitFlowLibrary
 from repo_library import RepoLibrary
 from .exceptions import ReviewException
 from .review import Review
-from .core.review_config import ReviewConfig, TicketHostCfg, GitInstanceCfg
-from .factories.ticket_instance_factory import TicketingInstanceFactory
-from .factories.git_factory import GitFactory
+from .review_config import ReviewConfig, TicketHostCfg, GitInstanceCfg
+from .ticketing_instances.ticket_instance_factory import TicketingInstanceFactory
+from .git_instances.git_factory import GitFactory
 
 logger = logging.getLogger(__name__)
 

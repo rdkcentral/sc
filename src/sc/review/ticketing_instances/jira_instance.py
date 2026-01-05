@@ -18,20 +18,19 @@ from jira import JIRA
 from jira.exceptions import JIRAError
 
 from ..exceptions import PermissionsError, TicketNotFound
-from ..core.ticket import Ticket
-from ..core.ticketing_instance import TicketingInstance
+from ..ticket import Ticket
+from .ticketing_instance import TicketingInstance
 
 class JiraInstance(TicketingInstance):
     """A class to handle operations on Jira tickets.
 
     Args:
         url (str): URL of Jira instance.
-        password (str): Password to authenticate with.
-        cert (str | None): Path to a cert file.
-
-    Common KWargs:
-        verify (bool): Whether to use ssl verification. Default True
-        extra_setup_options (dict): extra setup options for the jira instance
+        token (str): Token to authenticate with.
+        auth_type (str): Either token for token auth or basic for basic auth. Basic
+            auth takes an email and password, token takes a token.
+        username (str): The username if using basic auth.
+        cert (str): The cert.
 
     Raises:
         TicketingInstanceUnreachable: If the ticketing instance cannot be connected to.
