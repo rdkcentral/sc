@@ -17,9 +17,8 @@ from abc import ABC, abstractmethod
 from ..code_review import CodeReview
 
 class GitInstance(ABC):
-    @abstractmethod
     def __init__(self, token: str, base_url: str | None):
-        self.token = token
+        self._token = token
         self.base_url = base_url.rstrip("/") if base_url else None
 
     @abstractmethod
@@ -28,7 +27,7 @@ class GitInstance(ABC):
         Validates if connection to the git instance is successful.
 
         Raises:
-            ConnectionError: If the connection is unsuccesful.
+            ConnectionError: If the connection is unsuccessful.
 
         Returns:
             bool: True if connection is successful.
@@ -37,7 +36,7 @@ class GitInstance(ABC):
 
     @abstractmethod
     def get_code_review(self, repo: str, source_branch: str) -> CodeReview:
-        """Get information about about a branches code review.
+        """Get information about a branches code review.
 
         Args:
             repo (str): An identifier of the repo in the instance e.g "org/repo".

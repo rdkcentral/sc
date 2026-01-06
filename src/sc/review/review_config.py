@@ -16,6 +16,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, ValidationError
 
+from .exceptions import ConfigError
 from sc.config_manager import ConfigManager
 
 class TicketHostCfg(BaseModel):
@@ -54,12 +55,12 @@ class ReviewConfig:
         """Return the ticketing config for a specific identifier."""
         data = self._ticket_config.get_config().get(identifier)
         if not data:
-            raise KeyError(
+            raise ConfigError(
                 f"Ticket instance config doesn't contain entry for {identifier}")
         try:
             return TicketHostCfg(**data)
         except ValidationError as e:
-            raise ValueError(f"Invalid config for {identifier}: {e}")
+            raise ConfigError(f"Invalid config for ticketing instance {identifier}: {e}")
 
     def write_ticketing_data(self, branch_prefix: str, ticket_data: TicketHostCfg):
         """Persist ticketing config for a branch prefix."""
@@ -74,11 +75,11 @@ class ReviewConfig:
         """Return the git config for a specific URL pattern."""
         data = self._git_config.get_config().get(url_pattern)
         if not data:
-            raise KeyError(f"Git config doesn't contain entry for {url_pattern}")
+            raise ConfigError(f"Git config doesn't contain entry for {url_pattern}")
         try:
             return GitInstanceCfg(**data)
         except ValidationError as e:
-            raise ValueError(f"Invalid config for {url_pattern}: {e}")
+            raise ConfigError(f"Invalid config for git instance {url_pattern}: {e}")
 
     def write_git_data(self, pattern: str, git_config: GitInstanceCfg):
         """Persist the config for a specific git host."""

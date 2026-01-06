@@ -65,10 +65,10 @@ def add_git_instance():
         pattern = url.replace("https://", "").replace("http://", "")
     else:
         logger.error("Provider matches none in the list!")
-
+        sys.exit(1)
 
     logger.info("Enter your api token: ")
-    api_key = input("> ")
+    api_key = getpass.getpass("> ")
     print("")
 
     instance = GitFactory.create(provider, api_key, url)
