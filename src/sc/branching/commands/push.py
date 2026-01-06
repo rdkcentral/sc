@@ -1,7 +1,20 @@
+# Copyright 2025 RDK Management
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from dataclasses import dataclass
 import logging
 import subprocess
-import sys
 
 from git import GitCommandError, Repo
 
@@ -25,7 +38,7 @@ class Push(Command):
         self._error_on_sc_uninitialised()
 
         orig_manifest_branch = RepoLibrary.get_manifest_branch(self.top_dir)
-            
+
         logger.info(f"Pushing branch {self.branch.name}")
         msg = self._input_commit_msg()
 
@@ -39,7 +52,7 @@ class Push(Command):
             self._switch_manifest_to_branch(orig_manifest_branch)
 
         logger.info(f"Push {self.branch.name} completed!")
-    
+
     def _input_commit_msg(self):
         while True:
             msg = input("Input commit message for manifest: ")
@@ -52,7 +65,7 @@ class Push(Command):
             Repo(self.top_dir / '.repo' / 'manifests').git.switch(branch)
         except GitCommandError:
             logger.error(f"Branch {branch} doesn't exist on manifest!")
-    
+
     def _push_projects(self, projects: list[ProjectElementInterface]):
         for project in projects:
             logger.info(f"Operating on {self.top_dir}/{project.path}")
@@ -78,15 +91,15 @@ class Push(Command):
             logger.info("Remote already contains commit. Skipping.")
             return False
         return True
-    
+
     def _do_push_project(self, proj: ProjectElementInterface):
         proj_repo = Repo(self.top_dir / proj.path)
         subprocess.run(
-            ["git", "push", "-u", proj.remote, self.branch.name], 
+            ["git", "push", "-u", proj.remote, self.branch.name],
             cwd=proj_repo.working_dir
         )
         subprocess.run(["git", "push", "--tags"], cwd=proj_repo.working_dir)
-    
+
     def _do_push_tag_only_project(self, proj: ProjectElementInterface):
         proj_repo = Repo(self.top_dir / proj.path)
         subprocess.run(["git", "push", "--tags"], cwd=proj_repo.working_dir)
@@ -105,7 +118,7 @@ class Push(Command):
         manifest.write()
 
     def _push_manifest(self, msg: str):
-        manifest_repo = Repo(self.top_dir / '.repo' / 'manifests') 
+        manifest_repo = Repo(self.top_dir / '.repo' / 'manifests')
         manifest_repo.git.add(A=True)
         manifest_repo.git.commit("-m", msg)
         manifest_repo.git.push("-u", "origin", self.branch.name)

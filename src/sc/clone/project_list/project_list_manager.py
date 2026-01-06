@@ -1,5 +1,18 @@
+# Copyright 2025 RDK Management
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import logging
-import os
 from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict, model_validator, ValidationError
@@ -11,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 class ProjectListSource(BaseModel):
     """Information on how to load a ProjectList.
-    
+
     In the context of this tool it will be stored in the sc config.
     """
     model_config = ConfigDict(extra='forbid')
@@ -32,7 +45,7 @@ class ProjectListManager:
         self.default_dir = default_dir
 
         self._project_list_downloader = ProjectListDownloader()
-    
+
     @property
     def supported_platforms(self) -> list:
         """Return a list of supported platforms."""
@@ -48,7 +61,7 @@ class ProjectListManager:
             if pl is not None:
                 project_lists.append(pl)
         return project_lists
-    
+
     def load_project_list_from_source(
             self, name: str, source: ProjectListSource) -> ProjectList | None:
         """Download and load a project list from a given source."""
@@ -75,7 +88,7 @@ class ProjectListManager:
             except ValidationError as e:
                 logger.warning(f"Invalid config for project list {name}: {e}")
         return sources
-    
+
     def _download_project_list(
             self, name: str, source: ProjectListSource) -> Path | None:
         """Download the project list YAML from a remote URL."""
@@ -92,4 +105,3 @@ class ProjectListManager:
         except (RuntimeError, IOError) as e:
             logger.warning(f"Failed to download project list {name}: {e}")
             return None
-    
