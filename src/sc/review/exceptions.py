@@ -48,11 +48,17 @@ class PermissionsError(ReviewException):
             f'You do not have permission to access {resource}\n{resolution_message}'
         )
 
-class TicketIdentifierNotFound(ReviewException):
+class ConfigError(ReviewException):
+    """Raised when there is an error with the config.
+    """
+    pass
+
+class TicketIdentifierNotFound(ConfigError):
     """Raised when ticket ID isn't found in the config.
     """
     pass
 
-class RemoteUrlNotFound(ReviewException):
+class RemoteUrlNotFound(ConfigError):
     """Raised when remote url matches no patterns in the config.
     """
+    pass

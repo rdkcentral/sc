@@ -39,8 +39,7 @@ class TicketingInstance(ABC):
         pass
 
     @abstractmethod
-    def add_comment_to_ticket(self, ticket_id: str,
-                              comment_message: str) -> Ticket:
+    def add_comment_to_ticket(self, ticket_id: str, comment_message: str):
         """Abstract Method:
         Adds a comment to the ticket on the ticketing instance.
         Reads the new ticket with the new comment.

@@ -24,7 +24,7 @@ class GithubInstance(GitInstance):
     def _headers(self) -> dict:
         return {
             "Accept": "application/vnd.github.v3+json",
-            "Authorization": f"Bearer {self.token}"
+            "Authorization": f"Bearer {self._token}"
         }
 
     def validate_connection(self) -> bool:
@@ -37,13 +37,25 @@ class GithubInstance(GitInstance):
             raise ConnectionError("GitHub API request timed out.") from e
         except requests.exceptions.HTTPError as e:
             status = e.response.status_code
-            if status == 400:
+            if status in (401, 403):
                 raise ConnectionError("Invalid GitHub token.") from e
             raise ConnectionError(f"GitHub API error: {status}") from e
         except requests.exceptions.ConnectionError as e:
             raise ConnectionError("Network connection to GitHub failed.") from e
 
     def get_code_review(self, repo: str, source_branch: str) -> CodeReview | None:
+        """Get information about a code review.
+
+        Args:
+            repo (str): An identifier for the repo e.g. org/repo
+            source_branch (str): The source branch of review.
+
+        Raises:
+            RuntimeError: If an error occurs.
+
+        Returns:
+            CodeReview | None: An object describing a code review.
+        """
         url = f"{self.base_url}/repos/{repo}/pulls"
         owner = repo.split("/")[0]
         params = {"state": "all", "head": f"{owner}:{source_branch}"}
@@ -56,7 +68,7 @@ class GithubInstance(GitInstance):
             raise RuntimeError("GitHub request timed out") from e
         except requests.HTTPError as e:
             raise RuntimeError(
-                f"GitHub API error {r.status_code}: {r.text}"
+                f"GitHub API error {e.response.status_code}: {e.response.text}"
             ) from e
         except ValueError as e:  # JSON decode error
             raise RuntimeError("Invalid JSON from GitHub API") from e

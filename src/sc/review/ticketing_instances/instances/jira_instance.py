@@ -13,6 +13,7 @@
 # limitations under the License.
 from requests.exceptions import RequestException
 from typing import Literal
+import urllib3
 
 from jira import JIRA
 from jira.exceptions import JIRAError
@@ -44,6 +45,7 @@ class JiraInstance(TicketingInstance):
             username: str | None = None,
             cert: str | None = None
         ):
+            urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
             self.url = url
             options = {}
             if cert:
@@ -121,11 +123,11 @@ class JiraInstance(TicketingInstance):
         """Adds a comment to the ticket
 
         Args:
-            comment_message (str): The body of the comment
-            ticket_id (str, optional): The ticket id to add the comment to. Defaults to None.
+            ticket_id (str): The ticket id to add the comment to.
+            comment_message (str): The body of the comment.
         """
         comment = self._convert_from_html(comment_message)
-        return self._instance.add_comment(ticket_id, comment=comment)
+        self._instance.add_comment(ticket_id, body=comment)
 
     def _convert_from_html(self, string: str) -> str:
         string = string.replace('<p style="', '{')

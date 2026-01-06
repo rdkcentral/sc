@@ -23,43 +23,61 @@ class GitlabInstance(GitInstance):
         super().__init__(token, base_url)
 
     def _headers(self) -> dict[str, str]:
-        return {"Private-Token": self.token}
+        return {"Private-Token": self._token}
 
     def validate_connection(self) -> bool:
         url = f"{self.base_url}/api/v4/user"
         try:
-            r = requests.get(url, headers=self._headers(), timeout=10)
+            r = requests.get(url, headers=self._headers(), timeout=10, verify=False)
             r.raise_for_status()
             return True
-        except requests.exceptions.Timeout as e:
-            raise ConnectionError("GitLab API request timed out.") from e
-        except requests.exceptions.HTTPError as e:
+        except requests.Timeout as e:
+            raise ConnectionError(
+                f"GitLab API request timed out for {self.base_url}") from e
+        except requests.HTTPError as e:
             status = e.response.status_code
             if status == 401 or status == 403:
                 raise ConnectionError(
-                    "Invalid GitLab token or insufficient permissions.") from e
-            raise ConnectionError(f"GitLab API error: {status}") from e
-        except requests.exceptions.ConnectionError as e:
-            raise ConnectionError("Network connection to GitLab failed.") from e
+                    "Invalid GitLab token or insufficient permissions for "
+                    f"{self.base_url}"
+                ) from e
+            raise ConnectionError(
+                f"GitLab API error for {self.base_url}: {status}") from e
+        except requests.ConnectionError as e:
+            raise ConnectionError(
+                f"Network connection to GitLab failed for {self.base_url}") from e
 
     def get_code_review(self, repo: str, source_branch: str) -> CodeReview:
+        """Get information about a code review.
+
+        Args:
+            repo (str): An identifier for the repo e.g. org/repo
+            source_branch (str): The source branch of review.
+
+        Raises:
+            RuntimeError: If an error occurs.
+
+        Returns:
+            CodeReview | None: An object describing a code review.
+        """
         safe_repo = urllib.parse.quote(repo, safe='')
         url = f"{self.base_url}/api/v4/projects/{safe_repo}/merge_requests"
         params = {"state": "all", "source_branch": source_branch}
         try:
-            r = requests.get(url, headers=self._headers(), params=params, timeout=10)
+            r = requests.get(
+                url, headers=self._headers(), params=params, timeout=10, verify=False)
             r.raise_for_status()
             prs = r.json()
         except requests.Timeout as e:
-            raise RuntimeError("Gitlab request timed out") from e
+            raise RuntimeError(f"Gitlab request timed out for {self.base_url}") from e
         except requests.HTTPError as e:
             raise RuntimeError(
-                f"Gitlab API error {r.status_code}: {r.text}"
+                f"Gitlab API error {e.response.status_code}: {e.response.text}"
             ) from e
         except ValueError as e: # JSON decode error
-            raise RuntimeError("Invalid JSON from Gitlab API") from e
+            raise RuntimeError(f"Invalid JSON from Gitlab API for {self.base_url}") from e
         except requests.RequestException as e:
-            raise RuntimeError("Gitlab request failed") from e
+            raise RuntimeError(f"Gitlab request failed for {self.base_url}") from e
 
         if not prs:
             return None

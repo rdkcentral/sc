@@ -48,7 +48,7 @@ class RedmineInstance(TicketingInstance):
         return 'redmine'
 
     def read_ticket(self, ticket_id: str) -> Ticket:
-        """Read the information from a ticket and put it's contents in this object contents dict
+        """Read the information from a ticket and put its contents in this object contents dict
 
         Args:
             ticket_id (str): The ticket number to read.
@@ -91,16 +91,14 @@ class RedmineInstance(TicketingInstance):
             target_version=target_version
         )
 
-    def add_comment_to_ticket(self, ticket_id: str, comment_message: str) -> None:
+    def add_comment_to_ticket(self, ticket_id: str, comment_message: str):
         """Add a comment to a ticket on the redmine instance
 
         Args:
             comment_message (str): The message to add as a comment
             ticket_id (str): The ticket number to add the comment to.
         """
-        ticket = self._update_ticket(
-            ticket_id, notes=self._convert_html_colours(comment_message))
-        return ticket
+        self._update_ticket(ticket_id, notes=self._convert_html_colours(comment_message))
 
     def _update_ticket(self, ticket_id: str, **kwargs):
         """Writes the changed fields from the kwargs, back to the ticket
@@ -140,7 +138,7 @@ class RedmineInstance(TicketingInstance):
 
         except (AuthError, ForbiddenError) as e:
             raise ConnectionError(
-                "Invalid Redmine API key or insufficient permssions for "
+                "Invalid Redmine API key or insufficient permissions for "
                 f"{self._instance.url}."
             ) from e
 

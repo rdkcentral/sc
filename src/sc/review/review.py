@@ -52,9 +52,9 @@ class Review:
         self._config = ReviewConfig()
 
     def run_git_command(self):
-        branch_name = Repo(self.top_dir).active_branch.name
+        repo = Repo(self.top_dir)
         try:
-            identifier, ticket_num = self._match_branch(branch_name)
+            identifier, ticket_num = self._match_branch(repo.active_branch.name)
         except TicketIdentifierNotFound as e:
             logger.warning(e)
             identifier, ticket_num = self._prompt_ticket_selection()
@@ -65,18 +65,20 @@ class Review:
         ticket_id = f"{ticketing_cfg.project_prefix or ''}{ticket_num}"
         ticket = ticketing_instance.read_ticket(ticket_id)
 
-        git_instance = self._create_git_instance(Repo(self.top_dir).remote().url)
-        comment_data = self._create_comment_data(Repo(self.top_dir), git_instance)
+        git_instance = self._create_git_instance(repo.remote().url)
+        comment_data = self._create_comment_data(repo, git_instance)
 
         logger.info(f"Ticket URL: [{ticket.url if ticket else 'None'}]")
-        logger.info("Ticket info: ")
+        logger.info("Ticket info: \n")
         print(self._generate_terminal_comment(comment_data))
+        print()
 
         if self._prompt_yn("Update ticket?"):
             ticket_comment = self._generate_ticket_comment(comment_data)
             ticketing_instance.add_comment_to_ticket(ticket_id, ticket_comment)
 
     def run_repo_command(self):
+        logger.info("Show check ins across all repos. Note branch must be PUSHED.\n")
         manifest_repo = Repo(self.top_dir / '.repo' / 'manifests')
 
         try:
@@ -92,7 +94,7 @@ class Review:
         ticket = ticketing_instance.read_ticket(ticket_id)
 
         logger.info(f"Ticket URL: [{ticket.url if ticket else ''}]")
-        logger.info("Ticket info: ")
+        logger.info("Ticket info: \n")
 
         manifest = ScManifest.from_repo_root(self.top_dir / '.repo')
         comments = []
@@ -116,8 +118,9 @@ class Review:
         comments.append(comment_data)
 
         print(self._generate_combined_terminal_comment(comments))
+        print()
 
-        if self._prompt_yn("Update ticket?"):
+        if self._prompt_yn("Update tickets?"):
             ticket_comment = self._generate_combined_ticket_comment(comments)
             ticketing_instance.add_comment_to_ticket(ticket_id, ticket_comment)
 
@@ -253,7 +256,7 @@ class Review:
         )
         return inst
 
-    def _prompt_ticket_selection(self) -> tuple[TicketingInstance, str]:
+    def _prompt_ticket_selection(self) -> tuple[str, str]:
         """Prompt the user to select a ticketing instance and enter a ticket number.
 
         Raises:
