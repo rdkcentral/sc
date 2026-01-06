@@ -27,18 +27,6 @@ class TicketingInstance(ABC):
         pass
 
     @abstractmethod
-    def validate_connection(self) -> bool:
-        """Abstract Method:
-        Validate connection to the ticketing instance.
-
-        Raises:
-            ConnectionError: If the connection is unsuccessful.
-
-        Returns:
-            bool: True if connection is successful.
-        """
-
-    @abstractmethod
     def read_ticket(self, ticket_id: str) -> Ticket:
         """Abstract Method:
         Read the ticket and return it as a ticket object

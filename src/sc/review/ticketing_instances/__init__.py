@@ -1,2 +1,2 @@
-from .jira_instance import JiraInstance
-from .redmine_instance import RedmineInstance
+from .ticketing_instance import TicketingInstance
+from .ticket_instance_factory import TicketingInstanceFactory

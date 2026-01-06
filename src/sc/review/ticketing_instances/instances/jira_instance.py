@@ -17,9 +17,9 @@ from typing import Literal
 from jira import JIRA
 from jira.exceptions import JIRAError
 
-from ..exceptions import PermissionsError, TicketNotFound
-from ..ticket import Ticket
-from .ticketing_instance import TicketingInstance
+from sc.review.exceptions import PermissionsError, TicketNotFound
+from sc.review.ticket import Ticket
+from .. import TicketingInstance
 
 class JiraInstance(TicketingInstance):
     """A class to handle operations on Jira tickets.
@@ -48,36 +48,34 @@ class JiraInstance(TicketingInstance):
             options = {}
             if cert:
                 options["client_cert"] = cert
-            if auth_type == "token":
-                self._instance = JIRA(
-                    server=url,
-                    token_auth=token,
-                    options=options
-                )
-            elif auth_type == "basic":
-                self._instance = JIRA(
-                    server=url,
-                    basic_auth=(username, token),
-                    options=options
-                )
+            try:
+                if auth_type == "token":
+                    self._instance = JIRA(
+                        server=url,
+                        token_auth=token,
+                        options=options
+                    )
+                elif auth_type == "basic":
+                    self._instance = JIRA(
+                        server=url,
+                        basic_auth=(username, token),
+                        options=options
+                    )
+            except JIRAError as e:
+                if e.status_code in (401, 403):
+                    raise ConnectionError(
+                        f"Invalid Jira credentials or insufficient permissions "
+                        f"for instance {url}. {e.text}"
+                    ) from e
+                raise ConnectionAbortedError(
+                    f"Jira API error for instance {url}: HTTP {e.status_code}") from e
+
+            except RequestException as e:
+                raise ConnectionError(f"Unable to reach Jira server {url}.") from e
 
     @property
     def engine(self) -> str:
         return 'jira'
-
-    def validate_connection(self) -> bool:
-        """Check that the Jira instance and credentials are valid."""
-        try:
-            self._instance.myself()
-            return True
-
-        except JIRAError as e:
-            if e.status_code in (401, 403):
-                raise ConnectionError("Invalid Jira credentials or insufficient permissions.") from e
-            raise ConnectionAbortedError(f"Jira API error: HTTP {e.status_code}") from e
-
-        except RequestException as e:
-            raise ConnectionError("Unable to reach Jira server.") from e
 
     def read_ticket(self, ticket_id: str) -> Ticket:
         """Reads the contents of the ticket and puts the dictionary in to contents

@@ -18,9 +18,9 @@ from redminelib.resources import Issue
 from redminelib.exceptions import BaseRedmineError, ForbiddenError, ResourceNotFoundError, AuthError
 from requests.exceptions import RequestException, SSLError
 
-from ..exceptions import TicketNotFound, TicketingInstanceUnreachable, PermissionsError
-from .ticketing_instance import TicketingInstance
-from ..ticket import Ticket
+from sc.review.exceptions import PermissionsError, TicketingInstanceUnreachable, TicketNotFound
+from sc.review.ticket import Ticket
+from .. import TicketingInstance
 
 class RedmineInstance(TicketingInstance):
     """
@@ -33,39 +33,19 @@ class RedmineInstance(TicketingInstance):
             token: str,
             verify_ssl: bool = False
         ):
+        if not verify_ssl:
+            urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
         self._instance = Redmine(
             url,
             key=token,
             requests={'verify': verify_ssl}
         )
-        if not verify_ssl:
-            urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+        self._validate_connection()
 
     @property
     def engine(self) -> str:
         return 'redmine'
-
-    def validate_connection(self) -> bool:
-        """Check if the Redmine instance and API key are valid.
-
-        Raises:
-            ConnectionError: If the connection is invalid.
-
-        Returns:
-            bool: True if connection is valid.
-        """
-        try:
-            self._instance.auth()
-            return True
-
-        except (AuthError, ForbiddenError) as e:
-            raise ConnectionError("Invalid Redmine API key or insufficient permssions.")
-
-        except BaseRedmineError as e:
-            raise ConnectionError(f"Redmine API error: {e}")
-
-        except RequestException as e:
-            raise ConnectionError("Failed to reach Redmine server.") from e
 
     def read_ticket(self, ticket_id: str) -> Ticket:
         """Read the information from a ticket and put it's contents in this object contents dict
@@ -144,6 +124,33 @@ class RedmineInstance(TicketingInstance):
                 additional_info=''.join(str(arg) for arg in exception.args))
         ticket = self.read_ticket(ticket_id)
         return ticket
+
+    def _validate_connection(self) -> bool:
+        """Check if the Redmine instance and API key are valid.
+
+        Raises:
+            ConnectionError: If the connection is invalid.
+
+        Returns:
+            bool: True if connection is valid.
+        """
+        try:
+            self._instance.auth()
+            return True
+
+        except (AuthError, ForbiddenError) as e:
+            raise ConnectionError(
+                "Invalid Redmine API key or insufficient permssions for "
+                f"{self._instance.url}."
+            ) from e
+
+        except BaseRedmineError as e:
+            raise ConnectionError(
+                f"Redmine API error at {self._instance.url}: {e}") from e
+
+        except RequestException as e:
+            raise ConnectionError(
+                f"Failed to reach Redmine server at {self._instance.url}") from e
 
     def _convert_html_colours(self, string: str) -> str:
         """Convert a html colour tags to redmine formatted colour tags.

@@ -26,10 +26,8 @@ from git_flow_library import GitFlowLibrary
 from sc_manifest_parser import ScManifest
 from .exceptions import RemoteUrlNotFound, TicketIdentifierNotFound
 from .review_config import ReviewConfig, TicketHostCfg
-from .ticketing_instances.ticket_instance_factory import TicketingInstanceFactory
-from .ticketing_instances.ticketing_instance import TicketingInstance
-from .git_instances.git_factory import GitFactory
-from .git_instances.git_instance import GitInstance
+from .ticketing_instances import TicketingInstance, TicketingInstanceFactory
+from .git_instances import GitFactory, GitInstance
 
 logger = logging.getLogger(__name__)
 
@@ -62,7 +60,7 @@ class Review:
             identifier, ticket_num = self._prompt_ticket_selection()
 
         ticketing_cfg = self._config.get_ticket_host_data(identifier)
-        ticketing_instance = self._create_ticketing_instance(identifier)
+        ticketing_instance = self._create_ticketing_instance(ticketing_cfg)
 
         ticket_id = f"{ticketing_cfg.project_prefix or ''}{ticket_num}"
         ticket = ticketing_instance.read_ticket(ticket_id)
@@ -88,7 +86,7 @@ class Review:
             identifier, ticket_num = self._prompt_ticket_selection()
 
         ticketing_cfg = self._config.get_ticket_host_data(identifier)
-        ticketing_instance = self._create_ticketing_instance(identifier)
+        ticketing_instance = self._create_ticketing_instance(ticketing_cfg)
 
         ticket_id = f"{ticketing_cfg.project_prefix or ''}{ticket_num}"
         ticket = ticketing_instance.read_ticket(ticket_id)
@@ -234,6 +232,17 @@ class Review:
         )
 
     def _create_ticketing_instance(self, cfg: TicketHostCfg) -> TicketingInstance:
+        """Create a ticketing instance.
+
+        Args:
+            cfg (TicketHostCfg): Config describing a ticketing instance.
+
+        Raises:
+            ConnectionError: Failed to connect to ticketing instance.
+
+        Returns:
+            TicketingInstance: A ticketing instance class.
+        """
         inst = TicketingInstanceFactory.create(
             provider=cfg.provider,
             url=cfg.url,

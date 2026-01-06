@@ -22,8 +22,8 @@ from repo_library import RepoLibrary
 from .exceptions import ReviewException
 from .review import Review
 from .review_config import ReviewConfig, TicketHostCfg, GitInstanceCfg
-from .ticketing_instances.ticket_instance_factory import TicketingInstanceFactory
-from .git_instances.git_factory import GitFactory
+from .ticketing_instances import TicketingInstanceFactory
+from .git_instances import GitFactory
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +36,7 @@ def review():
         else:
             logger.error("Not in a repo project or git repository!")
             sys.exit(1)
-    except ReviewException as e:
+    except (ReviewException, ConnectionError) as e:
         logger.error(e)
         sys.exit(1)
 
@@ -101,6 +101,7 @@ def add_ticketing_instance():
     branch_prefix = input("> ")
     print("")
 
+    username = None
     if provider == "jira":
         project_prefix = f"{branch_prefix}-"
 
@@ -121,7 +122,6 @@ def add_ticketing_instance():
 
     else:
         project_prefix = None
-        username = None
         auth_type = "token"
 
     logger.info("Enter the base URL: ")
@@ -132,15 +132,14 @@ def add_ticketing_instance():
     api_token = getpass.getpass("> ")
     print("")
 
-    instance = TicketingInstanceFactory.create(
-        provider=provider,
-        url=base_url,
-        token=api_token,
-        auth_type=auth_type,
-        username=username
-    )
     try:
-        instance.validate_connection()
+        TicketingInstanceFactory.create(
+            provider=provider,
+            url=base_url,
+            token=api_token,
+            auth_type=auth_type,
+            username=username
+        )
     except ConnectionError as e:
         logger.error(f"Failed to connect! {e}")
         sys.exit(1)
