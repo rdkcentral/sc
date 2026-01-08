@@ -166,6 +166,8 @@ def create_branch(
         name: str | None = None
     ) -> Branch:
     if name:
+        if name.startswith(f"{branch_type}/"):
+            name = name.split("/", 1)[1]
         return Branch(branch_type, name)
 
     if branch_type in {BranchType.DEVELOP, BranchType.MASTER}:
