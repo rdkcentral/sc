@@ -234,7 +234,6 @@ class Finish(Command):
             if proj.lock_status is None:
                 develop = GitFlowLibrary.get_develop_branch(self.top_dir / proj.path)
                 Repo(self.top_dir / proj.path).git.switch(develop)
-        self._update_manifest_revisions(manifest)
         self._commit_manifest("develop")
 
     def _rebase_to_master(self):
@@ -244,7 +243,6 @@ class Finish(Command):
             if proj.lock_status == None:
                 master = GitFlowLibrary.get_master_branch(self.top_dir / proj.path)
                 Repo(self.top_dir / proj.path).git.switch(master)
-        self._update_manifest_revisions(manifest)
         self._commit_manifest("master")
 
     def _rebase_to_base(self, base: str | None):
@@ -253,15 +251,7 @@ class Finish(Command):
         for proj in manifest.projects:
             if proj.lock_status == None:
                 Repo(self.top_dir / proj.path).git.switch(base)
-        self._update_manifest_revisions(manifest)
         self._commit_manifest(base)
-
-    def _update_manifest_revisions(self, manifest: ScManifest):
-        for proj in manifest.projects:
-            proj_dir = self.top_dir / proj.path
-            proj_repo = Repo(proj_dir)
-            proj.revision = proj_repo.head.commit.hexsha
-        manifest.write()
 
     def _commit_manifest(self, branch: str):
         manifest_repo = Repo(self.top_dir / '.repo' / 'manifests')
