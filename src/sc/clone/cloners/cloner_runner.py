@@ -1,3 +1,17 @@
+# Copyright 2025 RDK Management
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import logging
 from pathlib import Path
 import sys
@@ -16,7 +30,7 @@ logger = logging.getLogger(__name__)
 
 class ClonerRunner:
     def clone(
-            self, 
+            self,
             directory: Path,
             project_config: "Project",
             cli_overrides: "CliOverrides"
@@ -30,12 +44,12 @@ class ClonerRunner:
             cloner = RepoCloner(config)
         else:
             raise ValueError(f"Invalid cloner type {cloner_type}")
-        
+
         cloner.clone(directory)
-    
+
     def _make_git_cloner_config(
-            self, 
-            project_config: "Project", 
+            self,
+            project_config: "Project",
             cli_overrides: "CliOverrides"
         ) -> GitClonerConfig:
         cloner_config = GitClonerConfig(
@@ -45,13 +59,13 @@ class ClonerRunner:
         )
 
         if rev := cli_overrides.get("rev"):
-            cloner_config.branch = rev 
+            cloner_config.branch = rev
 
         if cli_overrides.get("no_tags"):
             logger.info("Option [--no-tags]")
-        
+
         return cloner_config
-    
+
     def _make_repo_cloner_config(
             self,
             project_config: "Project",
@@ -73,17 +87,17 @@ class ClonerRunner:
         )
 
         if rev := cli_overrides.get("rev"):
-            cloner_config.branch = rev 
+            cloner_config.branch = rev
 
         if cli_overrides.get("no_tags"):
             logger.info("Option [--no-tags]: disabled cache")
             cloner_config.cache = False
-        
+
         if cli_overrides.get("manifest"):
             logger.info(
                 f"Option [-m] override manifest with [{cli_overrides.get('manifest')}]")
             cloner_config.manifest = cli_overrides.get("manifest")
-        
+
         if cli_overrides.get("verify"):
             logger.info("Option [--verify]: Run repo hooks without prompts")
             cloner_config.verify = True

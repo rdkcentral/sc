@@ -1,3 +1,17 @@
+# Copyright 2025 RDK Management
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import logging
 from pathlib import Path
 import sys
@@ -18,17 +32,17 @@ class GitClonerConfig(BaseModel):
 
 class GitCloner(Cloner):
     """Clones a git repository.
-    
+
     Args:
         uri (str): The repository URL to clone.
-        directory (str, optional): The directory where the repository should be cloned. 
+        directory (str, optional): The directory where the repository should be cloned.
             Defaults to None.
         branch (str, optional): The branch to clone. If None, the default branch is used.
         no_tags (bool, optional): Clone without tags.
     """
 
     def __init__(
-            self, 
+            self,
             config: GitClonerConfig
         ):
         self.config = config
@@ -52,16 +66,16 @@ class GitCloner(Cloner):
         try:
             if ref_type == RefType.SHA:
                 repo = Repo.clone_from(
-                    self.config.uri, 
-                    directory, 
+                    self.config.uri,
+                    directory,
                     multi_options=["--no-tags"] if self.config.no_tags else None
                 )
                 repo.git.fetch("origin", self.config.branch)
                 repo.git.checkout(self.config.branch)
             else:
                 repo = Repo.clone_from(
-                    self.config.uri, 
-                    directory, 
+                    self.config.uri,
+                    directory,
                     branch=self.config.branch,
                     multi_options=["--no-tags"] if self.config.no_tags else None
                 )
