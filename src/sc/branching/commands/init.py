@@ -25,7 +25,8 @@ from sc_manifest_parser import ProjectElementInterface, ScManifest
 @dataclass
 class Init(Command):
     def run_git_command(self):
-        GitFlowLibrary.init(self.top_dir)
+        if not GitFlowLibrary.is_gitflow_enabled(self.top_dir):
+            GitFlowLibrary.init(self.top_dir)
 
     def run_repo_command(self):
         Init.init_gitflow_for_manifest(self.top_dir)
