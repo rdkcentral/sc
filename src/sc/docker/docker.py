@@ -52,7 +52,7 @@ class SCDocker:
     def login(self):
         registry_url = self._prompt_registry_url()
         registry_type = self._prompt_registry_type()
-        
+
         credential_store, username, api_token = self._prompt_credentials(registry_url)
 
         self._attempt_docker_login(username, api_token, registry_url)
@@ -65,22 +65,22 @@ class SCDocker:
             click.secho(e)
             sys.exit(1)
         self._validate_images(images, registry_url)
-        
+
         self._update_user_config(registry_url, registry_type, credential_store, username, api_token)
-        
+
         click.echo(f"\nRegistry {registry_url} has been added to your SC config!")
-    
+
     def logout(self, registry_url: str):
         self.docker_config_manager.delete_key_from_config(registry_url)
         click.secho(f"Removed credentials for {registry_url}", fg="green", bold=True)
-    
+
     def list_images(self):
         remote_images = []
         if self.docker_config:
             for registry_url in self.docker_config:
                 registry_images = self._fetch_images_by_registry(registry_url)
                 remote_images.extend([f"{registry_url}/{image}" for image in registry_images])
-        
+
         # Get local image names and remove duplicates.
         local_images = list({tag.split(":")[0] for image in self.docker_client.images.list() for tag in image.tags})
 
@@ -91,7 +91,7 @@ class SCDocker:
             if image not in seen:
                 all_images.append(image)
                 seen.add(image)
-        
+
         click.secho("Images are:- ", fg="green")
         remote_str = click.style(" (Remote)", fg="cyan")
         local_str = click.style(" (Local)", fg="magenta")
@@ -105,12 +105,12 @@ class SCDocker:
                 click.echo(click.style(image, fg="yellow", bold=True) + local_str)
 
     def run(
-            self, 
-            image_ref: str, 
-            command: tuple[str, ...], 
-            local: bool, 
-            tag: str, 
-            x11: bool, 
+            self,
+            image_ref: str,
+            command: tuple[str, ...],
+            local: bool,
+            tag: str,
+            x11: bool,
             volumes: tuple[str, ...]
         ):
         self._check_no_registries(local)
@@ -126,13 +126,13 @@ class SCDocker:
             username, api_token = self._get_registry_creds_by_url(registry_url)
             self.docker_client.login(username=username, password=api_token, registry=registry_url)
             self._pull_image(image, tag)
-        
+
         container_name = self._generate_container_name(image_name)
-        
+
         docker_command = self._generate_docker_run_command(image, tag, container_name, image_name, x11, volumes, command)
 
         self._execute_docker_run(docker_command, image)
-    
+
     # ──────────────────────── REGISTRY & AUTH HELPERS ────────────────────────
 
     def _get_whitelisted_registries(self) -> tuple[str, ...]:
@@ -140,7 +140,7 @@ class SCDocker:
             with open(REGISTRY_WHITELIST, 'r') as file:
                 return tuple(line.strip() for line in file)
         return ()
-    
+
     def _validate_existing_registries(self):
         """Check if pre-existing registries in config are whitelisted. Exit if not."""
         if not self.whitelisted_registries:
@@ -165,22 +165,22 @@ class SCDocker:
         for reg in self.whitelisted_registries:
             click.echo(f"- {reg}")
         sys.exit(1)
-    
+
     def _validate_images(self, images: list, registry_url: str):
         if not images:
             error_message = f"Registry {registry_url} returned no images! Check URL is correct!"
             click.secho(f"ERROR: {error_message}", fg="red", bold=True)
             sys.exit(1)
-    
+
     def _get_registry_creds_by_url(self, registry_url: str) -> tuple[str, str]:
         registry_conf = self.docker_config[registry_url]
         if registry_conf['credential_store'] == "netrc":
             username, api_token = self._get_netrc_creds_by_registry(registry_url)
         else:
             username, api_token = registry_conf['username'], registry_conf['api_key']
-        
+
         return username, api_token
-    
+
     def _get_netrc_creds_by_registry(self, registry_url: str) -> tuple[str, str]:
         try:
             netrc_path = os.getenv('NETRC_PATH')
@@ -203,7 +203,7 @@ class SCDocker:
             click.secho(f"Error message: {e}")
             click.secho("You may have to run command: chmod 600 ~/.netrc")
             sys.exit(1)
-    
+
     def _attempt_docker_login(self, username: str, api_token: str, registry_url: str):
         try:
             self.docker_client.login(username=username, password=api_token, registry=registry_url)
@@ -213,13 +213,13 @@ class SCDocker:
             sys.exit(1)
 
     def _update_user_config(self, registry_url: str, registry_type: str, credential_store: str, username: str, api_token: str):
-        config_dict = { 
-            registry_url: {      
+        config_dict = {
+            registry_url: {
                 "reg_type": registry_type,
                 "credential_store": credential_store,
             }
         }
-        
+
         if credential_store == "config":
             config_dict[registry_url]["username"] = username
             config_dict[registry_url]["api_key"] = api_token
@@ -232,7 +232,7 @@ class SCDocker:
             sys.exit(1)
 
     # ──────────────────────── USER INPUT HELPERS ────────────────────────
-    
+
     def _prompt_registry_url(self) -> str:
         click.echo("For a guide to logging in see: https://github.com/comcast-sky/sc-docker/blob/master/docs/pages/login.md")
         click.echo("Registry URL:")
@@ -255,15 +255,15 @@ class SCDocker:
             if registry_type in self.supported_registry_types:
                 return registry_type
             click.echo("\nRegistry type not in possible registry types!")
-    
+
     def _prompt_credentials(self, registry_url: str) -> tuple[str,str,str]:
         """Prompt user for credentials, either from .netrc or manual input."""
         click.echo("\nUse netrc? (y/n):")
         click.echo("- Choosing 'y' will allow SC to use credentials stored in your .netrc file.")
         click.echo("- Choose 'n' if you prefer to enter your username and API key manually.")
-        
+
         netrc_input = click.prompt("> ")
-        
+
         if netrc_input == "y":
             credential_store = "netrc"
             username, api_token = self._get_netrc_creds_by_registry(registry_url)
@@ -280,7 +280,7 @@ class SCDocker:
             api_token = click.prompt("> ")
 
         return credential_store, username, api_token
-    
+
     # ──────────────────────── IMAGE & CONTAINER HANDLING HELPERS ────────────────────────
 
     def _get_image(self, image_ref: str, local: bool) -> str:
@@ -293,9 +293,9 @@ class SCDocker:
 
         Returns:
             str: The full image name
-        """        
+        """
         images = []
-        
+
         if local:
             images = list({tag.split(":")[0] for image in self.docker_client.images.list() for tag in image.tags})
         else:
@@ -311,12 +311,12 @@ class SCDocker:
                 for registry_url in self.docker_config:
                     registry_images = self._fetch_images_by_registry(registry_url)
                     images.extend([f"{registry_url}/{image}" for image in registry_images])
-        
+
         valid_images = []
         for image in images:
             if image.endswith(image_ref):
                 valid_images.append(image)
-                
+
         if len(valid_images) == 1:
             image_to_run = valid_images[0]
         elif len(valid_images) > 1:
@@ -334,7 +334,7 @@ class SCDocker:
             sys.exit(1)
 
         return image_to_run
-    
+
     def _pull_image(self, image:str, tag:str):
         layer_progress = {}
         try:
@@ -358,7 +358,7 @@ class SCDocker:
                 elif 'error' in line:
                     sys.stdout.write(f"\nError: {line['error']}\n")
                     sys.stdout.flush()
-            
+
             sys.stdout.write("\033[999B") # Move the cursor to the very bottom
             sys.stdout.flush()
             click.secho("Pull complete!\n")
@@ -383,21 +383,21 @@ class SCDocker:
     def _fetch_tags(self, image: str, local: bool, registry_url: str) -> tuple[str, ...]:
         if local:
             return self._fetch_local_tags(image)
-        
+
         username, api_token = self._get_registry_creds_by_url(registry_url)
         return self._fetch_remote_tags(image, username, api_token)
 
     def _fetch_local_tags(self, image: str):
         local_images = self.docker_client.images.list()
         tags = []
-        
+
         for local_image in local_images:
             for tag in local_image.tags:
                 name_part = tag.split(":")[0]
                 if name_part == image:
                     tags.append(tag.split(":")[1])
         return tuple(tags)
-    
+
     def _fetch_remote_tags(self, image: str, username: str, api_token: str) -> tuple[str, ...]:
         registry_url, image_name = self._parse_image_reference(image)
         registry_type = self.docker_config[registry_url]['reg_type']
@@ -422,7 +422,7 @@ class SCDocker:
             click.secho(f"ERROR: An exception occured when fetching images from {registry_url}", fg='red')
             click.secho(e)
             sys.exit(1)
-    
+
     def _handle_invalid_tag(self, image:str, tag: str, tags: tuple[str, ...]):
         click.echo(
             click.style("ERROR: ", fg="red", bold = True) +
@@ -442,17 +442,17 @@ class SCDocker:
                 "`sc docker run` with the --local tag! Use `sc docker login` to add remote registries!",
                 fg = 'red', bold=True)
             sys.exit(1)
-    
+
     def _generate_container_name(self, image_name: str) -> str:
         """Add UNIX username and time since epoch to name so we can see who created a container and when"""
         user_name = getpass.getuser()
-        
+
         seconds_since_epoch = int(time.time())
         nanoseconds = int(time.time_ns() % 1e9)
         time_since_epoch = f"{seconds_since_epoch}-{nanoseconds}"
         container_name = f"{user_name}_{image_name}_{time_since_epoch}"
         return container_name
-    
+
     def _parse_image_reference(self, image: str) -> tuple[str, str]:
         """Split image reference into registry url and image name"""
         last_slash = image.rfind("/")
@@ -463,13 +463,13 @@ class SCDocker:
     # ──────────────────────── DOCKER RUN HELPERS ────────────────────────
 
     def _generate_docker_run_command(
-            self, 
-            image: str, 
-            tag: str, 
-            container_name: str, 
-            image_name: str, 
-            x11: bool, 
-            volumes: tuple[str, ...], 
+            self,
+            image: str,
+            tag: str,
+            container_name: str,
+            image_name: str,
+            x11: bool,
+            volumes: tuple[str, ...],
             command: tuple[str, ...]
         ) -> list:
         """Generates the full docker run command."""
@@ -488,11 +488,11 @@ class SCDocker:
 
         docker_args += [f"{image}:{tag}", self._generate_bash_command(command, container_name, x11)]
         return docker_args
-    
+
     def _generate_bash_command(
-            self, 
-            command: tuple[str, ...], 
-            container_name: str, 
+            self,
+            command: tuple[str, ...],
+            container_name: str,
             x11: bool
         ) -> str:
         """Generates the bash command to be executed inside the container."""
@@ -500,7 +500,7 @@ class SCDocker:
         if x11 and os.getenv("DISPLAY"):
             bash_command += self._setup_xauth(container_name)
         return bash_command + " ".join(command)
-    
+
     def _execute_docker_run(self, docker_command: list, image: str):
         """Prints and executes the docker run command."""
         docker_command_str = " ".join(docker_command)
@@ -522,15 +522,15 @@ class SCDocker:
         for volume in volumes:
             self._validate_docker_mount(volume)
             docker_args += ['-v', volume]
-        
+
         for path in STANDARD_MOUNT_DIRS:
             if Path(path).exists():
                 docker_args += ['-v', f"{path}:{path}"]
 
-        codesonar_dir = Path('/opt/codesonar').resolve()
-        if Path('/opt/codesonar').is_symlink() and Path(codesonar_dir).exists():
-            docker_args += ['-v', f"{codesonar_dir}:{codesonar_dir}"]
-            docker_args += ['-e', f"CODESONAR_PATH={codesonar_dir}/codesonar/bin"]
+        coverity_dir = Path('/opt/coverity').resolve()
+        if Path('/opt/coverity').is_symlink() and Path(coverity_dir).exists():
+            docker_args += ['-v', f"{coverity_dir}:{coverity_dir}"]
+            docker_args += ['-e', f"PATH={coverity_dir}/bin:$PATH"]
 
         return docker_args
 
@@ -540,7 +540,7 @@ class SCDocker:
         if len(parts) != 2:
             click.secho(f"WARNING: {mount} is not valid syntax for a mount", fg='red')
             sys.exit("Mounts are expected as -v <source directory>:<destination directory>")
-        
+
         mount_source, mount_dest = parts
         self._validate_docker_mount_source(mount_source)
         self._validate_docker_mount_dest(mount_dest)
@@ -548,29 +548,29 @@ class SCDocker:
     def _validate_docker_mount_source(self, server_dir: str):
         if not os.path.isdir(server_dir):
             sys.exit(f"{server_dir} does not exist")
-        
+
         stat_info = os.stat(server_dir)
         user = getpass.getuser()
         group = grp.getgrgid(stat_info.st_gid).gr_name
-        
+
         # Check if others have write permission
         if stat_info.st_mode & 0o002:
             return
-        
+
         # Check if the user is the owner and has write permission
         if os.getenv("USER") == user and (stat_info.st_mode & 0o200):
             return
-        
+
         # Check if the user is in the group and has write permission
         user_groups = [g.gr_name for g in grp.getgrall() if os.getenv("USER") in g.gr_mem]
         if group in user_groups and (stat_info.st_mode & 0o020):
             return
-        
+
         click.secho(f"WARNING: You cannot mount {server_dir}", fg='red')
         click.secho("You can only mount directories you have write permissions to", fg='red')
         sys.exit(1)
 
-    def _validate_docker_mount_dest(self, dest_dir: str):        
+    def _validate_docker_mount_dest(self, dest_dir: str):
         if any(dest_dir.startswith(root) for root in BANNED_MOUNT_DIRS):
             click.secho(f"WARNING: You cannot mount to {dest_dir}",
                                    fg='red')
@@ -606,12 +606,12 @@ class SCDocker:
                 ).strip().decode()
         except subprocess.CalledProcessError:
             xauth_line = None
-        
+
         if xauth_line:
             hostname = os.getenv("HOSTNAME")
             xauth_line = f"{xauth_line}/{hostname}/{container_name}"
             return f"touch {Path.home()}/.Xauthority; xauth add {xauth_line}; "
-    
+
     def _add_user_env_vars(self) -> list:
         docker_args = [
             '-e', f"LOCAL_USER_NAME={getpass.getuser()}",
