@@ -17,6 +17,7 @@ import grp
 from netrc import netrc, NetrcParseError
 import os
 from pathlib import Path
+import socket
 import subprocess
 import sys
 import time
@@ -25,6 +26,8 @@ import click
 import docker
 from docker.errors import APIError, TLSParameterError
 
+from .docker_run_builder import DockerRunBuilder
+from .exceptions import ScDockerException
 from .registry_apis.registry_api_factory import RegistryAPIFactory
 from sc.config_manager import ConfigManager
 
@@ -149,9 +152,15 @@ class SCDocker:
 
         container_name = self._generate_container_name(image_name)
 
-        docker_command = self._generate_docker_run_command(image, tag, container_name, image_name, x11, volumes, command)
+        try:
+            docker_command = self._generate_docker_run_command(
+                image, tag, container_name, image_name, x11, volumes, command)
+        except ScDockerException as e:
+            click.secho(f"ERROR: {e}", fg="red")
+            sys.exit(1)
 
-        self._execute_docker_run(docker_command, image)
+        click.secho(f"Running docker [{image}]", fg='green')
+        self._execute_docker_run(docker_command)
 
     # ──────────────────────── REGISTRY & AUTH HELPERS ────────────────────────
 
@@ -491,87 +500,70 @@ class SCDocker:
             x11: bool,
             volumes: tuple[str, ...],
             command: tuple[str, ...]
-        ) -> list:
+        ) -> list[str]:
         """Generates the full docker run command."""
-        docker_args = ['docker', 'run', '--rm']
-        bash_prelude = []
+        docker_run = DockerRunBuilder(
+            image=image,
+            tag=tag
+        )
+        docker_run.add_name(container_name)
+        docker_run.add_hostname(image_name)
+        docker_run.add_volume_mount(f"{Path.home()}:{Path.home()}")
 
-        docker_args += ['--net=host']
-        docker_args += ['-v', f"{Path.home()}:{Path.home()}"]
-        docker_args += ['--name', container_name, '--hostname', image_name]
-
-        docker_args += self._get_architecture_flag(image)
-        docker_args += self._add_volume_mounts(volumes)
-        docker_args += self._add_ssh_auth()
-        docker_args += self._add_user_env_vars()
-        docker_args += self._add_interactive_flag()
-
-        if x11:
-            x11_args, x11_prelude = self._add_x11_support(container_name)
-            docker_args += x11_args
-            bash_prelude += x11_prelude
-
-        coverity_args, coverity_prelude = self._add_coverity_mount()
-        docker_args += coverity_args
-        bash_prelude += coverity_prelude
-
-        docker_args += [f"{image}:{tag}", self._generate_bash_command(command, bash_prelude)]
-        return docker_args
-
-    def _generate_bash_command(
-            self,
-            command: tuple[str, ...],
-            prelude_cmds: list[str],
-        ) -> str:
-        """Generates the bash command to be executed inside the container."""
-        cmd = " ".join(command)
-        parts = [
-            "source /usr/local/bin/bashext.sh",
-            *prelude_cmds,
-            f"cd {Path.cwd()}",
-        ]
-        if cmd:
-            parts.append(cmd)
-
-        bash = "bash -c '" + " && ".join(parts) + "'"
-
-        return bash
-
-    def _execute_docker_run(self, docker_command: list, image: str):
-        """Prints and executes the docker run command."""
-        print(docker_command)
-        docker_command_str = " ".join(docker_command)
-        click.secho(f"Running docker [{image}]", fg='green')
-        click.secho(docker_command_str, fg='green')
-        click.echo()
-        os.execvp('docker', docker_command)
-
-    def _get_architecture_flag(self, image: str) -> list:
-        architecture = image.split("_")[-1]
-        if architecture == 'i386':
-            return ['--platform', 'linux/i386']
-        elif architecture == 'amd64':
-            return ['--platform', 'linux/amd64']
-        return []
-
-    def _add_volume_mounts(self, volumes: tuple[str, ...]) -> list:
-        docker_args = []
         for volume in volumes:
             self._validate_docker_mount(volume)
-            docker_args += ['-v', volume]
+            docker_run.add_volume_mount(volume)
 
         for path in STANDARD_MOUNT_DIRS:
             if Path(path).exists():
-                docker_args += ['-v', f"{path}:{path}"]
+                docker_run.add_volume_mount(f"{path}:{path}")
 
-        return docker_args
+        ssh_auth_sock = os.getenv("SSH_AUTH_SOCK")
+        if ssh_auth_sock:
+            docker_run.add_volume_mount(
+                f"{Path(ssh_auth_sock).parent}:{Path(ssh_auth_sock).parent}")
+            docker_run.add_env_var("SSH_AUTH_SOCK", ssh_auth_sock)
+
+        docker_run.add_env_var("LOCAL_USER_NAME", getpass.getuser())
+        docker_run.add_env_var("LOCAL_USER_ID", str(os.getuid()))
+        docker_run.add_env_var("LOCAL_GROUP_ID", str(os.getgid()))
+        docker_run.add_env_var("LOCAL_START_DIR", str(Path.home()))
+
+        try:
+            docker_group_id = grp.getgrnam('docker').gr_gid
+            docker_run.add_env_var("LOCAL_DOCKER_GROUP", str(docker_group_id))
+        except KeyError:
+            # If docker group doesn't exist on system, skip setting LOCAL_DOCKER_GROUP
+            pass
+
+        if self._stdout_connected_to_terminal():
+            docker_run.add_interactive_flag()
+
+        if x11:
+            self._add_x11_support(docker_run, container_name)
+
+        self._add_coverity_mount(docker_run)
+
+        docker_run.add_bash_command(f"cd {str(Path.cwd())}")
+        if command:
+            docker_run.add_bash_command(" ".join(command))
+
+        return docker_run.build()
+
+    def _execute_docker_run(self, docker_command: list):
+        """Prints and executes the docker run command."""
+        click.secho(" ".join(docker_command), fg='green')
+        click.echo()
+        os.execvp('docker', docker_command)
 
     def _validate_docker_mount(self, mount: str):
         # Expect exactly one ':' character separating source and destination
         parts = mount.split(":")
         if len(parts) != 2:
-            click.secho(f"WARNING: {mount} is not valid syntax for a mount", fg='red')
-            sys.exit("Mounts are expected as -v <source directory>:<destination directory>")
+            raise ScDockerException(
+                f"{mount} is not valid syntax for a mount! "
+                "Mounts are expected as -v <source directory>:<destination directory>"
+            )
 
         mount_source, mount_dest = parts
         self._validate_docker_mount_source(mount_source)
@@ -579,7 +571,7 @@ class SCDocker:
 
     def _validate_docker_mount_source(self, server_dir: str):
         if not os.path.isdir(server_dir):
-            sys.exit(f"{server_dir} does not exist")
+            raise ScDockerException(f"Can't mount {server_dir} as does not exist!")
 
         stat_info = os.stat(server_dir)
         user = getpass.getuser()
@@ -598,75 +590,45 @@ class SCDocker:
         if group in user_groups and (stat_info.st_mode & 0o020):
             return
 
-        click.secho(f"WARNING: You cannot mount {server_dir}", fg='red')
-        click.secho("You can only mount directories you have write permissions to", fg='red')
-        sys.exit(1)
+        raise ScDockerException(
+            f"You cannot mount {server_dir}! You can only mount directories you have "
+            "write permission to."
+        )
 
     def _validate_docker_mount_dest(self, dest_dir: str):
         if any(dest_dir.startswith(root) for root in BANNED_MOUNT_DIRS):
-            click.secho(f"WARNING: You cannot mount to {dest_dir}",
-                                   fg='red')
-            sys.exit(f"You cannot mount in any of the following directories: {', '.join(BANNED_MOUNT_DIRS)}")
+            raise ScDockerException(
+                f"You cannot mount to {dest_dir}! You cannot mount "
+                f"in any of the following directories {', '.join(BANNED_MOUNT_DIRS)}"
+            )
 
-    def _add_ssh_auth(self) -> list:
-        docker_args = []
-        ssh_auth_sock = os.getenv("SSH_AUTH_SOCK")
-        if ssh_auth_sock:
-            docker_args += [
-                '-v',
-                f"{Path(ssh_auth_sock).parent}:{Path(ssh_auth_sock).parent}",
-                '-e',
-                f"SSH_AUTH_SOCK={ssh_auth_sock}"
-            ]
-        return docker_args
-
-    def _add_x11_support(self, container_name: str) -> tuple[list[str], list[str]]:
-        docker_args = []
+    def _add_x11_support(self, docker_run: DockerRunBuilder, container_name: str):
         display = os.getenv("DISPLAY")
         if not display:
             click.secho("WARNING: No DISPLAY variable set", fg="yellow")
             click.secho("WARNING: X11 not forwarded into docker", fg="yellow")
-            return [], []
+            return
+        docker_run.add_env_var("DISPLAY")
 
-        docker_args += ['-e', 'DISPLAY']
         try:
             xauth_line = subprocess.check_output(
                 ["xauth", "list", display],
                 stderr=subprocess.DEVNULL
-                ).strip().decode()
+            ).strip().decode()
         except subprocess.CalledProcessError:
             xauth_line = None
 
         if xauth_line:
-            hostname = os.getenv("HOSTNAME")
-            xauth_line = f"{xauth_line}/{hostname}/{container_name}"
-            prelude_cmd = [f"touch {Path.home()}/.Xauthority", f"xauth add {xauth_line}"]
+            hostname = os.getenv("HOSTNAME") or socket.gethostname()
+            xauth_line = xauth_line.replace(hostname, container_name, 1)
+            docker_run.add_bash_command(f"touch $HOME/.Xauthority")
+            docker_run.add_bash_command(f"xauth add {xauth_line}")
 
-        return docker_args, prelude_cmd
-
-    def _add_coverity_mount(self) -> tuple[list[str], list[str]]:
+    def _add_coverity_mount(self, docker_run: DockerRunBuilder):
         coverity_dir = Path('/opt/coverity').resolve()
         if Path('/opt/coverity').is_symlink() and Path(coverity_dir).exists():
-            coverity_args = ['-v', f"{coverity_dir}:{coverity_dir}"]
-            coverity_prelude = ["export PATH=/opt/coverity/bin:$PATH"]
-            return coverity_args, coverity_prelude
-        else:
-            return [], []
+            docker_run.add_volume_mount(f"{coverity_dir}:{coverity_dir}")
+            docker_run.add_bash_command(f"export PATH={coverity_dir}:$PATH")
 
-    def _add_user_env_vars(self) -> list:
-        docker_args = [
-            '-e', f"LOCAL_USER_NAME={getpass.getuser()}",
-            '-e', f"LOCAL_USER_ID={os.getuid()}",
-            '-e', f"LOCAL_GROUP_ID={os.getgid()}",
-            '-e', f"LOCAL_START_DIR={Path.home()}",
-        ]
-        try:
-            docker_group_id = grp.getgrnam('docker').gr_gid
-            docker_args += ['-e', f"LOCAL_DOCKER_GROUP={docker_group_id}"]
-        except:
-            pass
-        return docker_args
-
-    def _add_interactive_flag(self) -> list:
-        # If stdout is connected to a terminal
-        return ['-it'] if os.isatty(sys.stdout.fileno()) else []
+    def _stdout_connected_to_terminal(self) -> bool:
+        return os.isatty(sys.stdout.fileno())
