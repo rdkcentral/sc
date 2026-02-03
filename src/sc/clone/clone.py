@@ -1,3 +1,17 @@
+# Copyright 2025 RDK Management
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import logging
 import os
 from pathlib import Path
@@ -33,25 +47,25 @@ class SCClone:
         self._project_list_manager = ProjectListManager(
             Path(self._config_manager.config_dir) / 'project_lists'
         )
-            
+
     def clone(
-            self, 
-            project_name: str, 
+            self,
+            project_name: str,
             directory: str | None = None,
             rev: str | None = None,
             force_overwrite: bool = False,
-            no_tags: bool = False, 
+            no_tags: bool = False,
             manifest: str | None = None,
             verify: bool = False,
         ):
         """
         Clone all of a projects repositories to a directory.
-        
+
         Args:
-            project_name (str): The name of the project to clone. 
-            directory (str): The directory the project should clone to. Defaults to None which 
-                clones to a folder with the name of the project in the current directory. 
-            force_overwrite (bool): Don't ask to delete existing directories. 
+            project_name (str): The name of the project to clone.
+            directory (str): The directory the project should clone to. Defaults to None which
+                clones to a folder with the name of the project in the current directory.
+            force_overwrite (bool): Don't ask to delete existing directories.
                 Defaults to False.
             no_tags (bool): Don't clone tags, also turns off caching. Defaults to False.
             manifest (str): Clone with a specific manifest name. Defaults to None.
@@ -75,7 +89,7 @@ class SCClone:
         }
 
         ClonerRunner().clone(target_directory, project_config, cli_overrides)
-    
+
     def add_project_list(self):
         """Cli method to add new project index to the config."""
         click.echo('Enter a name for this project index:')
@@ -84,7 +98,7 @@ class SCClone:
         if not re.match(r"^[a-zA-Z_][a-zA-Z0-9_]*$", name):
             logger.error('Name is not valid (must be alphanumeric and no spaces).')
             sys.exit(1)
-        
+
         if name in self._config_manager.get_config():
             logger.error(f"A index named {name} already exists.")
             sys.exit(1)
@@ -116,14 +130,14 @@ class SCClone:
             click.echo()
             click.echo('Enter your API Key for this platform: ')
             token = click.prompt('> ')
-        
+
         cache_path = self._project_list_manager.default_dir / f"{name}.yaml"
         source = ProjectListSource(url=url, platform=platform, token=token, path=str(cache_path))
 
         project_list = self._project_list_manager.load_project_list_from_source(name, source)
         if not project_list:
             sys.exit(1)
-        
+
         self._config_manager.update_config({name: source.model_dump(exclude_none=True)})
         click.echo(f'Added project list {name} to config!')
 
@@ -134,7 +148,7 @@ class SCClone:
         for plist in project_lists:
             print(self._format_project_tree(plist))
             print()
-        
+
     def _resolve_project(self, project_name: str) -> "Project":
         """
         Resolve a project configuration by name from the available project lists.
@@ -173,12 +187,12 @@ class SCClone:
         click.secho(
             f"WARNING: We found multiple projects with name: {project_name}.", fg="yellow")
         return self._select_project_config(matches)
-        
+
     def _get_overridden_project_list(self, override_path: Path | str):
         logger.warning(f"SC_DEBUG_PATH set using {override_path} for project list!")
         pl = self._project_list_manager.load_local_project_list("DEBUG LIST", override_path)
-        return [pl] if pl else [] 
-    
+        return [pl] if pl else []
+
     def _select_project_config(
             self,
             project_options: list[dict]
@@ -197,7 +211,7 @@ class SCClone:
                     return project_options[chosen_number - 1]["project"]
                 else:
                     click.secho("Invalid input! Try again!", fg="red")
-            except ValueError:   
+            except ValueError:
                 click.secho("Invalid input! Try again!", fg="red")
 
     def _resolve_target_directory(self, project_name: str, directory: str):
@@ -219,7 +233,7 @@ class SCClone:
                 "ERROR: Current directory not empty!", fg="red"
             )
             sys.exit(1)
-        
+
         if not directory.exists():
             directory.mkdir()
             return
@@ -230,7 +244,7 @@ class SCClone:
         else:
             click.secho("WARNING: This directory already exists", fg="yellow")
             click.secho(
-                f"Do you want to delete: {directory}, enter (y) or (n):", 
+                f"Do you want to delete: {directory}, enter (y) or (n):",
                 fg="red"
             )
             user_input = click.prompt("> ")
@@ -239,7 +253,7 @@ class SCClone:
             else:
                 sys.exit(0)
         directory.mkdir()
-    
+
     def _format_project_tree(self, plist: ProjectList) -> str:
         """Returns a stylised tree of the project list."""
         lines = []
@@ -254,4 +268,4 @@ class SCClone:
                 lines.append(click.style(f"{space}{line['name']}", fg=colour))
         return "\n".join(lines)
 
-    
+

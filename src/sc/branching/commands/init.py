@@ -1,3 +1,17 @@
+# Copyright 2025 RDK Management
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -11,8 +25,9 @@ from sc_manifest_parser import ProjectElementInterface, ScManifest
 @dataclass
 class Init(Command):
     def run_git_command(self):
-        GitFlowLibrary.init(self.top_dir)
-    
+        if not GitFlowLibrary.is_gitflow_enabled(self.top_dir):
+            GitFlowLibrary.init(self.top_dir)
+
     def run_repo_command(self):
         Init.init_gitflow_for_manifest(self.top_dir)
 
@@ -20,7 +35,7 @@ class Init(Command):
         for project in manifest.projects:
             if project.lock_status == None:
                 Init.init_gitflow_for_project(self.top_dir, project)
-    
+
     @staticmethod
     def init_gitflow_for_manifest(top_dir: Path):
         manifest_repo = Repo(top_dir / '.repo' / 'manifests')
@@ -49,7 +64,7 @@ class Init(Command):
 
         Init._setup_gitflow_branch(
             repo,
-            "master", 
+            "master",
             project.alternative_master,
             remote
         )
@@ -67,11 +82,11 @@ class Init(Command):
         if remote_branch in remote_branches:
             print("Set tracking branch")
             repo.git.branch('-u', remote_branch, branch)
-    
+
     @staticmethod
     def _setup_gitflow_branch(
             repo: Repo,
-            default_branch: str, 
+            default_branch: str,
             alt_branch: str | None = None,
             remote: str = 'origin'
         ):
@@ -87,10 +102,10 @@ class Init(Command):
                     branch = "master"
             else:
                 branch = default_branch
-        
+
         repo.git.config(f"gitflow.branch.{default_branch}", branch)
         Init._ensure_branch(repo, branch, remote)
-    
+
     # Potentially should be moved to a more universal place if other classes need to use
     # it. Leaving here for now.
     @staticmethod
@@ -101,7 +116,7 @@ class Init(Command):
             repo (Repo): The repo you want to ensure the branch in.
             branch (str): The branch to ensure.
             remote (str): The remote to track.
-        """        
+        """
         detached = repo.head.is_detached
         if detached:
             orig_sha = repo.head.commit.hexsha
