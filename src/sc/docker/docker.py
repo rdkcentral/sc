@@ -136,18 +136,27 @@ class SCDocker:
             x11 (bool): Whether to load x11.
             volumes (tuple[str, ...]): Additional volume mounts.
         """
-        self._check_no_registries(local)
+        if local:
+            images = self._get_local_images()
+            image = self._match_image_to_ref(images, image_ref)
+            registry_url, image_name = self._parse_image_reference(image)
+            tags = self._fetch_local_tags(image)
+            if tag not in tags:
+                self._handle_invalid_tag(image, tag, tags)
 
-        image = self._get_image(image_ref, local)
-        registry_url, image_name = self._parse_image_reference(image)
+        else:
+            self._check_no_registries()
+            images = self._get_remote_images()
+            image = self._match_image_to_ref(images, image_ref)
+            registry_url, image_name = self._parse_image_reference(image)
 
-        tags = self._fetch_tags(image, local, registry_url)
-        if tag not in tags:
-            self._handle_invalid_tag(image, tag, tags)
+            tags = self._fetch_remote_tags(image, registry_url)
+            if tag not in tags:
+                self._handle_invalid_tag(image, tag, tags)
 
-        if not local:
             username, api_token = self._get_registry_creds_by_url(registry_url)
-            self.docker_client.login(username=username, password=api_token, registry=registry_url)
+            self.docker_client.login(
+                username=username, password=api_token, registry=registry_url)
             self._pull_image(image, tag)
 
         container_name = self._generate_container_name(image_name)
@@ -312,35 +321,31 @@ class SCDocker:
 
     # ──────────────────────── IMAGE & CONTAINER HANDLING HELPERS ────────────────────────
 
-    def _get_image(self, image_ref: str, local: bool) -> str:
-        """Get the full image name from a reference
+    def _get_local_images(self) -> list[str]:
+        return list(
+                {
+                    tag.split(":")[0] for image in
+                    self.docker_client.images.list() for tag in image.tags
+                }
+            )
 
-        Args:
-            image_ref (str): An image reference, either the full name or with the
-            registry part removed.
-            local (bool): True if looking for a local image
-
-        Returns:
-            str: The full image name
-        """
+    def _get_remote_images(self, image_ref: str) -> str:
         images = []
 
-        if local:
-            images = list({tag.split(":")[0] for image in self.docker_client.images.list() for tag in image.tags})
+        # If image ref matches a host just get that hosts images. Otherwise get all hosts images.
+        host = False
+        for registry_url in self.docker_config:
+            if image_ref.startswith(registry_url):
+                host = registry_url
+
+        if host:
+            images = [f"{host}/{image}" for image in self._fetch_images_by_registry(host)]
         else:
-            # If image ref matches a host just get that hosts images. Otherwise get all hosts images.
-            host = False
             for registry_url in self.docker_config:
-                if image_ref.startswith(registry_url):
-                    host = registry_url
+                registry_images = self._fetch_images_by_registry(registry_url)
+                images.extend([f"{registry_url}/{image}" for image in registry_images])
 
-            if host:
-                images = [f"{host}/{image}" for image in self._fetch_images_by_registry(host)]
-            else:
-                for registry_url in self.docker_config:
-                    registry_images = self._fetch_images_by_registry(registry_url)
-                    images.extend([f"{registry_url}/{image}" for image in registry_images])
-
+    def _match_image_to_ref(self, images: list[str], image_ref: str) -> str:
         valid_images = []
         for image in images:
             if image.endswith(image_ref):
@@ -462,8 +467,8 @@ class SCDocker:
             click.echo(t)
         sys.exit(1)
 
-    def _check_no_registries(self, local: bool):
-        if not local and not self.docker_config:
+    def _check_no_registries(self):
+        if not self.docker_config:
             click.secho(
                 "WARNING: You have not logged into any registries and therefore can only use",
                 fg = 'red', bold=True)
