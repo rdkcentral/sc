@@ -143,8 +143,7 @@ class SCClone:
 
     def print_projects_hierarchy(self):
         """Prints the project lists, projects, subprojects, and description."""
-        config = self._config_manager.get_config()
-        project_lists = self._project_list_manager.load_project_lists_from_config(config)
+        project_lists = self._get_project_lists()
         for plist in project_lists:
             print(self._format_project_tree(plist))
             print()
@@ -157,12 +156,7 @@ class SCClone:
         loads project lists from configured sources. If multiple matching projects
         are found, prompts the user to select one. Exits if no matches are found.
         """
-        override_path = os.getenv("SC_DEBUG_PATH")
-        if override_path:
-            project_lists = self._get_overridden_project_list(override_path)
-        else:
-            config = self._config_manager.get_config()
-            project_lists = self._project_list_manager.load_project_lists_from_config(config)
+        project_lists = self._get_project_lists()
 
         if not project_lists:
             logger.error("No project lists managed to load! Use sc add-project-list")
@@ -187,6 +181,14 @@ class SCClone:
         click.secho(
             f"WARNING: We found multiple projects with name: {project_name}.", fg="yellow")
         return self._select_project_config(matches)
+
+    def _get_project_lists(self) -> list[ProjectList]:
+        override_path = os.getenv("SC_DEBUG_PATH")
+        if override_path:
+            return self._get_overridden_project_list(override_path)
+        else:
+            config = self._config_manager.get_config()
+            return self._project_list_manager.load_project_lists_from_config(config)
 
     def _get_overridden_project_list(self, override_path: Path | str):
         logger.warning(f"SC_DEBUG_PATH set using {override_path} for project list!")
