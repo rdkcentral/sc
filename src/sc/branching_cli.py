@@ -190,6 +190,11 @@ def pull():
     """Pull down the latest changes from the remote branch."""
     SCBranching.pull(BranchType.RELEASE)
 
+@release.command()
+@click.argument('name', required=False)
+def push(name: str):
+    """Push release branch to remote, if a repo project updates the manifest with the lastest commits."""
+    SCBranching.push(BranchType.RELEASE, name)
 
 @release.command()
 @click.argument('name')
