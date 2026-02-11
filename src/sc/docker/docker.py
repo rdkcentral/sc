@@ -60,7 +60,7 @@ class SCDocker:
 
         credential_store, username, api_token = self._prompt_credentials(registry_url)
 
-        self._attempt_docker_login(username, api_token, registry_url)
+        self._docker_login(username, api_token, registry_url)
 
         registry_api = RegistryAPIFactory.get_registry_api(registry_type)
         try:
@@ -89,9 +89,7 @@ class SCDocker:
         """
         remote_images = []
         if self.docker_config:
-            for registry_url in self.docker_config:
-                registry_images = self._fetch_images_by_registry(registry_url)
-                remote_images.extend([f"{registry_url}/{image}" for image in registry_images])
+            remote_images = self._fetch_image_names_all_registries_in_config()
 
         # Get local image names and remove duplicates.
         local_images = list({tag.split(":")[0] for image in self.docker_client.images.list() for tag in image.tags})
@@ -136,27 +134,15 @@ class SCDocker:
             x11 (bool): Whether to load x11.
             volumes (tuple[str, ...]): Additional volume mounts.
         """
-        if local:
-            images = self._get_local_images()
-        else:
-            self._check_no_registries()
-            images = self._get_remote_images(image_ref)
-
-        image = self._match_image_to_ref(images, image_ref)
+        image = self._resolve_image_from_ref(image_ref, local)
         registry_url, image_name = self._parse_image_reference(image)
-
-        if local:
-            tags = self._fetch_local_tags(image)
-        else:
-            username, api_token = self._get_registry_creds_by_url(registry_url)
-            tags = self._fetch_remote_tags(image, username, api_token)
+        tags = self._fetch_tags(image, local, registry_url)
 
         if tag not in tags:
             self._handle_invalid_tag(image, tag, tags)
 
         if not local:
-            self.docker_client.login(
-                username=username, password=api_token, registry=registry_url)
+            self._login_to_registry(registry_url)
             self._pull_image(image, tag)
 
         container_name = self._generate_container_name(image_name)
@@ -242,7 +228,11 @@ class SCDocker:
             click.secho("You may have to run command: chmod 600 ~/.netrc")
             sys.exit(1)
 
-    def _attempt_docker_login(self, username: str, api_token: str, registry_url: str):
+    def _login_to_registry(self, registry_url: str) -> str:
+        username, api_token = self._get_registry_creds_by_url(registry_url)
+        self._docker_login(username, api_token, registry_url)
+
+    def _docker_login(self, username: str, api_token: str, registry_url: str):
         try:
             self.docker_client.login(username=username, password=api_token, registry=registry_url)
         except (APIError, TLSParameterError) as e:
@@ -321,6 +311,14 @@ class SCDocker:
 
     # ──────────────────────── IMAGE & CONTAINER HANDLING HELPERS ────────────────────────
 
+    def _resolve_image_from_ref(self, image_ref: str, local: bool) -> str:
+        if local:
+            images = self._get_local_images()
+        else:
+            self._check_no_registries()
+            images = self._get_remote_images(image_ref)
+        return self._match_image_to_ref(images, image_ref)
+
     def _get_local_images(self) -> list[str]:
         return list(
                 {
@@ -329,23 +327,17 @@ class SCDocker:
                 }
             )
 
-    def _get_remote_images(self, image_ref: str) -> str:
-        images = []
+    def _get_remote_images(self, image_ref: str) -> list[str]:
+        if registry_url := self._match_registry_from_image_ref(image_ref):
+            return self._fetch_image_names_by_registry(registry_url)
 
-        # If image ref matches a host just get that hosts images. Otherwise get all hosts images.
-        host = False
+        return self._fetch_image_names_all_registries_in_config()
+
+    def _match_registry_from_image_ref(self, image_ref: str) -> str | None:
         for registry_url in self.docker_config:
             if image_ref.startswith(registry_url):
-                host = registry_url
-
-        if host:
-            images = [f"{host}/{image}" for image in self._fetch_images_by_registry(host)]
-        else:
-            for registry_url in self.docker_config:
-                registry_images = self._fetch_images_by_registry(registry_url)
-                images.extend([f"{registry_url}/{image}" for image in registry_images])
-
-        return images
+                return registry_url
+        return None
 
     def _match_image_to_ref(self, images: list[str], image_ref: str) -> str:
         valid_images = []
@@ -416,7 +408,7 @@ class SCDocker:
             click.secho("ERROR: An unexpected error occurred.", fg='red', bold=True)
             sys.exit(1)
 
-    def _fetch_tags(self, image: str, local: bool, registry_url: str) -> tuple[str, ...]:
+    def _fetch_tags(self, image: str, local: bool, registry_url: str) -> tuple[str]:
         if local:
             return self._fetch_local_tags(image)
 
@@ -448,7 +440,25 @@ class SCDocker:
             click.secho(e)
             sys.exit(1)
 
+    def _fetch_image_names_all_registries_in_config(self) -> list[str]:
+        """Fetch full image names (registry_url/image_name) from all registries
+        in the config.
+        """
+        return [
+            name
+            for registry_url in self.docker_config
+            for name in self._fetch_image_names_by_registry(registry_url)
+        ]
+
+    def _fetch_image_names_by_registry(self, registry_url: str) -> list[str]:
+        """Add the registry url to make full image name."""
+        return [
+            f"{registry_url}/{image}" for image in
+            self._fetch_images_by_registry(registry_url)
+        ]
+
     def _fetch_images_by_registry(self, registry_url: str) -> tuple[str, ...]:
+        """Return just the project name of images in a registry."""
         username, api_token = self._get_registry_creds_by_url(registry_url)
         registry_type = self.docker_config[registry_url]['reg_type']
         registry_api = RegistryAPIFactory.get_registry_api(registry_type)
