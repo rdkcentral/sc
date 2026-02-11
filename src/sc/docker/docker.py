@@ -138,24 +138,23 @@ class SCDocker:
         """
         if local:
             images = self._get_local_images()
-            image = self._match_image_to_ref(images, image_ref)
-            registry_url, image_name = self._parse_image_reference(image)
-            tags = self._fetch_local_tags(image)
-            if tag not in tags:
-                self._handle_invalid_tag(image, tag, tags)
-
         else:
             self._check_no_registries()
             images = self._get_remote_images(image_ref)
-            image = self._match_image_to_ref(images, image_ref)
-            registry_url, image_name = self._parse_image_reference(image)
 
+        image = self._match_image_to_ref(images, image_ref)
+        registry_url, image_name = self._parse_image_reference(image)
+
+        if local:
+            tags = self._fetch_local_tags(image)
+        else:
             username, api_token = self._get_registry_creds_by_url(registry_url)
-
             tags = self._fetch_remote_tags(image, username, api_token)
-            if tag not in tags:
-                self._handle_invalid_tag(image, tag, tags)
 
+        if tag not in tags:
+            self._handle_invalid_tag(image, tag, tags)
+
+        if not local:
             self.docker_client.login(
                 username=username, password=api_token, registry=registry_url)
             self._pull_image(image, tag)
@@ -491,11 +490,17 @@ class SCDocker:
         return container_name
 
     def _parse_image_reference(self, image: str) -> tuple[str, str]:
-        """Split image reference into registry url and image name"""
-        last_slash = image.rfind("/")
-        registry_url = image[:last_slash]
-        image_name = image[last_slash+1:]
-        return registry_url, image_name
+        """Split an image reference on last '/'.
+
+        Returns:
+            tuple[str, str]: (registry_url, image_name) if no / is present
+                the registry_url is an empty string and the image_name is
+                the full image reference.
+        """
+        parts = image.rsplit("/", 1)
+        if len(parts) == 2:
+            return parts[0], parts[1]
+        return "", image
 
     # ──────────────────────── DOCKER RUN HELPERS ────────────────────────
 
@@ -541,8 +546,7 @@ class SCDocker:
             if Path(path).exists():
                 docker_args += ['-v', f"{path}:{path}"]
 
-        ssh_auth_sock = os.getenv("SSH_AUTH_SOCK")
-        if ssh_auth_sock:
+        if ssh_auth_sock := os.getenv("SSH_AUTH_SOCK"):
             docker_args += [
                 '-v',
                 f"{Path(ssh_auth_sock).parent}:{Path(ssh_auth_sock).parent}",
@@ -550,22 +554,15 @@ class SCDocker:
                 f"SSH_AUTH_SOCK={ssh_auth_sock}"
             ]
 
-        try:
-            docker_group_id = grp.getgrnam('docker').gr_gid
+        if docker_group_id := self._get_docker_group_id():
             docker_args += ['-e', f"LOCAL_DOCKER_GROUP={str(docker_group_id)}"]
-        except KeyError:
-            # If docker group doesn't exist on system, skip setting LOCAL_DOCKER_GROUP
-            pass
 
         if self._stdout_connected_to_terminal():
             docker_args += ['-it']
 
         if x11:
             display = os.getenv("DISPLAY")
-            if display:
-                xauth_line = self._get_xauth_line(display, container_name)
-            else:
-                xauth_line = None
+            xauth_line = self._get_xauth_line(display, container_name) if display else None
 
             if display and xauth_line:
                 docker_args += ["-e", "DISPLAY"]
@@ -574,12 +571,7 @@ class SCDocker:
                     f"xauth add {xauth_line}"
                 ]
             else:
-                if not display:
-                    click.secho("WARNING: No DISPLAY variable set", fg="yellow")
-                if not xauth_line:
-                    click.secho(
-                        "WARNING: Failed to get line from xauthority.", fg="yellow")
-                click.secho("WARNING: X11 not forwarded into docker.", fg="yellow")
+                self._warn_x11_not_forwarded(display, xauth_line)
 
         coverity_dir = Path('/opt/coverity').resolve()
         if Path('/opt/coverity').is_symlink() and Path(coverity_dir).exists():
@@ -661,3 +653,18 @@ class SCDocker:
             xauth_line = xauth_line.replace(hostname, container_name, 1)
         except subprocess.CalledProcessError:
             xauth_line = None
+
+    def _get_docker_group_id(self) -> str | None:
+        try:
+            return grp.getgrnam('docker').gr_gid
+        except KeyError:
+            # If docker group doesn't exist on system, skip setting LOCAL_DOCKER_GROUP
+            return None
+
+    def _warn_x11_not_forwarded(self, display: str | None, xauth_line: str | None):
+        if not display:
+            click.secho("WARNING: No DISPLAY env variable set for x11.", fg="yellow")
+        if not xauth_line:
+            click.secho(
+                "WARNING: Failed to get line from xauthority.", fg="yellow")
+        click.secho("WARNING: X11 not forwarded into docker.", fg="yellow")
