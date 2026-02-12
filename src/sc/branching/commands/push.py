@@ -18,6 +18,7 @@ import subprocess
 
 from git import GitCommandError, Repo
 
+from . import common
 from ..branch import Branch
 from .command import Command
 from repo_library import RepoLibrary
@@ -84,32 +85,38 @@ class Push(Command):
             logger.info(f"Project lock status: {proj.lock_status}. Skipping.")
             return False
         proj_repo = Repo(self.top_dir / proj.path)
-        if not self._local_branch_exists(proj_repo, self.branch.name):
+        proj_branch_name = common.resolve_project_branch_name(self.branch, proj)
+        if not self._local_branch_exists(proj_repo, proj_branch_name):
             logger.info("Branch doesn't exist in project. Skipping.")
             return False
-        if self._remote_contains(proj_repo, proj.remote, proj_repo.heads[self.branch.name].commit.hexsha):
+        if self._remote_contains(
+            proj_repo, proj.remote, proj_repo.heads[proj_branch_name].commit.hexsha):
             logger.info("Remote already contains commit. Skipping.")
             return False
         return True
 
     def _do_push_project(self, proj: ProjectElementInterface):
         proj_repo = Repo(self.top_dir / proj.path)
+        proj_branch_name = common.resolve_project_branch_name(self.branch, proj)
         subprocess.run(
-            ["git", "push", "-u", proj.remote, self.branch.name],
+            ["git", "push", "-u", proj.remote, proj_branch_name],
             cwd=proj_repo.working_dir
         )
         subprocess.run(["git", "push", "--tags"], cwd=proj_repo.working_dir)
 
     def _do_push_tag_only_project(self, proj: ProjectElementInterface):
         proj_repo = Repo(self.top_dir / proj.path)
-        subprocess.run(["git", "push", "--tags"], cwd=proj_repo.working_dir)
+        subprocess.run(["git", "push", proj.remote, "--tags"], cwd=proj_repo.working_dir)
 
     def _local_branch_exists(self, repo: Repo, branch: str) -> bool:
         return branch in [h.name for h in repo.heads]
 
     def _remote_contains(self, repo: Repo, remote: str, sha: str) -> bool:
-        out = repo.git.branch("-r", "--contains", sha)
-        return any(line.strip().startswith(f"{remote}/") for line in out.splitlines())
+        try:
+            repo.git.merge_base("--is-ancestor", sha, f"{remote}/{self.branch.name}")
+            return True
+        except GitCommandError:
+            return False
 
     def _update_manifest_revisions(self, manifest: ScManifest):
         for proj in manifest.projects:
@@ -120,5 +127,6 @@ class Push(Command):
     def _push_manifest(self, msg: str):
         manifest_repo = Repo(self.top_dir / '.repo' / 'manifests')
         manifest_repo.git.add(A=True)
-        manifest_repo.git.commit("-m", msg)
+        if manifest_repo.is_dirty():
+            manifest_repo.git.commit("-m", msg)
         manifest_repo.git.push("-u", "origin", self.branch.name)
