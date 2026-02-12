@@ -73,7 +73,6 @@ class SCBranching:
         verify: bool = False,
         run_dir: Path = Path.cwd(),
     ):
-        logger.info(f"branch_type: {branch_type} name: {name}")
         top_dir, project_type = detect_project(run_dir)
         branch = create_branch(project_type, top_dir, branch_type, name)
         run_command_by_project_type(

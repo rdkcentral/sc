@@ -16,7 +16,7 @@ from ..branch import Branch, BranchType
 from sc_manifest_parser import ProjectElementInterface
 
 def get_alt_branch_name(branch: Branch, project: ProjectElementInterface) -> str | None:
-    match branch:
+    match branch.type:
         case BranchType.MASTER:
             return project.alternative_master
         case BranchType.DEVELOP:
