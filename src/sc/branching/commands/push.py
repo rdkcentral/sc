@@ -89,8 +89,7 @@ class Push(Command):
         if not self._local_branch_exists(proj_repo, proj_branch_name):
             logger.info("Branch doesn't exist in project. Skipping.")
             return False
-        if self._remote_contains(
-            proj_repo, proj.remote, proj_repo.heads[proj_branch_name].commit.hexsha):
+        if self._remote_branch_contains(proj_repo, proj.remote, proj_branch_name):
             logger.info("Remote already contains commit. Skipping.")
             return False
         return True
@@ -102,7 +101,7 @@ class Push(Command):
             ["git", "push", "-u", proj.remote, proj_branch_name],
             cwd=proj_repo.working_dir
         )
-        subprocess.run(["git", "push", "--tags"], cwd=proj_repo.working_dir)
+        subprocess.run(["git", "push", proj.remote, "--tags"], cwd=proj_repo.working_dir)
 
     def _do_push_tag_only_project(self, proj: ProjectElementInterface):
         proj_repo = Repo(self.top_dir / proj.path)
@@ -111,12 +110,10 @@ class Push(Command):
     def _local_branch_exists(self, repo: Repo, branch: str) -> bool:
         return branch in [h.name for h in repo.heads]
 
-    def _remote_contains(self, repo: Repo, remote: str, sha: str) -> bool:
-        try:
-            repo.git.merge_base("--is-ancestor", sha, f"{remote}/{self.branch.name}")
-            return True
-        except GitCommandError:
-            return False
+    def _remote_branch_contains(self, repo: Repo, remote: str, branch: str) -> bool:
+        local_commit = repo.heads[branch].commit
+        remote_commit = repo.refs[f"{remote}/{branch}"]
+        return repo.is_ancestor(local_commit, remote_commit)
 
     def _update_manifest_revisions(self, manifest: ScManifest):
         for proj in manifest.projects:
