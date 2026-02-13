@@ -118,7 +118,8 @@ class Push(Command):
     def _update_manifest_revisions(self, manifest: ScManifest):
         for proj in manifest.projects:
             proj_repo = Repo(self.top_dir / proj.path)
-            proj.revision = proj_repo.head.commit.hexsha
+            proj_branch_name = common.resolve_project_branch_name(self.branch, proj)
+            proj.revision = proj_repo.branches[proj_branch_name].commit.hexsha
         manifest.write()
 
     def _push_manifest(self, msg: str):
@@ -127,3 +128,4 @@ class Push(Command):
         if manifest_repo.is_dirty():
             manifest_repo.git.commit("-m", msg)
         manifest_repo.git.push("-u", "origin", self.branch.name)
+        manifest_repo.git.push("origin", "--tags")
