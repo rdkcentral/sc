@@ -73,7 +73,6 @@ class SCBranching:
         verify: bool = False,
         run_dir: Path = Path.cwd(),
     ):
-        logger.info(f"branch_type: {branch_type} name: {name}")
         top_dir, project_type = detect_project(run_dir)
         branch = create_branch(project_type, top_dir, branch_type, name)
         run_command_by_project_type(
@@ -166,6 +165,8 @@ def create_branch(
         name: str | None = None
     ) -> Branch:
     if name:
+        if name.startswith(f"{branch_type}/"):
+            name = name.split("/", 1)[1]
         return Branch(branch_type, name)
 
     if branch_type in {BranchType.DEVELOP, BranchType.MASTER}:

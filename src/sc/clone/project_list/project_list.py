@@ -1,3 +1,17 @@
+# Copyright 2025 RDK Management
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from __future__ import annotations
 
 import logging
@@ -38,15 +52,15 @@ class Project(BaseModel):
                 " 'project_suffix'"
             )
         return self
-    
+
     @property
     def uri(self):
-        if self.project_repo: 
+        if self.project_repo:
             return self.project_repo
         if self.project_prefix and self.project_suffix:
             return self.project_prefix + self.project_suffix
         return None
-    
+
     @property
     def effective_cache(self):
         disable_cache = os.getenv("REPO_CACHE_DISABLED", "").lower() in ("1", "true")
@@ -54,7 +68,7 @@ class Project(BaseModel):
             logger.info("REPO_CACHE_DISABLED env set true. Disabling cache.")
 
         return self.cache and not disable_cache
-    
+
 class ProjectList:
     """Many project configurations in a hierarchical list."""
     def __init__(self, name: str, path: Path | str):
@@ -63,21 +77,21 @@ class ProjectList:
         self.projects = {}
 
         self._load()
-    
+
     def _load(self):
-        """Populate the ProjectList from the given path."""        
+        """Populate the ProjectList from the given path."""
         if not Path(self.path).is_file():
             raise IOError(f"Failed to load project list {self.name} from file "
                            f"{self.path} as the path didn't exist!")
 
         with open(self.path, 'r') as file:
             self.projects = yaml.safe_load(file)
-        
+
         if not isinstance(self.projects, dict):
             raise ValueError(f"Project list {self.name} is not a mapping!")
-        
+
         self.projects.pop("project_defaults", None)
-    
+
     def get_hierarchy(self) -> list[dict]:
         """Returns the hierarchy of the project list
 
@@ -85,15 +99,15 @@ class ProjectList:
             list[tuple[int, str, bool, str | None]]: Hierarchical structure of projects.
                 Each entry in the result is a tuple of:
                 (indent_level, name, is_project, description).
-        """        
+        """
         return self._get_projects_hierarchy(self.projects)
-    
+
     def get_project(self, project_name:str) -> Project | None:
         """Retrieve the information related to a project
 
         Args:
             project_name: Is a string that represents the name of the project.
-        
+
         Returns:
             Project: A project configuration.
         """
@@ -106,7 +120,7 @@ class ProjectList:
         except ValidationError as e:
             logger.error(f"Invalid project configuration:\n{e}")
             sys.exit(1)
-    
+
     def _search_projects_by_name(
             self, projects: dict, project_name: str) -> dict[str, str] | None:
         """Recursively searches for a project's configuration in a dictionary.
@@ -131,10 +145,10 @@ class ProjectList:
                     return found_project
 
         return None
-    
+
     def _get_projects_hierarchy(
-            self, 
-            projects:dict, 
+            self,
+            projects:dict,
             indent:int = 0
         ) -> list[dict]:
         """Recursively builds a list representing the project hierarchy.
@@ -142,7 +156,7 @@ class ProjectList:
         Args:
             projects (dict): Dictionary representing nested projects.
             indent_level (int): Current indentation level for nesting.
-        
+
         Returns:
             list[tuple[int, str, bool, str | None]]: Hierarchical structure of projects.
                 Each entry in the result is a tuple of:
@@ -166,9 +180,9 @@ class ProjectList:
 
             if not description:
                 result.extend(self._get_projects_hierarchy(details, indent + 1))
-        
+
         return result
-    
+
     def _is_project(self, project_dict: dict):
         if project_dict.get('project_repo') or project_dict.get('project_suffix'):
             return True

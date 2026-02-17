@@ -134,7 +134,7 @@ def push():
 @click.option("-f", "--force", is_flag=True, help="Force checkout.")
 @click.option("-v", "--verify", is_flag=True, help="Run hooks without prompting.")
 def checkout(force, verify):
-    """Checkout the develop branch"""
+    """Checkout a develop branch."""
     SCBranching.checkout(BranchType.DEVELOP, None, force, verify)
 
 
@@ -190,6 +190,11 @@ def pull():
     """Pull down the latest changes from the remote branch."""
     SCBranching.pull(BranchType.RELEASE)
 
+@release.command()
+@click.argument('name', required=False)
+def push(name: str):
+    """Push release branch to remote, if a repo project updates the manifest with the lastest commits."""
+    SCBranching.push(BranchType.RELEASE, name)
 
 @release.command()
 @click.argument('name')
@@ -264,6 +269,7 @@ def support():
 @click.argument('version')
 @click.argument('base', default = BranchType.RELEASE)
 def start(version: str, base: str):
+    """Start a support branch."""
     SCBranching.start(BranchType.SUPPORT, version, base)
 
 
@@ -284,6 +290,14 @@ def pull(name: str | None):
 def list():
     """List support branches."""
     SCBranching.list(BranchType.SUPPORT)
+
+@support.command()
+@click.argument('name')
+@click.option("-f", "--force", is_flag=True, help="Force checkout.")
+@click.option("-v", "--verify", is_flag=True, help="Run hooks without prompting.")
+def checkout(name, force, verify):
+    """Checkout a support branch."""
+    SCBranching.checkout(BranchType.SUPPORT, name, force, verify)
 
 if __name__ == '__main__':
     cli()
