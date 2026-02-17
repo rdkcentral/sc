@@ -12,17 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ..branch import Branch, BranchType
-from sc_manifest_parser import ProjectElementInterface
+from dataclasses import dataclass
+from enum import Enum
 
-def get_alt_branch_name(branch: Branch, project: ProjectElementInterface) -> str | None:
-    match branch.type:
-        case BranchType.MASTER:
-            return project.alternative_master
-        case BranchType.DEVELOP:
-            return project.alternative_develop
-        case _:
-            return None
+class CRStatus(str, Enum):
+    OPEN = "Open"
+    CLOSED = "Closed"
+    MERGED = "Merged"
 
-def resolve_project_branch_name(branch: Branch, project: ProjectElementInterface) -> str:
-    return get_alt_branch_name(branch, project) or branch.name
+    def __str__(self):
+        return self.value
+
+@dataclass
+class CodeReview:
+    url: str
+    status: CRStatus

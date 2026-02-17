@@ -12,17 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ..branch import Branch, BranchType
-from sc_manifest_parser import ProjectElementInterface
+import click
 
-def get_alt_branch_name(branch: Branch, project: ProjectElementInterface) -> str | None:
-    match branch.type:
-        case BranchType.MASTER:
-            return project.alternative_master
-        case BranchType.DEVELOP:
-            return project.alternative_develop
-        case _:
-            return None
+from .review import main
 
-def resolve_project_branch_name(branch: Branch, project: ProjectElementInterface) -> str:
-    return get_alt_branch_name(branch, project) or branch.name
+@click.group()
+def cli():
+    pass
+
+@cli.command()
+def review():
+    """Add commit/PR information to your ticket."""
+    main.review()
+
+@cli.command()
+def add_git_instance():
+    """Add a VCS instance for sc review."""
+    main.add_git_instance()
+
+@cli.command()
+def add_ticketing_instance():
+    """Add a ticketing instance for sc review."""
+    main.add_ticketing_instance()

@@ -11,18 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from dataclasses import dataclass
 
-from ..branch import Branch, BranchType
-from sc_manifest_parser import ProjectElementInterface
-
-def get_alt_branch_name(branch: Branch, project: ProjectElementInterface) -> str | None:
-    match branch.type:
-        case BranchType.MASTER:
-            return project.alternative_master
-        case BranchType.DEVELOP:
-            return project.alternative_develop
-        case _:
-            return None
-
-def resolve_project_branch_name(branch: Branch, project: ProjectElementInterface) -> str:
-    return get_alt_branch_name(branch, project) or branch.name
+@dataclass
+class Ticket:
+    url: str
+    author: str | None = None
+    assignee: str | None = None
+    comments: str | None = None
+    id: str | None = None
+    status: str | None = None
+    target_version: str | None = None
+    title: str | None = None
