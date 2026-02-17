@@ -39,6 +39,7 @@ from .exceptions import ScInitError
 logger = logging.getLogger(__name__)
 
 class ProjectType(Enum):
+    """Git or repo."""
     GIT = "git"
     REPO = "repo"
 
@@ -133,14 +134,10 @@ class SCBranching:
     ):
         top_dir, project_type = detect_project(run_dir)
         branch = create_branch(project_type, top_dir, branch_type, name)
-        try:
-            run_command_by_project_type(
-                Finish(top_dir, branch, base),
-                project_type
-            )
-        except FinishOperationError as e:
-            logger.error(e)
-            sys.exit(1)
+        run_command_by_project_type(
+            Finish(top_dir, branch, base),
+            project_type
+        )
 
     @staticmethod
     def list(branch_type: BranchType, run_dir: Path = Path.cwd()):

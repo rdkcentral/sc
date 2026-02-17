@@ -14,6 +14,7 @@
 
 from dataclasses import dataclass
 import logging
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -29,13 +30,6 @@ from sc_manifest_parser import ScManifest
 
 logger = logging.getLogger(__name__)
 
-class FinishOperationError(RuntimeError):
-    def __init__(self, path: str | Path, message: str):
-        super().__init__(
-            f"Finish failed in {path}: {message} \n"
-            "Please resolve error and rerun sc finish."
-        )
-
 @dataclass
 class Finish(Command):
     branch: Branch
@@ -47,9 +41,6 @@ class Finish(Command):
 
     def run_git_command(self):
         """Runs gitflow finish in the git project.
-
-        Raises:
-            FinishOperationError: If the project fails to finish
         """
         if self.branch.type == BranchType.HOTFIX:
             base = self._resolve_base(self.top_dir)
@@ -74,15 +65,12 @@ class Finish(Command):
                 tag_message=self._tag_msg
             )
         except subprocess.CalledProcessError:
-            raise FinishOperationError(self.top_dir, "Check above for error.")
+            logger.error("Git flow finish failed!")
 
     def run_repo_command(self):
         """Runs gitflow finish in all non locked manifest projects, then
         runs gitflow finish in the manifest repository and finally updates
         the manifest with the new commit shas.
-
-        Raises:
-            FinishOperationError: If any project fails to finish.
         """
         self._error_on_sc_uninitialised()
 
@@ -108,6 +96,7 @@ class Finish(Command):
         if self.branch.type in {BranchType.HOTFIX, BranchType.RELEASE}:
             self._tag_msg = self._prompt_tag_msg()
 
+        self._stop_commit_msg_popup()
         self._finish_all_projects(base)
         self._finish_manifest_repo(base)
 
@@ -140,14 +129,15 @@ class Finish(Command):
                 return msg
             logger.warning("Cannot provide an empty tag message!")
 
+    def _stop_commit_msg_popup(self):
+        """Stops every merge confirming commit message."""
+        os.environ["GIT_MERGE_AUTOEDIT"] = "no"
+
     def _finish_all_projects(self, base: str | None):
         """Run gitflow finish in all non-locked projects.
 
         Args:
             base (str | None): Sets the base for each project if provided.
-
-        Raises:
-            FinishOperationError: If any project fails to finish.
         """
         manifest = ScManifest.from_repo_root(self.top_dir / '.repo')
         for proj in manifest.projects:
@@ -157,10 +147,7 @@ class Finish(Command):
             logger.info(f"Operating on {proj_dir}")
             proj_repo = Repo(proj_dir)
             if base:
-                try:
-                    self._set_branch_base(base, proj.path, proj.remote)
-                except ValueError as e:
-                    raise FinishOperationError(proj.path, e)
+                self._set_branch_base(base, proj_dir, proj.remote)
 
             self._delete_tag_if_exists(proj_repo, self.branch.suffix)
             try:
@@ -172,11 +159,19 @@ class Finish(Command):
                     tag_message=self._tag_msg
                 )
             except subprocess.CalledProcessError:
-                raise FinishOperationError(proj.path, "Check above for error.")
+                logger.error(
+                    f"Finish failed in {proj_dir}, resolve errors and rerun "
+                    f"`sc {self.branch.type} release {self.branch.suffix}`"
+                )
+                sys.exit(1)
 
     def _set_branch_base(self, base: str, directory: str | Path, remote: str = "origin"):
         if not self._branch_exists(base, directory, remote):
-            raise ValueError(f"Base branch '{base}' not found locally or on {remote}.")
+            logger.error(
+                f"Base branch '{base}' not found locally or on remote '{remote}' "
+                f"in {directory}."
+            )
+            sys.exit(1)
         GitFlowLibrary.set_branch_base(self.branch.name, base, directory)
 
     def _delete_tag_if_exists(self, repo: Repo, tag: str):
@@ -192,66 +187,123 @@ class Finish(Command):
         Args:
             base (str | None): Set the base branch if provided.
         """
+        manifest_dir = self.top_dir / ".repo" / "manifests"
+        manifest_repo = Repo(manifest_dir)
         if base:
-            try:
-                self._set_branch_base(base, self.top_dir / '.repo' / 'manifests')
-            except ValueError as e:
-                raise FinishOperationError(self.top_dir / '.repo' / 'manifests', e)
-        self._delete_tag_if_exists(
-            Repo(self.top_dir / '.repo' / 'manifests'), self.branch.suffix)
+            self._set_branch_base(base, manifest_dir)
+
+        self._delete_tag_if_exists(manifest_repo, self.branch.suffix)
+        rev_only_change_branches = self._get_rev_only_change_branches(base)
+
         try:
             GitFlowLibrary.finish(
-                self.top_dir / '.repo' / 'manifests',
+                manifest_dir,
                 self.branch.type,
                 name=self.branch.suffix,
                 keep=True,
                 tag_message=self._tag_msg
             )
         except subprocess.CalledProcessError:
-            raise FinishOperationError(
-                self.top_dir / '.repo' / 'manifests', "Check above for error.")
+            logger.warning(
+                "Manifest finish failed. Attempting to auto resolve conflicts.")
+
+            while True:
+                if manifest_repo.active_branch.name not in rev_only_change_branches:
+                    logger.error(
+                        "Can't automatically resolve conflict! Resolve yourself and "
+                        f"rerun `sc {self.branch.type} finish {self.branch.suffix}`"
+                    )
+                    sys.exit(1)
+
+                rev_only_change_branches.pop(manifest_repo.active_branch.name)
+
+                for path in manifest_repo.index.unmerged_blobs().keys():
+                    manifest_repo.git.checkout("--ours", path)
+                    manifest_repo.git.add(".")
+                manifest_repo.git.commit("-m", "Automatic conflict resolution.")
+
+                try:
+                    GitFlowLibrary.finish(
+                        manifest_dir,
+                        self.branch.type,
+                        name=self.branch.suffix,
+                        keep=True,
+                        tag_message=self._tag_msg
+                    )
+                    # Break on successful finish.
+                    break
+                except subprocess.CalledProcessError:
+                    # Loop to next branch or failure.
+                    continue
+
 
     def _rebase_manifest(self, base: str | None):
-        """R
+        """Rewrites the manifest with any newer commits pulled on top.
 
         Args:
-            base (str | None): _description_
+            base (str | None): The base a hotfix branch should be merged into.
         """
         if self.branch.type == BranchType.FEATURE:
-            self._rebase_to_develop()
+            self._rebase_develop()
 
         elif self.branch.type == BranchType.RELEASE:
-            self._rebase_to_master()
-            self._rebase_to_develop()
+            self._rebase_master()
+            self._rebase_develop()
 
         elif self.branch.type == BranchType.HOTFIX:
-            self._rebase_to_base(base)
+            self._rebase_base(base)
 
-    def _rebase_to_develop(self):
+    def _rebase_develop(self):
         Repo(self.top_dir / '.repo' / 'manifests').git.switch('develop')
         manifest = ScManifest.from_repo_root(self.top_dir / '.repo')
         for proj in manifest.projects:
             if proj.lock_status is None:
                 develop = GitFlowLibrary.get_develop_branch(self.top_dir / proj.path)
-                Repo(self.top_dir / proj.path).git.switch(develop)
+                self._rebase_proj(self.top_dir / proj.path, develop)
+
+        self._update_manifest(manifest)
         self._commit_manifest("develop")
 
-    def _rebase_to_master(self):
+    def _rebase_master(self):
         Repo(self.top_dir / '.repo' / 'manifests').git.switch('master')
         manifest = ScManifest.from_repo_root(self.top_dir / '.repo')
         for proj in manifest.projects:
             if proj.lock_status == None:
                 master = GitFlowLibrary.get_master_branch(self.top_dir / proj.path)
-                Repo(self.top_dir / proj.path).git.switch(master)
+                self._rebase_proj(self.top_dir / proj.path, master)
+
+        self._update_manifest(manifest)
         self._commit_manifest("master")
 
-    def _rebase_to_base(self, base: str | None):
+    def _rebase_base(self, base: str | None):
         Repo(self.top_dir / '.repo' / 'manifests').git.switch(base)
         manifest = ScManifest.from_repo_root(self.top_dir / '.repo')
         for proj in manifest.projects:
             if proj.lock_status == None:
-                Repo(self.top_dir / proj.path).git.switch(base)
+                self._rebase_proj(self.top_dir / proj.path, base)
+
+        self._update_manifest(manifest)
         self._commit_manifest(base)
+
+    def _rebase_proj(self, proj_path: Path, branch: str):
+        proj_repo = Repo(proj_path)
+        proj_repo.git.switch(branch)
+        try:
+            subprocess.run(["git", "pull"], cwd=proj_path, check=True)
+        except subprocess.CalledProcessError:
+            logger.error(
+                f"Rebase failed in {proj_path}, please resolve above error and rerun "
+                f"`sc {self.branch.type} release {self.branch.suffix}`"
+            )
+            sys.exit(1)
+
+    def _update_manifest(self, manifest: ScManifest):
+        for proj in manifest.projects:
+            if proj.lock_status == None:
+                proj_repo = Repo(self.top_dir / proj.path)
+                proj.revision = proj_repo.head.commit.hexsha
+
+        manifest.write()
 
     def _commit_manifest(self, branch: str):
         manifest_repo = Repo(self.top_dir / '.repo' / 'manifests')
@@ -270,3 +322,35 @@ class Finish(Command):
         elif self.branch.type == BranchType.HOTFIX:
             base_prefix, base_name = base.split('/', 1)
             logger.info(f"Run sc {base_prefix} push {base_prefix} to push to remote!")
+
+    def _get_rev_only_change_branches(self, base: str | None) -> list[str]:
+        rev_only_change_branches = []
+        manifest = ScManifest.from_repo_root(self.top_dir / ".repo")
+        if self.branch.type == BranchType.RELEASE:
+            dev_manifest = self._get_branches_manifest("develop")
+            if manifest.equals_ignoring_revisions(dev_manifest):
+                rev_only_change_branches.append("develop")
+            master_manifest = self._get_branches_manifest("master")
+            if manifest.equals_ignoring_revisions("master"):
+                rev_only_change_branches.append("master")
+        elif self.branch.type == BranchType.FEATURE:
+            dev_manifest = self._get_branches_manifest("develop")
+            if manifest.equals_ignoring_revisions(dev_manifest):
+                rev_only_change_branches.append("develop")
+        elif self.branch.type == BranchType.HOTFIX:
+            base_manifest = self._get_branches_manifest(base)
+            if manifest.equals_ignoring_revisions(base_manifest):
+                rev_only_change_branches.append(base)
+
+        return rev_only_change_branches
+
+
+    def _get_branches_manifest(self, branch: str) -> ScManifest:
+        """Get the ScManifest of a particular branch."""
+        manifest_repo = Repo(self.top_dir / ".repo" / "manifests")
+        start_branch = manifest_repo.active_branch.name
+        manifest_repo.git.switch(branch)
+        manifest = ScManifest.from_repo_root(self.top_dir / ".repo")
+        manifest_repo.git.switch(start_branch)
+        return manifest
+

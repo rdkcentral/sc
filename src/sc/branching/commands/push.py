@@ -124,5 +124,11 @@ class Push(Command):
         manifest_repo.git.add(A=True)
         if manifest_repo.is_dirty():
             manifest_repo.git.commit("-m", msg)
-        manifest_repo.git.push("-u", "origin", self.branch.name)
-        manifest_repo.git.push("origin", "--tags")
+        subprocess.run(
+            ["git", "push", "-u", "origin", self.branch.name],
+            cwd=self.top_dir / ".repo" / "manifests"
+        )
+        subprocess.run(
+            ["git", "push", "origin", "--tags"],
+            cwd=self.top_dir / ".repo" / "manifests"
+        )
