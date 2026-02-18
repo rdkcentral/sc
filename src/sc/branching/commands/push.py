@@ -20,6 +20,7 @@ from git import GitCommandError, Repo
 
 from . import common
 from ..branch import Branch
+from .checkout import Checkout
 from .command import Command
 from repo_library import RepoLibrary
 from sc_manifest_parser import ProjectElementInterface, ScManifest
@@ -44,13 +45,16 @@ class Push(Command):
         msg = self._input_commit_msg()
 
         try:
+            if RepoLibrary.get_manifest_branch(self.top_dir) != self.branch.name:
+                Checkout(self.top_dir, self.branch)
             self._switch_manifest_to_branch(self.branch.name)
             manifest = ScManifest.from_repo_root(self.top_dir / '.repo')
             self._push_projects(manifest.projects)
             self._update_manifest_revisions(manifest)
             self._push_manifest(msg)
         finally:
-            self._switch_manifest_to_branch(orig_manifest_branch)
+            if RepoLibrary.get_manifest_branch(self.top_dir) != orig_manifest_branch:
+                Checkout(self.top_dir, orig_manifest_branch)
 
         logger.info(f"Push {self.branch.name} completed!")
 
@@ -60,12 +64,6 @@ class Push(Command):
             if msg:
                 return msg
             logger.warning("Cannot provide an empty commit message!")
-
-    def _switch_manifest_to_branch(self, branch: str):
-        try:
-            Repo(self.top_dir / '.repo' / 'manifests').git.switch(branch)
-        except GitCommandError:
-            logger.error(f"Branch {branch} doesn't exist on manifest!")
 
     def _push_projects(self, projects: list[ProjectElementInterface]):
         for project in projects:
@@ -127,3 +125,4 @@ class Push(Command):
         if manifest_repo.is_dirty():
             manifest_repo.git.commit("-m", msg)
         manifest_repo.git.push("-u", "origin", self.branch.name)
+        manifest_repo.git.push("origin", "--tags")
