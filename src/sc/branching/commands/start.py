@@ -14,6 +14,7 @@
 
 from dataclasses import dataclass
 import logging
+import sys
 
 from git import Repo
 
@@ -46,6 +47,7 @@ class Start(Command):
         local_branches = [head.name for head in manifest_repo.heads]
         if self.branch.name in remote_branches or self.branch.name in local_branches:
             logger.error(f"Branch {self.branch.name} already exists and can't be started.")
+            sys.exit(1)
 
         if '/' in self.base:
             base_branch_type, base_name = self.base.split('/', 1)
@@ -66,4 +68,4 @@ class Start(Command):
 
         manifest_repo.git.checkout('-b', self.branch.name)
         manifest_repo.git.commit("--allow-empty", m=f"Starting {self.branch.name}")
-        manifest_repo.remote("origin").push(self.branch.name)
+        manifest_repo.git.push("-u", "origin", self.branch.name)

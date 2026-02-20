@@ -25,7 +25,7 @@ from .branch import Branch, BranchType
 from .commands.checkout import Checkout
 from .commands.clean import Clean
 from .commands.command import Command
-from .commands.finish import Finish, FinishOperationError
+from .commands.finish import Finish
 from .commands.init import Init
 from .commands.list import List
 from .commands.pull import Pull

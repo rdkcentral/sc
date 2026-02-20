@@ -42,28 +42,19 @@ class Push(Command):
         orig_manifest_branch = RepoLibrary.get_manifest_branch(self.top_dir)
 
         logger.info(f"Pushing branch {self.branch.name}")
-        msg = self._input_commit_msg()
 
         try:
             if RepoLibrary.get_manifest_branch(self.top_dir) != self.branch.name:
                 Checkout(self.top_dir, self.branch)
-            self._switch_manifest_to_branch(self.branch.name)
             manifest = ScManifest.from_repo_root(self.top_dir / '.repo')
             self._push_projects(manifest.projects)
             self._update_manifest_revisions(manifest)
-            self._push_manifest(msg)
+            self._push_manifest()
         finally:
             if RepoLibrary.get_manifest_branch(self.top_dir) != orig_manifest_branch:
                 Checkout(self.top_dir, orig_manifest_branch)
 
         logger.info(f"Push {self.branch.name} completed!")
-
-    def _input_commit_msg(self):
-        while True:
-            msg = input("Input commit message for manifest: ")
-            if msg:
-                return msg
-            logger.warning("Cannot provide an empty commit message!")
 
     def _push_projects(self, projects: list[ProjectElementInterface]):
         for project in projects:
@@ -109,8 +100,12 @@ class Push(Command):
         return branch in [h.name for h in repo.heads]
 
     def _remote_branch_contains(self, repo: Repo, remote: str, branch: str) -> bool:
+        try:
+            remote_commit = repo.refs[f"{remote}/{branch}"]
+        except IndexError:
+            return False
+
         local_commit = repo.heads[branch].commit
-        remote_commit = repo.refs[f"{remote}/{branch}"]
         return repo.is_ancestor(local_commit, remote_commit)
 
     def _update_manifest_revisions(self, manifest: ScManifest):
@@ -119,11 +114,14 @@ class Push(Command):
             proj.revision = proj_repo.head.commit.hexsha
         manifest.write()
 
-    def _push_manifest(self, msg: str):
+    def _push_manifest(self):
         manifest_repo = Repo(self.top_dir / '.repo' / 'manifests')
         manifest_repo.git.add(A=True)
         if manifest_repo.is_dirty():
-            manifest_repo.git.commit("-m", msg)
+            subprocess.run(
+                ["git", "commit"],
+                cwd=self.top_dir / ".repo" / "manifests"
+            )
         subprocess.run(
             ["git", "push", "-u", "origin", self.branch.name],
             cwd=self.top_dir / ".repo" / "manifests"

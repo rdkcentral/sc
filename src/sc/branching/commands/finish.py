@@ -194,6 +194,7 @@ class Finish(Command):
 
         self._delete_tag_if_exists(manifest_repo, self.branch.suffix)
         rev_only_change_branches = self._get_rev_only_change_branches(base)
+        print(rev_only_change_branches)
 
         try:
             GitFlowLibrary.finish(
@@ -207,35 +208,7 @@ class Finish(Command):
             logger.warning(
                 "Manifest finish failed. Attempting to auto resolve conflicts.")
 
-            while True:
-                if manifest_repo.active_branch.name not in rev_only_change_branches:
-                    logger.error(
-                        "Can't automatically resolve conflict! Resolve yourself and "
-                        f"rerun `sc {self.branch.type} finish {self.branch.suffix}`"
-                    )
-                    sys.exit(1)
-
-                rev_only_change_branches.pop(manifest_repo.active_branch.name)
-
-                for path in manifest_repo.index.unmerged_blobs().keys():
-                    manifest_repo.git.checkout("--ours", path)
-                    manifest_repo.git.add(".")
-                manifest_repo.git.commit("-m", "Automatic conflict resolution.")
-
-                try:
-                    GitFlowLibrary.finish(
-                        manifest_dir,
-                        self.branch.type,
-                        name=self.branch.suffix,
-                        keep=True,
-                        tag_message=self._tag_msg
-                    )
-                    # Break on successful finish.
-                    break
-                except subprocess.CalledProcessError:
-                    # Loop to next branch or failure.
-                    continue
-
+            self._auto_resolve_manifest_conflicts(manifest_repo, rev_only_change_branches)
 
     def _rebase_manifest(self, base: str | None):
         """Rewrites the manifest with any newer commits pulled on top.
@@ -321,29 +294,74 @@ class Finish(Command):
             logger.info("Run sc develop push to push to remote!")
         elif self.branch.type == BranchType.HOTFIX:
             base_prefix, base_name = base.split('/', 1)
-            logger.info(f"Run sc {base_prefix} push {base_prefix} to push to remote!")
+            logger.info(f"Run sc {base_prefix} push to push to remote!")
+
+    def _auto_resolve_manifest_conflicts(
+            self,
+            manifest_repo: Repo,
+            rev_only_change_branches: list[str]
+        ):
+        while True:
+            if not self._has_merge_conflicts(manifest_repo):
+                # TODO: Better error message
+                logger.error(
+                    "Can't automatically resolve conflict as some other error "
+                    "has occured!"
+                )
+
+            if manifest_repo.active_branch.name not in rev_only_change_branches:
+                logger.error(
+                    "Can't automatically resolve conflict! Resolve yourself and "
+                    f"rerun `sc {self.branch.type} finish {self.branch.suffix}`"
+                )
+                sys.exit(1)
+
+            print(manifest_repo.active_branch.name)
+            rev_only_change_branches.remove(manifest_repo.active_branch.name)
+
+            for path in manifest_repo.index.unmerged_blobs().keys():
+                print(path)
+                manifest_repo.git.checkout("--ours", path)
+            manifest_repo.git.commit("-am", "Automatic conflict resolution.")
+
+            try:
+                GitFlowLibrary.finish(
+                    manifest_repo.working_dir,
+                    self.branch.type,
+                    name=self.branch.suffix,
+                    keep=True,
+                    tag_message=self._tag_msg
+                )
+                # Break on successful finish.
+                break
+            except subprocess.CalledProcessError:
+                # Loop to next branch or failure.
+                continue
 
     def _get_rev_only_change_branches(self, base: str | None) -> list[str]:
-        rev_only_change_branches = []
         manifest = ScManifest.from_repo_root(self.top_dir / ".repo")
-        if self.branch.type == BranchType.RELEASE:
-            dev_manifest = self._get_branches_manifest("develop")
-            if manifest.equals_ignoring_revisions(dev_manifest):
-                rev_only_change_branches.append("develop")
-            master_manifest = self._get_branches_manifest("master")
-            if manifest.equals_ignoring_revisions("master"):
-                rev_only_change_branches.append("master")
-        elif self.branch.type == BranchType.FEATURE:
-            dev_manifest = self._get_branches_manifest("develop")
-            if manifest.equals_ignoring_revisions(dev_manifest):
-                rev_only_change_branches.append("develop")
-        elif self.branch.type == BranchType.HOTFIX:
-            base_manifest = self._get_branches_manifest(base)
-            if manifest.equals_ignoring_revisions(base_manifest):
-                rev_only_change_branches.append(base)
+        branches: list[str] = []
 
-        return rev_only_change_branches
+        def check(branch_name: str | None):
+            if not branch_name:
+                return
+            other = self._get_branches_manifest(branch_name)
+            if manifest.equals(other, ignore_attrs={"revision"}):
+                branches.append(branch_name)
 
+        match self.branch.type:
+            case BranchType.RELEASE:
+                check("develop")
+                check("master")
+            case BranchType.FEATURE:
+                check("develop")
+            case BranchType.HOTFIX:
+                check(base)
+
+        return branches
+
+    def _has_merge_conflicts(self, repo: Repo):
+        return bool(repo.index.unmerged_blobs())
 
     def _get_branches_manifest(self, branch: str) -> ScManifest:
         """Get the ScManifest of a particular branch."""
