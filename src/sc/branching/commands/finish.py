@@ -176,10 +176,10 @@ class Finish(Command):
 
     def _delete_tag_if_exists(self, repo: Repo, tag: str):
         try:
-            logger.info(f"Attempt deleting tag: {tag}")
             repo.git.tag('-d', tag)
+            logger.info(f"Deleted preexisting tag {tag}")
         except GitCommandError:
-            logger.info(f"Tag doesn't exist.")
+            pass
 
     def _finish_manifest_repo(self, base: str | None):
         """Run gitflow finish on the manifest repository.
@@ -188,13 +188,11 @@ class Finish(Command):
             base (str | None): Set the base branch if provided.
         """
         manifest_dir = self.top_dir / ".repo" / "manifests"
-        manifest_repo = Repo(manifest_dir)
         if base:
             self._set_branch_base(base, manifest_dir)
 
-        self._delete_tag_if_exists(manifest_repo, self.branch.suffix)
+        self._delete_tag_if_exists(Repo(manifest_dir), self.branch.suffix)
         rev_only_change_branches = self._get_rev_only_change_branches(base)
-        print(rev_only_change_branches)
 
         try:
             GitFlowLibrary.finish(
@@ -208,7 +206,7 @@ class Finish(Command):
             logger.warning(
                 "Manifest finish failed. Attempting to auto resolve conflicts.")
 
-            self._auto_resolve_manifest_conflicts(manifest_repo, rev_only_change_branches)
+            self._auto_resolve_manifest_conflicts(rev_only_change_branches)
 
     def _rebase_manifest(self, base: str | None):
         """Rewrites the manifest with any newer commits pulled on top.
@@ -241,7 +239,7 @@ class Finish(Command):
         Repo(self.top_dir / '.repo' / 'manifests').git.switch('master')
         manifest = ScManifest.from_repo_root(self.top_dir / '.repo')
         for proj in manifest.projects:
-            if proj.lock_status == None:
+            if proj.lock_status is None:
                 master = GitFlowLibrary.get_master_branch(self.top_dir / proj.path)
                 self._rebase_proj(self.top_dir / proj.path, master)
 
@@ -252,7 +250,7 @@ class Finish(Command):
         Repo(self.top_dir / '.repo' / 'manifests').git.switch(base)
         manifest = ScManifest.from_repo_root(self.top_dir / '.repo')
         for proj in manifest.projects:
-            if proj.lock_status == None:
+            if proj.lock_status is None:
                 self._rebase_proj(self.top_dir / proj.path, base)
 
         self._update_manifest(manifest)
@@ -272,7 +270,7 @@ class Finish(Command):
 
     def _update_manifest(self, manifest: ScManifest):
         for proj in manifest.projects:
-            if proj.lock_status == None:
+            if proj.lock_status is None:
                 proj_repo = Repo(self.top_dir / proj.path)
                 proj.revision = proj_repo.head.commit.hexsha
 
@@ -293,21 +291,32 @@ class Finish(Command):
         elif self.branch.type == BranchType.FEATURE:
             logger.info("Run sc develop push to push to remote!")
         elif self.branch.type == BranchType.HOTFIX:
-            base_prefix, base_name = base.split('/', 1)
+            if "/" in base:
+                base_prefix, base_name = base.split('/', 1)
+            else:
+                base_prefix = base
             logger.info(f"Run sc {base_prefix} push to push to remote!")
 
     def _auto_resolve_manifest_conflicts(
             self,
-            manifest_repo: Repo,
             rev_only_change_branches: list[str]
         ):
+        """
+        Resolve manifest merge conflict automatically if only project revisions have
+        changed between them.
+
+        Args:
+            rev_only_change_branches (list[str]): A list of target branches that have
+                changes in only the revisions.
+        """
+        manifest_repo = Repo(self.top_dir / ".repo" / 'manifests')
         while True:
             if not self._has_merge_conflicts(manifest_repo):
-                # TODO: Better error message
                 logger.error(
-                    "Can't automatically resolve conflict as some other error "
-                    "has occured!"
+                    "Finish failed but no merge conflicts were detected in the manifest "
+                    "repository. Manual intervention required."
                 )
+                sys.exit(1)
 
             if manifest_repo.active_branch.name not in rev_only_change_branches:
                 logger.error(
@@ -316,11 +325,9 @@ class Finish(Command):
                 )
                 sys.exit(1)
 
-            print(manifest_repo.active_branch.name)
             rev_only_change_branches.remove(manifest_repo.active_branch.name)
 
             for path in manifest_repo.index.unmerged_blobs().keys():
-                print(path)
                 manifest_repo.git.checkout("--ours", path)
             manifest_repo.git.commit("-am", "Automatic conflict resolution.")
 
@@ -367,8 +374,10 @@ class Finish(Command):
         """Get the ScManifest of a particular branch."""
         manifest_repo = Repo(self.top_dir / ".repo" / "manifests")
         start_branch = manifest_repo.active_branch.name
-        manifest_repo.git.switch(branch)
-        manifest = ScManifest.from_repo_root(self.top_dir / ".repo")
-        manifest_repo.git.switch(start_branch)
+        try:
+            manifest_repo.git.switch(branch)
+            manifest = ScManifest.from_repo_root(self.top_dir / ".repo")
+        finally:
+            manifest_repo.git.switch(start_branch)
         return manifest
 
