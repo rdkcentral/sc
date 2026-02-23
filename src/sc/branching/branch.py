@@ -27,6 +27,14 @@ class BranchType(str, Enum):
     def __str__(self):
         return self.value
 
+    @staticmethod
+    def is_valid(value: str) -> bool:
+        try:
+            BranchType(value)
+            return True
+        except ValueError:
+            return False
+
 @dataclass
 class Branch:
     type: BranchType

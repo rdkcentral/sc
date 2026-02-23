@@ -15,11 +15,12 @@
 from dataclasses import dataclass
 import logging
 import subprocess
+import sys
 
-from git import GitCommandError, Repo
+from git import Repo
 
 from . import common
-from ..branch import Branch
+from ..branch import Branch, BranchType
 from .checkout import Checkout
 from .command import Command
 from repo_library import RepoLibrary
@@ -39,22 +40,41 @@ class Push(Command):
     def run_repo_command(self):
         self._error_on_sc_uninitialised()
 
-        orig_manifest_branch = RepoLibrary.get_manifest_branch(self.top_dir)
+        orig_manifest_branch = self._get_original_branch()
 
         logger.info(f"Pushing branch {self.branch.name}")
 
         try:
             if RepoLibrary.get_manifest_branch(self.top_dir) != self.branch.name:
-                Checkout(self.top_dir, self.branch)
+                Checkout(self.top_dir, self.branch).run_repo_command()
             manifest = ScManifest.from_repo_root(self.top_dir / '.repo')
             self._push_projects(manifest.projects)
             self._update_manifest_revisions(manifest)
             self._push_manifest()
         finally:
             if RepoLibrary.get_manifest_branch(self.top_dir) != orig_manifest_branch:
-                Checkout(self.top_dir, orig_manifest_branch)
+                Checkout(self.top_dir, orig_manifest_branch).run_repo_command()
 
         logger.info(f"Push {self.branch.name} completed!")
+
+    def _get_original_branch(self) -> Branch:
+        orig_manifest_branch = RepoLibrary.get_manifest_branch(self.top_dir)
+
+        if orig_manifest_branch == "develop":
+            return Branch(BranchType.DEVELOP)
+        elif orig_manifest_branch == "master":
+            return Branch(BranchType.MASTER)
+
+        if "/" in orig_manifest_branch:
+            prefix, name = orig_manifest_branch.split("/", 1)
+            if BranchType.is_valid(prefix):
+                return Branch(BranchType(prefix), name)
+
+        logger.error(
+            f"Original manifest branch {orig_manifest_branch} is not a "
+            "valid sc branch. Please checkout a valid sc branch to push."
+        )
+        sys.exit(1)
 
     def _push_projects(self, projects: list[ProjectElementInterface]):
         for project in projects:

@@ -66,6 +66,7 @@ class Finish(Command):
             )
         except subprocess.CalledProcessError:
             logger.error("Git flow finish failed!")
+            sys.exit(1)
 
     def run_repo_command(self):
         """Runs gitflow finish in all non locked manifest projects, then
@@ -161,7 +162,7 @@ class Finish(Command):
             except subprocess.CalledProcessError:
                 logger.error(
                     f"Finish failed in {proj_dir}, resolve errors and rerun "
-                    f"`sc {self.branch.type} release {self.branch.suffix}`"
+                    f"`sc {self.branch.type} finish {self.branch.suffix}`"
                 )
                 sys.exit(1)
 
@@ -264,7 +265,7 @@ class Finish(Command):
         except subprocess.CalledProcessError:
             logger.error(
                 f"Rebase failed in {proj_path}, please resolve above error and rerun "
-                f"`sc {self.branch.type} release {self.branch.suffix}`"
+                f"`sc {self.branch.type} finish {self.branch.suffix}`"
             )
             sys.exit(1)
 
