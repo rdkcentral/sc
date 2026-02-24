@@ -106,11 +106,21 @@ class Push(Command):
     def _do_push_project(self, proj: ProjectElementInterface):
         proj_repo = Repo(self.top_dir / proj.path)
         proj_branch_name = common.resolve_project_branch_name(self.branch, proj)
-        subprocess.run(
-            ["git", "push", "-u", proj.remote, proj_branch_name],
-            cwd=proj_repo.working_dir
-        )
-        subprocess.run(["git", "push", proj.remote, "--tags"], cwd=proj_repo.working_dir)
+        try:
+            subprocess.run(
+                ["git", "push", "-u", proj.remote, proj_branch_name],
+                cwd=proj_repo.working_dir,
+                check=True
+            )
+            subprocess.run(
+                ["git", "push", proj.remote, "--tags"],
+                cwd=proj_repo.working_dir,
+                check=True
+            )
+        except subprocess.CalledProcessError:
+            logger.error(
+                f"Failed to push project {proj_repo.working_dir}. Resolve error and "
+                "rerun.")
 
     def _do_push_tag_only_project(self, proj: ProjectElementInterface):
         proj_repo = Repo(self.top_dir / proj.path)
@@ -138,15 +148,29 @@ class Push(Command):
         manifest_repo = Repo(self.top_dir / '.repo' / 'manifests')
         manifest_repo.git.add(A=True)
         if manifest_repo.is_dirty():
+            try:
+                subprocess.run(
+                    ["git", "commit"],
+                    cwd=self.top_dir / ".repo" / "manifests",
+                    check=True
+                )
+            except subprocess.CalledProcessError:
+                logger.error(
+                    "Failed to commit manifest. Please check error and rerun " \
+                    "push."
+                )
+                sys.exit(1)
+        try:
             subprocess.run(
-                ["git", "commit"],
-                cwd=self.top_dir / ".repo" / "manifests"
+                ["git", "push", "-u", "origin", self.branch.name],
+                cwd=self.top_dir / ".repo" / "manifests",
+                check=True
             )
-        subprocess.run(
-            ["git", "push", "-u", "origin", self.branch.name],
-            cwd=self.top_dir / ".repo" / "manifests"
-        )
-        subprocess.run(
-            ["git", "push", "origin", "--tags"],
-            cwd=self.top_dir / ".repo" / "manifests"
-        )
+            subprocess.run(
+                ["git", "push", "origin", "--tags"],
+                cwd=self.top_dir / ".repo" / "manifests",
+                check=True
+            )
+        except subprocess.CalledProcessError:
+            logger.error("Failed to push manifest! Resolve errors and push again.")
+            sys.exit(1)

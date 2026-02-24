@@ -193,7 +193,7 @@ class Finish(Command):
             self._set_branch_base(base, manifest_dir)
 
         self._delete_tag_if_exists(Repo(manifest_dir), self.branch.suffix)
-        rev_only_change_branches = self._get_rev_only_change_branches(base)
+        rev_only_change_branches = self._get_branches_with_revision_only_diff(base)
 
         try:
             GitFlowLibrary.finish(
@@ -346,7 +346,18 @@ class Finish(Command):
                 # Loop to next branch or failure.
                 continue
 
-    def _get_rev_only_change_branches(self, base: str | None) -> list[str]:
+    def _get_branches_with_revision_only_diff(self, base: str | None) -> list[str]:
+        """Get a list of target manifest branches that differ only by revisions.
+            These branches are then able to be auto resolved if there is a conflict.
+
+        Args:
+            base (str | None): The base if finishing a hotfix branch.
+
+        Returns:
+            list[str]: A list of relevant branches which manifest differs from the
+                starting manifest by revision only.
+
+        """
         manifest = ScManifest.from_repo_root(self.top_dir / ".repo")
         branches: list[str] = []
 
