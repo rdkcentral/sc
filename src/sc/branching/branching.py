@@ -32,7 +32,7 @@ from .commands.pull import Pull
 from .commands.push import Push
 from .commands.start import Start
 from .commands.status import Status
-from .commands.tag import TagCreate, TagList, TagPush, TagRm, TagShow
+from .commands.tag import TagCheck, TagCreate, TagList, TagPush, TagRm, TagShow
 from .commands.reset import Reset
 from .exceptions import ScInitError
 
@@ -187,6 +187,14 @@ class SCBranching:
         top_dir, project_type = detect_project(run_dir)
         run_command_by_project_type(
             TagPush(top_dir, tag),
+            project_type
+        )
+
+    @staticmethod
+    def tag_check(tag: str, run_dir: Path = Path.cwd()):
+        top_dir, project_type = detect_project(run_dir)
+        run_command_by_project_type(
+            TagCheck(top_dir, tag),
             project_type
         )
 

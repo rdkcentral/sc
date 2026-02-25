@@ -180,3 +180,31 @@ class TagPush(Command):
             cwd=repo_path,
             check=False
         )
+
+@dataclass
+class TagCheck(Command):
+    """Check all repos for a specific tag."""
+    tag: str
+
+    def run_git_command(self):
+        self._check_tag(self.top_dir)
+
+    def run_repo_command(self):
+        manifest = ScManifest.from_repo_root(self.top_dir / '.repo')
+        for proj in manifest.projects:
+            logger.info(f"Operating on: {self.top_dir / proj.path}")
+            if proj.lock_status == "READ_ONLY":
+                logger.info("READ_ONLY, skipping checking tags.")
+                continue
+
+            self._check_tag(self.top_dir / proj.path)
+
+        logger.info(f"Operating on manifest: {self.top_dir / '.repo' / 'manifests'}")
+        self._check_tag(self.top_dir / '.repo' / 'manifests')
+
+    def _check_tag(self, repo_path: Path):
+        subprocess.run(
+            ["git", "show-ref", "--tags", "--verify", f"refs/tags/{self.tag}"],
+            cwd=repo_path,
+            check=False
+        )

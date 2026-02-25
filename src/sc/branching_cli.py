@@ -305,29 +305,35 @@ def list():
     SCBranching.tag_list()
 
 @tag.command()
-@click.argument('tag')
+@click.argument("tag")
 def show(tag):
     """Show information about a tag in all repos."""
     SCBranching.tag_show(tag)
 
 @tag.command()
-@click.argument('tag')
+@click.argument("tag")
 def create(tag):
     """Create a tag in all non READ_ONLY repos."""
     SCBranching.tag_create(tag)
 
 @tag.command()
-@click.argument('tag')
+@click.argument("tag")
 @click.option('-r', '--remote', is_flag=True, help="Remove in remotes as well as local.")
 def rm(tag, remote):
     """Remove a tag in all non READ_ONLY repos."""
     SCBranching.tag_rm(tag, remote)
 
 @tag.command()
-@click.argument('tag')
+@click.argument("tag")
 def push(tag):
     """Push given tag in all non READ_ONLY repos."""
     SCBranching.tag_push(tag)
+
+@tag.command()
+@click.argument("tag")
+def check(tag):
+    """Check if a tag exists on all non READ_ONLY repos."""
+    SCBranching.tag_check(tag)
 
 if __name__ == '__main__':
     cli()
