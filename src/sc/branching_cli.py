@@ -299,5 +299,33 @@ def checkout(name, force, verify):
     """Checkout a support branch."""
     SCBranching.checkout(BranchType.SUPPORT, name, force, verify)
 
+@cli.group()
+def show():
+    """sc show commands."""
+    pass
+
+@show.command()
+def branch():
+    """Show the current status of branching."""
+    pass
+
+@show.command()
+@click.argument("tag")
+def tag(tag):
+    """Show information about a tag."""
+    pass
+
+@show.command()
+@click.argument("group")
+def group(group):
+    """Show information about a group."""
+    pass
+
+@show.command()
+def repo_flow_config():
+    """Show git flow config for all projects."""
+    pass
+
+
 if __name__ == '__main__':
     cli()
