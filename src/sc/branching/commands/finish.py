@@ -142,15 +142,23 @@ class Finish(Command):
         """
         manifest = ScManifest.from_repo_root(self.top_dir / '.repo')
         for proj in manifest.projects:
-            if proj.lock_status is not None:
-                continue
             proj_dir = self.top_dir / proj.path
             logger.info(f"Operating on {proj_dir}")
             proj_repo = Repo(proj_dir)
+
+            if proj.lock_status == "READ_ONLY":
+                continue
+
+            self._delete_tag_if_exists(proj_repo, self.branch.suffix)
+            if proj.lock_status == "TAG_ONLY":
+                logger.info(f"Project {proj_dir} is TAG_ONLY")
+                if self.branch.type in {BranchType.HOTFIX, BranchType.RELEASE}:
+                    proj_repo.git.tag(self.branch.suffix)
+                continue
+
             if base:
                 self._set_branch_base(base, proj_dir, proj.remote)
 
-            self._delete_tag_if_exists(proj_repo, self.branch.suffix)
             try:
                 GitFlowLibrary.finish(
                     proj_dir,
