@@ -28,6 +28,7 @@ from .commands.init import Init
 from .commands.list import List
 from .commands.pull import Pull
 from .commands.push import Push
+from .commands.show import ShowBranch, ShowGroup, ShowRepoFlowConfig
 from .commands.start import Start
 from .commands.status import Status
 from .commands.reset import Reset
@@ -147,6 +148,30 @@ class SCBranching:
         top_dir, project_type = detect_project(run_dir)
         run_command_by_project_type(
             List(top_dir, branch_type),
+            project_type
+        )
+
+    @staticmethod
+    def show_branch(run_dir: Path = Path.cwd()):
+        top_dir, project_type = detect_project(run_dir)
+        run_command_by_project_type(
+            ShowBranch(top_dir),
+            project_type
+        )
+
+    @staticmethod
+    def show_group(group: str | None, run_dir: Path = Path.cwd()):
+        top_dir, project_type = detect_project(run_dir)
+        run_command_by_project_type(
+            ShowGroup(top_dir, group),
+            project_type
+        )
+
+    @staticmethod
+    def show_repo_flow_config(run_dir: Path = Path.cwd()):
+        top_dir, project_type = detect_project(run_dir)
+        run_command_by_project_type(
+            ShowRepoFlowConfig(top_dir),
             project_type
         )
 

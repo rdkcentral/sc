@@ -307,7 +307,7 @@ def show():
 @show.command()
 def branch():
     """Show the current status of branching."""
-    pass
+    SCBranching.show_branch()
 
 @show.command()
 @click.argument("tag")
@@ -316,15 +316,15 @@ def tag(tag):
     pass
 
 @show.command()
-@click.argument("group")
+@click.argument("group", required=False)
 def group(group):
     """Show information about a group."""
-    pass
+    SCBranching.show_group(group)
 
 @show.command()
 def repo_flow_config():
     """Show git flow config for all projects."""
-    pass
+    SCBranching.show_repo_flow_config()
 
 
 if __name__ == '__main__':
