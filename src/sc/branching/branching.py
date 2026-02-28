@@ -18,6 +18,8 @@ from pathlib import Path
 import sys
 
 from git import Repo
+from git_flow_library import GitFlowLibrary
+from repo_library import RepoLibrary
 
 from .branch import Branch, BranchType
 from .commands.checkout import Checkout
@@ -30,10 +32,9 @@ from .commands.pull import Pull
 from .commands.push import Push
 from .commands.start import Start
 from .commands.status import Status
+from .commands.tag import TagCheck, TagCreate, TagList, TagPush, TagRm, TagShow
 from .commands.reset import Reset
 from .exceptions import ScInitError
-from git_flow_library import GitFlowLibrary
-from repo_library import RepoLibrary
 
 logger = logging.getLogger(__name__)
 
@@ -81,7 +82,7 @@ class SCBranching:
         )
 
     @staticmethod
-    def sc_status(
+    def status(
         run_dir: Path = Path.cwd(),
     ):
         top_dir, project_type = detect_project(run_dir)
@@ -91,7 +92,7 @@ class SCBranching:
         )
 
     @staticmethod
-    def sc_clean(
+    def clean(
         run_dir: Path = Path.cwd(),
     ):
         top_dir, project_type = detect_project(run_dir)
@@ -101,7 +102,7 @@ class SCBranching:
         )
 
     @staticmethod
-    def sc_reset(
+    def reset(
         run_dir: Path = Path.cwd(),
     ):
         top_dir, project_type = detect_project(run_dir)
@@ -109,7 +110,6 @@ class SCBranching:
             Reset(top_dir),
             project_type
         )
-
 
     @staticmethod
     def push(
@@ -149,6 +149,55 @@ class SCBranching:
             List(top_dir, branch_type),
             project_type
         )
+
+    @staticmethod
+    def tag_list(run_dir: Path = Path.cwd()):
+        top_dir, project_type = detect_project(run_dir)
+        run_command_by_project_type(
+            TagList(top_dir),
+            project_type
+        )
+
+    @staticmethod
+    def tag_show(tag: str, run_dir: Path = Path.cwd()):
+        top_dir, project_type = detect_project(run_dir)
+        run_command_by_project_type(
+            TagShow(top_dir, tag),
+            project_type
+        )
+
+    @staticmethod
+    def tag_create(tag: str, run_dir: Path = Path.cwd()):
+        top_dir, project_type = detect_project(run_dir)
+        run_command_by_project_type(
+            TagCreate(top_dir, tag),
+            project_type
+        )
+
+    @staticmethod
+    def tag_rm(tag: str, remote: bool, run_dir: Path = Path.cwd()):
+        top_dir, project_type = detect_project(run_dir)
+        run_command_by_project_type(
+            TagRm(top_dir, tag, remote),
+            project_type
+        )
+
+    @staticmethod
+    def tag_push(tag: str, run_dir: Path = Path.cwd()):
+        top_dir, project_type = detect_project(run_dir)
+        run_command_by_project_type(
+            TagPush(top_dir, tag),
+            project_type
+        )
+
+    @staticmethod
+    def tag_check(tag: str, run_dir: Path = Path.cwd()):
+        top_dir, project_type = detect_project(run_dir)
+        run_command_by_project_type(
+            TagCheck(top_dir, tag),
+            project_type
+        )
+
 
 def detect_project(run_dir: Path) -> tuple[Path | ProjectType]:
     if root := RepoLibrary.get_repo_root_dir(run_dir):

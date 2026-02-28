@@ -33,21 +33,17 @@ def init():
 @cli.command()
 def clean():
     """Clean all modules. (git clean -fdx)."""
-    SCBranching.sc_clean()
+    SCBranching.clean()
 
 @cli.command()
 def status():
     """Show the working tree status."""
-    SCBranching.sc_status()
-
-
+    SCBranching.status()
 
 @cli.command()
 def reset():
     """Clean and Reset all modules to remote manifest. (git reset --hard REMOTE)"""
-    SCBranching.sc_reset()
-
-
+    SCBranching.reset()
 
 @cli.command()
 def build():
@@ -298,6 +294,46 @@ def list():
 def checkout(name, force, verify):
     """Checkout a support branch."""
     SCBranching.checkout(BranchType.SUPPORT, name, force, verify)
+
+@cli.group()
+def tag():
+    pass
+
+@tag.command()
+def list():
+    """List tags in manifest or git repo."""
+    SCBranching.tag_list()
+
+@tag.command()
+@click.argument("tag")
+def show(tag):
+    """Show information about a tag in all repos."""
+    SCBranching.tag_show(tag)
+
+@tag.command()
+@click.argument("tag")
+def create(tag):
+    """Create a tag in all non READ_ONLY repos."""
+    SCBranching.tag_create(tag)
+
+@tag.command()
+@click.argument("tag")
+@click.option('-r', '--remote', is_flag=True, help="Remove in remotes as well as local.")
+def rm(tag, remote):
+    """Remove a tag in all non READ_ONLY repos."""
+    SCBranching.tag_rm(tag, remote)
+
+@tag.command()
+@click.argument("tag")
+def push(tag):
+    """Push given tag in all non READ_ONLY repos."""
+    SCBranching.tag_push(tag)
+
+@tag.command()
+@click.argument("tag")
+def check(tag):
+    """Check if a tag exists on all non READ_ONLY repos."""
+    SCBranching.tag_check(tag)
 
 if __name__ == '__main__':
     cli()
