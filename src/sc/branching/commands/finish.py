@@ -69,15 +69,41 @@ class Finish(Command):
             sys.exit(1)
 
     def run_repo_command(self):
-        """Runs gitflow finish in all non locked manifest projects, then
-        runs gitflow finish in the manifest repository and finally updates
-        the manifest with the new commit shas.
+        """
+        Finish all projects defined in the manifest using git-flow semantics.
+
+        Process:
+        1. For each project listed in the manifest, run `git flow finish`.
+        - If merge conflicts occur, they must be resolved manually before continuing.
+
+        2. After all projects are finished, run `git flow finish` on the manifest repository.
+        - If a merge conflict occurs in the manifest and the only differences are
+            project revision changes, the conflict is auto-resolved.
+        - This is safe because any functional conflicts between those revisions
+            were already resolved when finishing the individual projects.
+
+        3. Once the manifest is merged, pull all projects to update them to the
+        latest revisions referenced by the manifest.
+
+        4. Create an additional commit on the target branch of the manifest to
+        update all project revision references to their latest state.
+
+        Result:
+        All projects and the manifest are merged consistently, and the manifest
+        reflects the final resolved revisions of every project.
         """
         self._error_on_sc_uninitialised()
 
         if not self._branch_exists_locally_in_manifest(self.branch.name):
             logger.error(
                 f"Branch {self.branch.name} doesn't exist so can't be finished!")
+            sys.exit(1)
+
+        if self.branch.type not in {BranchType.FEATURE, BranchType.HOTFIX, BranchType.RELEASE}:
+            logger.error(
+                f"Can't finish branch of type {self.branch.type}! "
+                "Can only finish release, feature or hotfix branches."
+            )
             sys.exit(1)
 
         if self.branch.type == BranchType.HOTFIX:
