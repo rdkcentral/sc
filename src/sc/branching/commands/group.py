@@ -11,13 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Module for `sc show` functionality."""
+"""Module for `sc group` functionality."""
 
 from dataclasses import dataclass
 import logging
-from pathlib import Path
 import subprocess
-import sys
 
 from git import Repo
 from sc_manifest_parser import ProjectElementInterface, ScManifest

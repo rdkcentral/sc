@@ -295,7 +295,7 @@ def checkout(name, force, verify):
     """Checkout a support branch."""
     SCBranching.checkout(BranchType.SUPPORT, name, force, verify)
 
-@cli.group
+@cli.group()
 def tag():
     pass
 
@@ -349,6 +349,10 @@ def branch():
 def repo_flow_config():
     """Show git flow config for all projects."""
     SCBranching.show_repo_flow_config()
+
+@show.command()
+def log():
+    SCBranching.show_log()
 
 @show.command()
 @click.argument("tag")
