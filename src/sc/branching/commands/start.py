@@ -14,6 +14,7 @@
 
 from dataclasses import dataclass
 import logging
+import sys
 
 from git import Repo
 
@@ -42,10 +43,7 @@ class Start(Command):
         manifest_dir = self.top_dir / '.repo' / 'manifests'
 
         manifest_repo = Repo(manifest_dir)
-        remote_branches = [ref.name for ref in manifest_repo.remotes['origin'].refs]
-        local_branches = [head.name for head in manifest_repo.heads]
-        if self.branch.name in remote_branches or self.branch.name in local_branches:
-            logger.error(f"Branch {self.branch.name} already exists and can't be started.")
+        self._error_if_branch_exists(manifest_repo)
 
         if '/' in self.base:
             base_branch_type, base_name = self.base.split('/', 1)
@@ -66,4 +64,19 @@ class Start(Command):
 
         manifest_repo.git.checkout('-b', self.branch.name)
         manifest_repo.git.commit("--allow-empty", m=f"Starting {self.branch.name}")
-        manifest_repo.remote("origin").push(self.branch.name)
+        manifest_repo.git.push("-u", "origin", self.branch.name)
+
+    def _error_if_branch_exists(self, manifest_repo: Repo):
+        remote_branches = [ref.name for ref in manifest_repo.remotes['origin'].refs]
+        local_branches = [head.name for head in manifest_repo.heads]
+        if f"origin/{self.branch.name}" in remote_branches:
+            logger.error(
+                f"Branch {self.branch.name} exists on the remote manifest repo "
+                "so cannot be started."
+            )
+            sys.exit(1)
+        elif self.branch.name in local_branches:
+            logger.error(
+                f"Branch {self.branch.name} already exists locally in the manifest "
+                "repo so cannot be started.")
+            sys.exit(1)

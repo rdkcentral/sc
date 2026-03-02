@@ -15,11 +15,13 @@
 from dataclasses import dataclass
 import logging
 import subprocess
+import sys
 
-from git import GitCommandError, Repo
+from git import Repo
 
 from . import common
-from ..branch import Branch
+from ..branch import Branch, BranchType
+from .checkout import Checkout
 from .command import Command
 from repo_library import RepoLibrary
 from sc_manifest_parser import ProjectElementInterface, ScManifest
@@ -38,34 +40,41 @@ class Push(Command):
     def run_repo_command(self):
         self._error_on_sc_uninitialised()
 
-        orig_manifest_branch = RepoLibrary.get_manifest_branch(self.top_dir)
+        orig_manifest_branch = self._get_original_branch()
 
         logger.info(f"Pushing branch {self.branch.name}")
-        msg = self._input_commit_msg()
 
         try:
-            self._switch_manifest_to_branch(self.branch.name)
+            if RepoLibrary.get_manifest_branch(self.top_dir) != self.branch.name:
+                Checkout(self.top_dir, self.branch).run_repo_command()
             manifest = ScManifest.from_repo_root(self.top_dir / '.repo')
             self._push_projects(manifest.projects)
             self._update_manifest_revisions(manifest)
-            self._push_manifest(msg)
+            self._push_manifest()
         finally:
-            self._switch_manifest_to_branch(orig_manifest_branch)
+            if RepoLibrary.get_manifest_branch(self.top_dir) != orig_manifest_branch:
+                Checkout(self.top_dir, orig_manifest_branch).run_repo_command()
 
         logger.info(f"Push {self.branch.name} completed!")
 
-    def _input_commit_msg(self):
-        while True:
-            msg = input("Input commit message for manifest: ")
-            if msg:
-                return msg
-            logger.warning("Cannot provide an empty commit message!")
+    def _get_original_branch(self) -> Branch:
+        orig_manifest_branch = RepoLibrary.get_manifest_branch(self.top_dir)
 
-    def _switch_manifest_to_branch(self, branch: str):
-        try:
-            Repo(self.top_dir / '.repo' / 'manifests').git.switch(branch)
-        except GitCommandError:
-            logger.error(f"Branch {branch} doesn't exist on manifest!")
+        if orig_manifest_branch == "develop":
+            return Branch(BranchType.DEVELOP)
+        elif orig_manifest_branch == "master":
+            return Branch(BranchType.MASTER)
+
+        if "/" in orig_manifest_branch:
+            prefix, name = orig_manifest_branch.split("/", 1)
+            if BranchType.is_valid(prefix):
+                return Branch(BranchType(prefix), name)
+
+        logger.error(
+            f"Original manifest branch {orig_manifest_branch} is not a "
+            "valid sc branch. Please checkout a valid sc branch to push."
+        )
+        sys.exit(1)
 
     def _push_projects(self, projects: list[ProjectElementInterface]):
         for project in projects:
@@ -97,11 +106,23 @@ class Push(Command):
     def _do_push_project(self, proj: ProjectElementInterface):
         proj_repo = Repo(self.top_dir / proj.path)
         proj_branch_name = common.resolve_project_branch_name(self.branch, proj)
-        subprocess.run(
-            ["git", "push", "-u", proj.remote, proj_branch_name],
-            cwd=proj_repo.working_dir
-        )
-        subprocess.run(["git", "push", proj.remote, "--tags"], cwd=proj_repo.working_dir)
+        try:
+            subprocess.run(
+                ["git", "push", "-u", proj.remote, proj_branch_name],
+                cwd=proj_repo.working_dir,
+                check=True
+            )
+            subprocess.run(
+                ["git", "push", proj.remote, "--tags"],
+                cwd=proj_repo.working_dir,
+                check=True
+            )
+        except subprocess.CalledProcessError:
+            logger.error(
+                f"Failed to push project {proj_repo.working_dir}. Resolve error and "
+                "rerun."
+            )
+            sys.exit(1)
 
     def _do_push_tag_only_project(self, proj: ProjectElementInterface):
         proj_repo = Repo(self.top_dir / proj.path)
@@ -111,8 +132,12 @@ class Push(Command):
         return branch in [h.name for h in repo.heads]
 
     def _remote_branch_contains(self, repo: Repo, remote: str, branch: str) -> bool:
+        try:
+            remote_commit = repo.refs[f"{remote}/{branch}"]
+        except IndexError:
+            return False
+
         local_commit = repo.heads[branch].commit
-        remote_commit = repo.refs[f"{remote}/{branch}"]
         return repo.is_ancestor(local_commit, remote_commit)
 
     def _update_manifest_revisions(self, manifest: ScManifest):
@@ -121,9 +146,33 @@ class Push(Command):
             proj.revision = proj_repo.head.commit.hexsha
         manifest.write()
 
-    def _push_manifest(self, msg: str):
+    def _push_manifest(self):
         manifest_repo = Repo(self.top_dir / '.repo' / 'manifests')
         manifest_repo.git.add(A=True)
         if manifest_repo.is_dirty():
-            manifest_repo.git.commit("-m", msg)
-        manifest_repo.git.push("-u", "origin", self.branch.name)
+            try:
+                subprocess.run(
+                    ["git", "commit"],
+                    cwd=self.top_dir / ".repo" / "manifests",
+                    check=True
+                )
+            except subprocess.CalledProcessError:
+                logger.error(
+                    "Failed to commit manifest. Please check error and rerun "
+                    "push."
+                )
+                sys.exit(1)
+        try:
+            subprocess.run(
+                ["git", "push", "-u", "origin", self.branch.name],
+                cwd=self.top_dir / ".repo" / "manifests",
+                check=True
+            )
+            subprocess.run(
+                ["git", "push", "origin", "--tags"],
+                cwd=self.top_dir / ".repo" / "manifests",
+                check=True
+            )
+        except subprocess.CalledProcessError:
+            logger.error("Failed to push manifest! Resolve errors and push again.")
+            sys.exit(1)
