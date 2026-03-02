@@ -120,7 +120,9 @@ class Push(Command):
         except subprocess.CalledProcessError:
             logger.error(
                 f"Failed to push project {proj_repo.working_dir}. Resolve error and "
-                "rerun.")
+                "rerun."
+            )
+            sys.exit(1)
 
     def _do_push_tag_only_project(self, proj: ProjectElementInterface):
         proj_repo = Repo(self.top_dir / proj.path)
@@ -156,7 +158,7 @@ class Push(Command):
                 )
             except subprocess.CalledProcessError:
                 logger.error(
-                    "Failed to commit manifest. Please check error and rerun " \
+                    "Failed to commit manifest. Please check error and rerun "
                     "push."
                 )
                 sys.exit(1)

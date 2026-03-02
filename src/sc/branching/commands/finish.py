@@ -99,13 +99,6 @@ class Finish(Command):
                 f"Branch {self.branch.name} doesn't exist so can't be finished!")
             sys.exit(1)
 
-        if self.branch.type not in {BranchType.FEATURE, BranchType.HOTFIX, BranchType.RELEASE}:
-            logger.error(
-                f"Can't finish branch of type {self.branch.type}! "
-                "Can only finish release, feature or hotfix branches."
-            )
-            sys.exit(1)
-
         if self.branch.type == BranchType.HOTFIX:
             base = self._resolve_base(self.top_dir / '.repo' / 'manifests')
             if not base:
@@ -118,7 +111,7 @@ class Finish(Command):
             base = None
 
         if RepoLibrary.get_manifest_branch(self.top_dir) != self.branch.name:
-            Checkout(self.top_dir, self.branch)
+            Checkout(self.top_dir, self.branch).run_repo_command()
 
         if self.branch.type in {BranchType.HOTFIX, BranchType.RELEASE}:
             self._tag_msg = self._prompt_tag_msg()
@@ -335,7 +328,7 @@ class Finish(Command):
     def _auto_resolve_manifest_conflicts(
             self,
             rev_only_change_branches: list[str]
-        ):
+    ):
         """
         Resolve manifest merge conflict automatically if only project revisions have
         changed between them.
