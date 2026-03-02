@@ -26,11 +26,12 @@ from .commands.checkout import Checkout
 from .commands.clean import Clean
 from .commands.command import Command
 from .commands.finish import Finish, FinishOperationError
+from .commands.group import GroupShow
 from .commands.init import Init
 from .commands.list import List
 from .commands.pull import Pull
 from .commands.push import Push
-from .commands.show import ShowBranch, ShowGroup, ShowRepoFlowConfig
+from .commands.show import ShowBranch, ShowRepoFlowConfig
 from .commands.start import Start
 from .commands.status import Status
 from .commands.tag import TagCheck, TagCreate, TagList, TagPush, TagRm, TagShow
@@ -208,18 +209,18 @@ class SCBranching:
         )
 
     @staticmethod
-    def show_group(group: str | None, run_dir: Path = Path.cwd()):
-        top_dir, project_type = detect_project(run_dir)
-        run_command_by_project_type(
-            ShowGroup(top_dir, group),
-            project_type
-        )
-
-    @staticmethod
     def show_repo_flow_config(run_dir: Path = Path.cwd()):
         top_dir, project_type = detect_project(run_dir)
         run_command_by_project_type(
             ShowRepoFlowConfig(top_dir),
+            project_type
+        )
+
+    @staticmethod
+    def group_show(group: str | None, run_dir: Path = Path.cwd()):
+        top_dir, project_type = detect_project(run_dir)
+        run_command_by_project_type(
+            GroupShow(top_dir, group),
             project_type
         )
 

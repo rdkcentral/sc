@@ -39,59 +39,6 @@ class ShowBranch(Command):
             logger.info("-" * 100)
 
 @dataclass
-class ShowTag(Command):
-    def run_git_command(self):
-        pass
-
-    def run_repo_command(self):
-        return super().run_repo_command()
-
-@dataclass
-class ShowGroup(Command):
-    """List groups or show information about a particular group."""
-    group: str | None
-
-    def run_git_command(self):
-        logger.error("`sc show group` must be ran inside a repo project!")
-
-    def run_repo_command(self):
-        if self.group:
-            self._show_group_info()
-        else:
-            self._list_groups()
-
-    def _show_group_info(self):
-        manifest = ScManifest.from_repo_root(self.top_dir / '.repo')
-        group_shown = False
-        for proj in manifest.projects:
-            project_groups = proj.groups
-            if not project_groups or self.group not in project_groups.split(","):
-                continue
-
-            group_shown = True
-            _show_project(self.top_dir, proj)
-            print()
-            logger.info("-" * 100)
-
-        if not group_shown:
-            logger.warning(f"No project matching group `{self.group}` found!")
-
-    def _list_groups(self):
-        manifest = ScManifest.from_repo_root(self.top_dir / '.repo')
-        groups = []
-        for proj in manifest.projects:
-            project_groups = proj.groups
-            if project_groups:
-                groups.extend(project_groups.split(","))
-        groups = self._remove_duplicates(groups)
-        for group in groups:
-            logger.info(f"[{group}]")
-
-    def _remove_duplicates(self, target_list: list) -> list:
-        return(list(dict.fromkeys(target_list)))
-
-
-@dataclass
 class ShowRepoFlowConfig(Command):
     """Show git flow config for all projects."""
     def run_git_command(self):
@@ -121,7 +68,10 @@ def _show_project(top_dir: Path, proj: ProjectElementInterface):
     """Show information pertaining to a particular project."""
     proj_dir = top_dir / proj.path
     logger.info(f"Project: {proj_dir}")
-    logger.info(f"Lock Status: [{proj.lock_status or 'NORMAL'}]")
+    logger.info(
+        f"Lock Status: [bold yellow]\[{proj.lock_status or 'NORMAL'}][/]",
+        extra={"markup": True}
+    )
     _show_branch(proj_dir)
 
 def _show_branch(repo_dir: Path):
