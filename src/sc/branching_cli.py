@@ -335,5 +335,56 @@ def check(tag):
     """Check if a tag exists on all non READ_ONLY repos."""
     SCBranching.tag_check(tag)
 
+@cli.group()
+def group():
+    """Commands on a group of projects in the manifest."""
+
+@group.command()
+@click.argument("group")
+@click.argument("branch")
+def checkout(group, branch):
+    """Checkout all projects in a group to a branch."""
+    SCBranching.group_checkout(group, branch)
+
+@group.command()
+@click.argument("group")
+@click.argument("command", nargs=-1)
+def cmd(group, command):
+    """Run a command in all projects in a group."""
+    SCBranching.group_cmd(group, command)
+
+@group.command()
+@click.argument("group")
+def fetch(group):
+    """Git fetch projects in a group."""
+    SCBranching.group_fetch(group)
+
+@group.command()
+@click.argument("group")
+def pull(group):
+    """Pull projects in a group."""
+    SCBranching.group_pull(group)
+
+@group.command()
+@click.argument("group")
+def push(group):
+    """Push projects in a group."""
+    SCBranching.group_push(group)
+
+@group.command()
+@click.argument("group", required=False)
+def show(group):
+    """List groups or show information about a group."""
+    SCBranching.group_show(group)
+
+@group.command()
+@click.argument("group")
+@click.argument("tag")
+@click.option("-m", "--message", help="Add a message to the tags.")
+@click.option("-p", "--push", is_flag=True, help="Push the tags to remote.")
+def tag(group, tag, message, push):
+    """Tag all projects in a group."""
+    SCBranching.group_tag(group, tag, message, push)
+
 if __name__ == '__main__':
     cli()
