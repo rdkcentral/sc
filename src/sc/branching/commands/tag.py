@@ -67,7 +67,7 @@ class TagList(Command):
         self._list_tags(self.top_dir)
 
     def run_repo_command(self):
-        logger.info(f"Tags in mainfest: {self.top_dir / '.repo' / 'manifests'}")
+        logger.info(f"Tags in manifest: {self.top_dir / '.repo' / 'manifests'}")
         self._list_tags(self.top_dir / '.repo' / 'manifests')
 
     def _list_tags(self, repo_path: Path):

@@ -32,6 +32,7 @@ from .commands.init import Init
 from .commands.list import List
 from .commands.pull import Pull
 from .commands.push import Push
+from .commands.show import ShowBranch, ShowLog, ShowRepoFlowConfig
 from .commands.start import Start
 from .commands.status import Status
 from .commands.tag import TagCheck, TagCreate, TagList, TagPush, TagRm, TagShow
@@ -194,6 +195,30 @@ class SCBranching:
         top_dir, project_type = detect_project(run_dir)
         run_command_by_project_type(
             TagCheck(top_dir, tag),
+            project_type
+        )
+
+    @staticmethod
+    def show_branch(run_dir: Path = Path.cwd()):
+        top_dir, project_type = detect_project(run_dir)
+        run_command_by_project_type(
+            ShowBranch(top_dir),
+            project_type
+        )
+
+    @staticmethod
+    def show_log(run_dir: Path = Path.cwd()):
+        top_dir, project_type = detect_project(run_dir)
+        run_command_by_project_type(
+            ShowLog(top_dir),
+            project_type
+        )
+
+    @staticmethod
+    def show_repo_flow_config(run_dir: Path = Path.cwd()):
+        top_dir, project_type = detect_project(run_dir)
+        run_command_by_project_type(
+            ShowRepoFlowConfig(top_dir),
             project_type
         )
 

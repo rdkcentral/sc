@@ -386,5 +386,41 @@ def tag(group, tag, message, push):
     """Tag all projects in a group."""
     SCBranching.group_tag(group, tag, message, push)
 
+@cli.group()
+def show():
+    """sc show commands."""
+    pass
+
+@show.command()
+def branch():
+    """Show the current status of branching."""
+    SCBranching.show_branch()
+
+@show.command()
+def repo_flow_config():
+    """Show git flow config for all projects."""
+    SCBranching.show_repo_flow_config()
+
+@show.command()
+def log():
+    SCBranching.show_log()
+
+@show.command()
+@click.argument("tag")
+def tag(tag):
+    """Show information about a tag."""
+    SCBranching.tag_show(tag)
+
+@show.command()
+def tags():
+    """List tags on the manifest."""
+    SCBranching.tag_list()
+
+@show.command()
+@click.argument("group", required=False)
+def group(group):
+    """List groups or show information about a group."""
+    SCBranching.group_show(group)
+
 if __name__ == '__main__':
     cli()

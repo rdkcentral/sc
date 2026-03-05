@@ -15,7 +15,6 @@
 
 from dataclasses import dataclass
 import logging
-from pathlib import Path
 import subprocess
 import sys
 
@@ -60,12 +59,8 @@ class GroupShow(Command):
             project_groups = proj.groups
             if project_groups:
                 groups.extend(project_groups.split(","))
-        groups = self._remove_duplicates(groups)
-        for group in groups:
+        for group in sorted(set(groups)):
             logger.info(f"[{group}]")
-
-    def _remove_duplicates(self, target_list: list) -> list:
-        return(list(dict.fromkeys(target_list)))
 
     def _show_project(self, proj: ProjectElementInterface):
         """Show information pertaining to a particular project."""
