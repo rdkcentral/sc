@@ -187,7 +187,7 @@ class GroupCmd(Command):
             group_found = True
             subprocess.run(
                 self.command,
-                cwd=proj.dir,
+                cwd=proj.path,
                 check=False
             )
 
