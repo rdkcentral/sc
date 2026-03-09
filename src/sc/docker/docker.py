@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from dataclasses import dataclass
 import getpass
 import grp
 from netrc import netrc, NetrcParseError
@@ -40,11 +41,19 @@ BANNED_MOUNT_DIRS = [
     "/var/run", "/var/lock", "/media", "/usr", "/mnt", "/snap"
 ]
 
+@dataclass
+class ImageRef:
+    url: str
+    name: str
+
+    @property
+    def full(self) -> str:
+        return self.url + "/" + self.name
+
 class SCDocker:
     def __init__(self):
         self.docker_client = docker.from_env()
         self.supported_registry_types = RegistryAPIFactory.get_supported_registry_types()
-
 
         self.docker_config_manager = ConfigManager('docker')
         self.docker_config = self.docker_config_manager.get_config()
@@ -116,7 +125,7 @@ class SCDocker:
 
     def run(
             self,
-            image_ref: str,
+            image_entered: str,
             command: tuple[str, ...],
             local: bool,
             tag: str,
@@ -126,7 +135,7 @@ class SCDocker:
         """Start a docker container and run a command in it.
 
         Args:
-            image_ref (str): Reference to the image name.
+            image_entered (str): Reference to the image name.
             command (tuple[str, ...]): The command to run.
             local (bool): True to use only local images, False to pull images from
                 registries.
@@ -134,27 +143,26 @@ class SCDocker:
             x11 (bool): Whether to load x11.
             volumes (tuple[str, ...]): Additional volume mounts.
         """
-        image = self._resolve_image_from_ref(image_ref, local)
-        registry_url, image_name = self._parse_image_reference(image)
-        tags = self._fetch_tags(image, local, registry_url)
+        image_ref = self._resolve_image_entered(image_entered, local)
+        tags = self._fetch_tags(image_ref, local)
 
         if tag not in tags:
-            self._handle_invalid_tag(image, tag, tags)
+            self._handle_invalid_tag(image_ref, tag, tags)
 
         if not local:
-            self._login_to_registry(registry_url)
-            self._pull_image(image, tag)
+            self._login_to_registry(image_ref.url)
+            self._pull_image(image_ref, tag)
 
-        container_name = self._generate_container_name(image_name)
+        container_name = self._generate_container_name(image_ref)
 
         try:
             docker_command = self._generate_docker_run_command(
-                image, tag, container_name, image_name, x11, volumes, command)
+                image_ref, tag, container_name, x11, volumes, command)
         except ScDockerException as e:
             click.secho(f"ERROR: {e}", fg="red")
             sys.exit(1)
 
-        click.secho(f"Running docker [{image}]", fg='green')
+        click.secho(f"Running docker [{image_ref.full}]", fg='green')
         self._execute_docker_run(docker_command)
 
     # ──────────────────────── REGISTRY & AUTH HELPERS ────────────────────────
@@ -311,7 +319,7 @@ class SCDocker:
 
     # ──────────────────────── IMAGE & CONTAINER HANDLING HELPERS ────────────────────────
 
-    def _resolve_image_from_ref(self, image_ref: str, local: bool) -> str:
+    def _resolve_image_entered(self, image_ref: str, local: bool) -> ImageRef:
         if local:
             images = self._get_local_images()
         else:
@@ -339,7 +347,7 @@ class SCDocker:
                 return registry_url
         return None
 
-    def _match_image_to_ref(self, images: list[str], image_ref: str) -> str:
+    def _match_image_to_ref(self, images: list[str], image_ref: str) -> ImageRef:
         valid_images = []
         for image in images:
             if image.endswith(image_ref):
@@ -361,12 +369,13 @@ class SCDocker:
             self.list_images()
             sys.exit(1)
 
-        return image_to_run
+        print(f"{image_ref} {image_to_run}")
+        return ImageRef(url=image_to_run.removesuffix(f"/{image_ref}"), name=image_ref)
 
-    def _pull_image(self, image:str, tag:str):
+    def _pull_image(self, image_ref: ImageRef, tag: str):
         layer_progress = {}
         try:
-            for line in self.docker_client.api.pull(image, tag, stream=True, decode=True):
+            for line in self.docker_client.api.pull(image_ref.full, tag, stream=True, decode=True):
                 if 'id' in line:
                     layer_id = line['id']
                     status = line.get('status', '')
@@ -408,34 +417,36 @@ class SCDocker:
             click.secho("ERROR: An unexpected error occurred.", fg='red', bold=True)
             sys.exit(1)
 
-    def _fetch_tags(self, image: str, local: bool, registry_url: str) -> tuple[str]:
+    def _fetch_tags(self, image_ref: ImageRef, local: bool) -> tuple[str]:
         if local:
-            return self._fetch_local_tags(image)
+            return self._fetch_local_tags(image_ref)
 
-        username, api_token = self._get_registry_creds_by_url(registry_url)
-        return self._fetch_remote_tags(image, username, api_token)
+        username, api_token = self._get_registry_creds_by_url(image_ref.url)
+        return self._fetch_remote_tags(image_ref, username, api_token)
 
-    def _fetch_local_tags(self, image: str):
+    def _fetch_local_tags(self, image_ref: ImageRef):
         local_images = self.docker_client.images.list()
         tags = []
 
         for local_image in local_images:
             for tag in local_image.tags:
                 name_part = tag.split(":")[0]
-                if name_part == image:
+                if name_part == image_ref.full:
                     tags.append(tag.split(":")[1])
         return tuple(tags)
 
-    def _fetch_remote_tags(self, image: str, username: str, api_token: str) -> tuple[str, ...]:
-        registry_url, image_name = self._parse_image_reference(image)
-        registry_type = self.docker_config[registry_url]['reg_type']
+    def _fetch_remote_tags(
+            self, image_ref: ImageRef, username: str, api_token: str) -> tuple[str, ...]:
+        registry_type = self.docker_config[image_ref.url]['reg_type']
         registry_api = RegistryAPIFactory.get_registry_api(registry_type)
 
         try:
-            return registry_api.fetch_tags(registry_url, username, api_token, image_name)
+            return registry_api.fetch_tags(
+                image_ref.url, username, api_token, image_ref.name)
         except Exception as e:
             click.secho(
-                f"ERROR: An exception occured when fetching tags for image {image_name} from {registry_url}",
+                "ERROR: An exception occured when fetching tags for "
+                f"image {image_ref.name} from {image_ref.url}",
                 fg='red')
             click.secho(e)
             sys.exit(1)
@@ -469,12 +480,13 @@ class SCDocker:
             click.secho(e)
             sys.exit(1)
 
-    def _handle_invalid_tag(self, image:str, tag: str, tags: tuple[str, ...]):
+    def _handle_invalid_tag(self, image_ref: ImageRef, tag: str, tags: tuple[str, ...]):
         click.echo(
             click.style("ERROR: ", fg="red", bold = True) +
-            click.style(f"Expected tag '{tag}' not found for image '{image}'", fg="red")
+            click.style(
+                f"Expected tag '{tag}' not found for image '{image_ref.full}'", fg="red")
         )
-        click.echo(f"Available tags for {image}:")
+        click.echo(f"Available tags for {image_ref.full}:")
         for t in tags:
             click.echo(t)
         sys.exit(1)
@@ -489,14 +501,14 @@ class SCDocker:
                 fg = 'red', bold=True)
             sys.exit(1)
 
-    def _generate_container_name(self, image_name: str) -> str:
+    def _generate_container_name(self, image_ref: ImageRef) -> str:
         """Add UNIX username and time since epoch to name so we can see who created a container and when"""
         user_name = getpass.getuser()
 
         seconds_since_epoch = int(time.time())
         nanoseconds = int(time.time_ns() % 1e9)
         time_since_epoch = f"{seconds_since_epoch}-{nanoseconds}"
-        container_name = f"{user_name}_{image_name}_{time_since_epoch}"
+        container_name = f"{user_name}_{image_ref.name}_{time_since_epoch}"
         return container_name
 
     def _parse_image_reference(self, image: str) -> tuple[str, str]:
@@ -516,34 +528,23 @@ class SCDocker:
 
     def _generate_docker_run_command(
             self,
-            image: str,
+            image_ref: ImageRef,
             tag: str,
             container_name: str,
-            image_name: str,
             x11: bool,
             volumes: tuple[str, ...],
             command: tuple[str, ...]
         ) -> list[str]:
         """Generates the full docker run command."""
         docker_args = [
-            'docker',
-            'run',
-            '--rm',
-            '--net=host',
-            '--name',
-            container_name,
-            '--hostname',
-            image_name,
-            '-v',
-            f"{Path.home()}:{Path.home()}",
-            '-e',
-            f"LOCAL_USER_NAME={getpass.getuser()}",
-            '-e',
-            f"LOCAL_USER_ID={os.getuid()}",
-            '-e',
-            f"LOCAL_GROUP_ID={os.getgid()}",
-            '-e',
-            f"LOCAL_START_DIR={Path.home()}"
+            'docker', 'run', '--rm', '--net=host',
+            '--name', container_name,
+            '--hostname', image_ref.name,
+            '-v', f"{Path.home()}:{Path.home()}",
+            '-e', f"LOCAL_USER_NAME={getpass.getuser()}",
+            '-e', f"LOCAL_USER_ID={os.getuid()}",
+            '-e', f"LOCAL_GROUP_ID={os.getgid()}",
+            '-e', f"LOCAL_START_DIR={Path.home()}"
         ]
 
         bash_commands = ["source /usr/local/bin/bashext.sh"]
@@ -594,7 +595,7 @@ class SCDocker:
 
         return [
             *docker_args,
-            f"{image}:{tag}",
+            f"{image_ref.full}:{tag}",
             shlex.join(["bash", "-c", " && ".join(bash_commands)])
         ]
 

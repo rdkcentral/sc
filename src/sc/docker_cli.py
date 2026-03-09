@@ -24,7 +24,7 @@ from sc.docker import SCDocker
 @click.group()
 def cli():
     pass
-    
+
 @cli.group()
 def docker():
     """Run and manage dockers."""
@@ -38,20 +38,20 @@ def docker():
 @click.option('--x11', is_flag=True, help='Forward X11 into the docker.')
 @click.option('-v', '--volume', multiple=True, help='Mount a volume.')
 def run(
-        image: str, 
-        command: tuple[str, ...], 
-        local: bool, 
-        tag: str, 
-        x11: bool, 
+        image: str,
+        command: tuple[str, ...],
+        local: bool,
+        tag: str,
+        x11: bool,
         volume: tuple[str, ...]
     ):
     """Run a docker using its name or its URL and name."""
     SCDocker().run(
-        image_ref=image, 
-        command=command, 
-        local=local, 
-        tag=tag, 
-        x11=x11, 
+        image_entered=image,
+        command=command,
+        local=local,
+        tag=tag,
+        x11=x11,
         volumes=volume
     )
 
