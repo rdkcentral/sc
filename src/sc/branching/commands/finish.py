@@ -19,8 +19,7 @@ from pathlib import Path
 import subprocess
 import sys
 
-import git
-from git import Repo
+from git import GitCommandError, Repo
 from git_flow_library import GitFlowLibrary
 from repo_library import RepoLibrary
 from sc_manifest_parser import ScManifest
@@ -115,11 +114,6 @@ class Finish(Command):
         manifest = ScManifest.from_repo_root(self.top_dir / ".repo")
         try:
             common.validate_project_repos(self.top_dir, manifest)
-        except RuntimeError as e:
-            logger.error(e)
-            sys.exit(1)
-
-        try:
             self._require_clean_working_tree(manifest)
         except RuntimeError as e:
             logger.error(e)
@@ -152,7 +146,7 @@ class Finish(Command):
         if branch not in [h.name for h in repo.heads]:
             try:
                 repo.git.fetch(remote, f"{branch}:{branch}")
-            except git.GitCommandError:
+            except GitCommandError:
                 logger.error(f"Base branch {branch} not found on remote or locally.")
                 return False
         return True
@@ -242,7 +236,7 @@ class Finish(Command):
         try:
             repo.git.tag('-d', tag)
             logger.info(f"Deleted preexisting tag {tag}")
-        except git.GitCommandError:
+        except GitCommandError:
             pass
 
     def _finish_manifest_repo(self, base: str | None):

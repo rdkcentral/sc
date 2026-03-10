@@ -35,7 +35,7 @@ def resolve_project_branch_name(branch: Branch, project: ProjectElementInterface
     return get_alt_branch_name(branch, project) or branch.name
 
 def validate_project_repos(top_dir: Path, manifest: ScManifest):
-    """Exit if any project paths in a manifest are invalid."""
+    """Raise runtime error if any project repos in a manifest are invalid."""
     error = False
     for proj in manifest.projects:
         proj_path = top_dir / proj.path
