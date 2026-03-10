@@ -17,14 +17,15 @@ import logging
 import subprocess
 import sys
 
+import git
 from git import Repo
+from repo_library import RepoLibrary
+from sc_manifest_parser import ProjectElementInterface, ScManifest
 
 from . import common
 from ..branch import Branch, BranchType
 from .checkout import Checkout
 from .command import Command
-from repo_library import RepoLibrary
-from sc_manifest_parser import ProjectElementInterface, ScManifest
 
 logger = logging.getLogger(__name__)
 
@@ -47,12 +48,19 @@ class Push(Command):
         try:
             if RepoLibrary.get_manifest_branch(self.top_dir) != self.branch.name:
                 Checkout(self.top_dir, self.branch).run_repo_command()
+
             manifest = ScManifest.from_repo_root(self.top_dir / '.repo')
+            try:
+                common.validate_project_repos(self.top_dir, manifest)
+            except RuntimeError as e:
+                logger.error(e)
+                sys.exit(1)
+
             self._push_projects(manifest.projects)
             self._update_manifest_revisions(manifest)
             self._push_manifest()
         finally:
-            if RepoLibrary.get_manifest_branch(self.top_dir) != orig_manifest_branch:
+            if RepoLibrary.get_manifest_branch(self.top_dir) != orig_manifest_branch.name:
                 Checkout(self.top_dir, orig_manifest_branch).run_repo_command()
 
         logger.info(f"Push {self.branch.name} completed!")
@@ -84,10 +92,8 @@ class Push(Command):
                 self._do_push_tag_only_project(project)
                 continue
 
-            if not self._can_push_project(project):
-                continue
-
-            self._do_push_project(project)
+            if self._can_push_project(project):
+                self._do_push_project(project)
 
     def _can_push_project(self, proj: ProjectElementInterface) -> bool:
         if proj.lock_status == "READ_ONLY":

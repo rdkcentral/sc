@@ -19,14 +19,16 @@ from pathlib import Path
 import subprocess
 import sys
 
-from git import GitCommandError, Repo
-
-from ..branch import Branch, BranchType
-from .command import Command
-from .checkout import Checkout
+import git
+from git import Repo
 from git_flow_library import GitFlowLibrary
 from repo_library import RepoLibrary
 from sc_manifest_parser import ScManifest
+
+from . import common
+from ..branch import Branch, BranchType
+from .command import Command
+from .checkout import Checkout
 
 logger = logging.getLogger(__name__)
 
@@ -110,6 +112,19 @@ class Finish(Command):
         else:
             base = None
 
+        manifest = ScManifest.from_repo_root(self.top_dir / ".repo")
+        try:
+            common.validate_project_repos(self.top_dir, manifest)
+        except RuntimeError as e:
+            logger.error(e)
+            sys.exit(1)
+
+        try:
+            self._require_clean_working_tree(manifest)
+        except RuntimeError as e:
+            logger.error(e)
+            sys.exit(1)
+
         if RepoLibrary.get_manifest_branch(self.top_dir) != self.branch.name:
             Checkout(self.top_dir, self.branch).run_repo_command()
 
@@ -137,10 +152,31 @@ class Finish(Command):
         if branch not in [h.name for h in repo.heads]:
             try:
                 repo.git.fetch(remote, f"{branch}:{branch}")
-            except GitCommandError:
+            except git.GitCommandError:
                 logger.error(f"Base branch {branch} not found on remote or locally.")
                 return False
         return True
+
+    def _require_clean_working_tree(self, manifest: ScManifest):
+        """Error if a project or the manifest has a dirty working tree."""
+        paths = [p.path for p in manifest.projects]
+        paths.append(self.top_dir / '.repo' / 'manifests')
+
+        error = False
+        for path in paths:
+            proj_repo = Repo(path)
+
+            if proj_repo.index.diff(None):
+                logger.error(
+                    f"{path} working tree contains unstaged changes!")
+                error = True
+            if proj_repo.index.diff("HEAD"):
+                logger.error(
+                    f"{path} working tree contains uncommited changes!")
+                error = True
+
+        if error:
+            raise RuntimeError("Projects require clean working trees!")
 
     def _prompt_tag_msg(self) -> str:
         while True:
@@ -206,7 +242,7 @@ class Finish(Command):
         try:
             repo.git.tag('-d', tag)
             logger.info(f"Deleted preexisting tag {tag}")
-        except GitCommandError:
+        except git.GitCommandError:
             pass
 
     def _finish_manifest_repo(self, base: str | None):

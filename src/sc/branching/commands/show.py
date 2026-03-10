@@ -18,6 +18,7 @@ import logging
 from pathlib import Path
 import subprocess
 
+import git
 from git import Repo
 from sc_manifest_parser import ProjectElementInterface, ScManifest
 
@@ -59,7 +60,19 @@ class ShowBranch(Command):
 
     def _show_branch(self, repo_dir: Path):
         """Show remotes and branches of a git repo."""
-        repo = Repo(repo_dir)
+        try:
+            repo = Repo(repo_dir)
+        except git.NoSuchPathError:
+            logger.error(
+                f"[bold red]Project path {repo_dir} is not a valid directory![/]",
+                extra={"markup": True})
+            return
+        except git.InvalidGitRepositoryError:
+            logger.warning(
+                f"[bold red]Project path {repo_dir} is not a valid git repository![/]",
+                extra={"markup": True})
+            return
+
         if repo.remotes:
             remote = repo.remotes[0]
             url = next(remote.urls)

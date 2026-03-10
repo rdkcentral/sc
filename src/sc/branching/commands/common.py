@@ -11,9 +11,17 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import logging
+from pathlib import Path
+import sys
+
+import git
+from git import Repo
+from sc_manifest_parser import ProjectElementInterface, ScManifest
 
 from ..branch import Branch, BranchType
-from sc_manifest_parser import ProjectElementInterface
+
+logger = logging.getLogger(__name__)
 
 def get_alt_branch_name(branch: Branch, project: ProjectElementInterface) -> str | None:
     match branch.type:
@@ -26,3 +34,23 @@ def get_alt_branch_name(branch: Branch, project: ProjectElementInterface) -> str
 
 def resolve_project_branch_name(branch: Branch, project: ProjectElementInterface) -> str:
     return get_alt_branch_name(branch, project) or branch.name
+
+def validate_project_repos(top_dir: Path, manifest: ScManifest):
+    """Exit if any project paths in a manifest are invalid."""
+    error = False
+    for proj in manifest.projects:
+        proj_path = top_dir / proj.path
+        try:
+            Repo(proj_path)
+        except git.NoSuchPathError:
+            logger.error(
+                f"[bold red]Project path {proj_path} is not a valid directory![/]",
+                extra={"markup": True})
+            error = True
+        except git.InvalidGitRepositoryError:
+            logger.error(
+                f"[bold red]Project path {proj_path} is not a valid git repository![/]",
+                extra={"markup": True})
+            error = True
+    if error:
+        raise RuntimeError("Repository validation failed!")

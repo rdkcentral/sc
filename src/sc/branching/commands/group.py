@@ -17,6 +17,7 @@ from dataclasses import dataclass
 import logging
 import subprocess
 
+import git
 from git import Repo
 from sc_manifest_parser import ProjectElementInterface, ScManifest
 
@@ -73,18 +74,27 @@ class GroupShow(Command):
             extra={"markup": True}
         )
 
-        repo = Repo(proj_dir)
-        if repo.remotes:
-            remote = repo.remotes[0]
-            url = next(remote.urls)
-            remote_status = f"{remote.name}  {url}"
-        else:
-            remote_status = "No remotes configured"
+        try:
+            repo = Repo(proj_dir)
+            if repo.remotes:
+                remote = repo.remotes[0]
+                url = next(remote.urls)
+                remote_status = f"{remote.name}  {url}"
+            else:
+                remote_status = "No remotes configured"
 
-        logger.info(f"Remote Status: {remote_status}")
+            logger.info(f"Remote Status: {remote_status}")
 
-        subprocess.run(
-            ["git", "branch", "-vv", "--color=always"],
-            cwd=proj_dir,
-            check=False
-        )
+            subprocess.run(
+                ["git", "branch", "-vv", "--color=always"],
+                cwd=proj_dir,
+                check=False
+            )
+        except git.NoSuchPathError:
+            logger.error(
+                f"[bold red]Project path {proj_dir} isn't a valid directory![/]",
+                extra={"markup": True})
+        except git.InvalidGitRepositoryError:
+            logger.error(
+                f"[bold red]Project path {proj_dir} isn't a valid git repository![/]",
+                extra={"markup": True})
