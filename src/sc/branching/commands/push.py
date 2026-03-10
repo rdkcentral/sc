@@ -17,7 +17,6 @@ import logging
 import subprocess
 import sys
 
-import git
 from git import Repo
 from repo_library import RepoLibrary
 from sc_manifest_parser import ProjectElementInterface, ScManifest

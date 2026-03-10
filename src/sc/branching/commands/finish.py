@@ -159,7 +159,7 @@ class Finish(Command):
 
     def _require_clean_working_tree(self, manifest: ScManifest):
         """Error if a project or the manifest has a dirty working tree."""
-        paths = [p.path for p in manifest.projects]
+        paths = [self.top_dir / p.path for p in manifest.projects]
         paths.append(self.top_dir / '.repo' / 'manifests')
 
         error = False
@@ -172,7 +172,7 @@ class Finish(Command):
                 error = True
             if proj_repo.index.diff("HEAD"):
                 logger.error(
-                    f"{path} working tree contains uncommited changes!")
+                    f"{path} working tree contains uncommitted changes!")
                 error = True
 
         if error:

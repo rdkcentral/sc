@@ -37,7 +37,7 @@ class Init(Command):
 
         manifest = ScManifest.from_repo_root(self.top_dir / ".repo")
         for project in manifest.projects:
-            if project.lock_status == None:
+            if project.lock_status is None:
                 self._init_gitflow_for_project(project)
 
     def _init_gitflow_for_manifest(self):

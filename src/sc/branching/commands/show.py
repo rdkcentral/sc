@@ -63,7 +63,7 @@ class ShowBranch(Command):
         try:
             repo = Repo(repo_dir)
         except git.NoSuchPathError:
-            logger.error(
+            logger.warning(
                 f"[bold red]Project path {repo_dir} is not a valid directory![/]",
                 extra={"markup": True})
             return

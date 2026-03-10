@@ -13,7 +13,6 @@
 # limitations under the License.
 import logging
 from pathlib import Path
-import sys
 
 import git
 from git import Repo
