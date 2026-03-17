@@ -36,20 +36,33 @@ def resolve_project_branch_name(branch: Branch, project: ProjectElementInterface
 
 def validate_project_repos(top_dir: Path, manifest: ScManifest):
     """Raise runtime error if any project repos in a manifest are invalid."""
-    error = False
+    errors = []
     for proj in manifest.projects:
         proj_path = top_dir / proj.path
         try:
             Repo(proj_path)
         except git.NoSuchPathError:
-            logger.error(
-                f"[bold red]Project path {proj_path} is not a valid directory![/]",
-                extra={"markup": True})
-            error = True
+            errors.append(f"Project path {proj_path} is not a valid directory!")
         except git.InvalidGitRepositoryError:
-            logger.error(
-                f"[bold red]Project path {proj_path} is not a valid git repository![/]",
-                extra={"markup": True})
-            error = True
-    if error:
-        raise RuntimeError("Repository validation failed!")
+            errors.append(f"Project path {proj_path} is not a valid git repository!")
+    if errors:
+        msg = "\n".join(errors)
+        raise RuntimeError(f"Repository validation failed!\n{msg}")
+
+def require_clean_working_tree(top_dir: Path, manifest: ScManifest):
+    """Error if a project or the manifest has a dirty working tree."""
+    paths = [top_dir / p.path for p in manifest.projects]
+    paths.append(top_dir / '.repo' / 'manifests')
+
+    errors = []
+    for path in paths:
+        proj_repo = Repo(path)
+
+        if proj_repo.index.diff(None):
+            errors.append(f"{path} working tree contains unstaged changes!")
+        if proj_repo.index.diff("HEAD"):
+            errors.append(f"{path} working tree contains uncommitted changes!")
+
+    if errors:
+        msg = "\n".join(errors)
+        raise RuntimeError(f"Projects require clean working trees!\n{msg}")

@@ -175,10 +175,10 @@ def start(version: str):
 
 
 @release.command()
-@click.argument('tag_name', required=False)
-def finish(tag_name):
-    """Merge release branch master and develop and tag it with the `<tag name>` provided."""
-    SCBranching.finish(BranchType.RELEASE, tag_name)
+@click.argument('name', required=False)
+def finish(name):
+    """Merge release branch."""
+    SCBranching.finish(BranchType.RELEASE, name)
 
 
 @release.command()
@@ -243,12 +243,11 @@ def pull(name: str | None):
 
 
 @hotfix.command()
-@click.argument('tag_name', required=False)
+@click.argument('name', required=False)
 @click.argument('base', required=False)
-def finish(tag_name, base):
-    """Merge this hotfix branch if it's support branch and tagged"""
-    logger.info(f"tag_name {tag_name}, base {base}")
-    SCBranching.finish(BranchType.HOTFIX, tag_name, base)
+def finish(name, base):
+    """Merge this hotfix branch."""
+    SCBranching.finish(BranchType.HOTFIX, name, base)
 
 @hotfix.command()
 def list():

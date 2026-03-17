@@ -108,13 +108,18 @@ class Finish(Command):
                     "Please use `sc hotfix finish <branch_name> <base>"
                 )
                 sys.exit(1)
+            if not self._branch_exists_locally_in_manifest(base):
+                logger.error(
+                    f"Base {base} doesn't exist locally in manifest! "
+                    "You may need to check it out first.")
+                sys.exit(1)
         else:
             base = None
 
         manifest = ScManifest.from_repo_root(self.top_dir / ".repo")
         try:
             common.validate_project_repos(self.top_dir, manifest)
-            self._require_clean_working_tree(manifest)
+            common.require_clean_working_tree(self.top_dir, manifest)
         except RuntimeError as e:
             logger.error(e)
             sys.exit(1)
@@ -150,27 +155,6 @@ class Finish(Command):
                 logger.error(f"Base branch {branch} not found on remote or locally.")
                 return False
         return True
-
-    def _require_clean_working_tree(self, manifest: ScManifest):
-        """Error if a project or the manifest has a dirty working tree."""
-        paths = [self.top_dir / p.path for p in manifest.projects]
-        paths.append(self.top_dir / '.repo' / 'manifests')
-
-        error = False
-        for path in paths:
-            proj_repo = Repo(path)
-
-            if proj_repo.index.diff(None):
-                logger.error(
-                    f"{path} working tree contains unstaged changes!")
-                error = True
-            if proj_repo.index.diff("HEAD"):
-                logger.error(
-                    f"{path} working tree contains uncommitted changes!")
-                error = True
-
-        if error:
-            raise RuntimeError("Projects require clean working trees!")
 
     def _prompt_tag_msg(self) -> str:
         while True:
@@ -245,6 +229,7 @@ class Finish(Command):
         Args:
             base (str | None): Set the base branch if provided.
         """
+        logger.info(f"Operating on manifest.")
         manifest_dir = self.top_dir / ".repo" / "manifests"
         if base:
             self._set_branch_base(base, manifest_dir)
@@ -266,7 +251,7 @@ class Finish(Command):
 
             self._auto_resolve_manifest_conflicts(rev_only_change_branches)
 
-    def _rebase_manifest(self, base: str | None):
+    def _rebase_manifest(self, base: str):
         """Rewrites the manifest with any newer commits pulled on top.
 
         Args:
