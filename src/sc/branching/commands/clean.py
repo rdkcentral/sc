@@ -18,9 +18,9 @@ from .command import Command
 from sc_manifest_parser import ScManifest
 
 class Clean(Command):
-    def _clean_repo(self,dir):
+    def _clean_repo(self, dir):
         subprocess.run(
-            ["git", "clean", "-fdx", "-e", f'".repo*"'],
+            ["git", "clean", "-fdx", "-e", ".repo*"],
             cwd = dir,
             encoding = "utf-8",
             check = False,

@@ -90,7 +90,6 @@ class Init(Command):
         remote_branch = f"{project.remote}/{branch}"
         remote_branches = [r.name for r in repo.remotes[project.remote].refs]
         if remote_branch in remote_branches:
-            print("Set tracking branch")
             repo.git.branch('-u', remote_branch, branch)
 
     @staticmethod

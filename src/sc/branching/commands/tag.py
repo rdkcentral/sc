@@ -68,8 +68,8 @@ class TagShow(Command):
                 text=True
             )
             print(out.stdout)
-        except subprocess.CalledProcessError:
-            logger.warning(f"Tag {self.tag} not found!")
+        except subprocess.CalledProcessError as e:
+            logger.warning(f"Failed to show tag! {e.stderr}")
 
 @dataclass
 class TagList(Command):
