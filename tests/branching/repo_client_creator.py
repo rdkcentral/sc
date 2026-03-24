@@ -9,33 +9,32 @@ from git import Repo
 from repo_library import RepoLibrary
 
 @dataclass
-class ProjectSettings:
+class Project:
+    """Here repo is the repo used to set up and not the repo in the final client."""
+    name: str
+    repo: Repo
+    remote: Repo
     groups: str = None
     annotations: dict[str, str] | None = None
     linkfiles: dict[str, str] | None = None
     alt_master: str | None = None
     alt_develop: str | None = None
 
-class RepoTestClient:
-    def __init__(self, creator: "RepoTestClientCreator", path: Path):
-        pass
-
 class RepoTestClientCreator:
-    """Create local repo clients with a single project to be tested.
+    """Create local repo clients with projects to be tested.
 
-    The flow is to add_branches and settings then
+    The flow is adding the branches you want, then adding the projects with
+    their settings, then running create()
     """
     def __init__(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.tmp_path = Path(self.tmp.name)
-        self.man_remote = self._create_temp_remote("manifest")
-        self.project_remote = self._create_temp_remote("project")
 
+        self.man_remote = self._create_temp_remote("manifest")
         self.man_repo = self._create_temp_clone("manifest", self.man_remote)
-        self.project_repo = self._create_temp_clone("project", self.project_remote)
 
         self.branches = []
-        self.project_settings = ProjectSettings()
+        self.project_settings: list[Project] = []
 
     def _create_temp_remote(self, name: str) -> Repo:
         path = (self.tmp_path / "remotes" / name)
@@ -47,32 +46,16 @@ class RepoTestClientCreator:
         path.mkdir(parents = True)
         return Repo.clone_from(remote.working_dir, path)
 
-    def add_branch(self, branch: str):
-        self.branches.append(branch)
-
-    def add_annotation(self, key: str, value: str):
-        if self.project_settings.annotations is None:
-            self.project_settings.annotations = {key: value}
-        else:
-            self.project_settings.annotations[key] = value
-
-    def set_groups(self, groups: str):
-        self.project_settings.groups = groups
-
-    def set_alt_master(self, branch: str):
-        self.project_settings.alt_master = branch
-        self.add_annotation("GIT_FLOW_BRANCH_MASTER", branch)
-
-    def set_alt_develop(self, branch: str):
-        self.project_settings.alt_develop = branch
-        self.add_annotation("GIT_FLOW_BRANCH_DEVELOP", branch)
-
-    def cleanup(self):
-        self.tmp.cleanup()
-
     def create(self, branch: str, sc_init: bool = True) -> Path:
-        for branch in self.branches:
-            self._create_branch(branch)
+        """
+        Ran after all settings have been applied to create a new repo client
+        and return a path to its top_dir.
+
+        Arguments:
+            branch (str): The branch the repo client will be checked out on.
+            sc_init (bool): Initialise the repo client with sc. Defaults to True.
+        """
+        self._setup_repositories()
 
         path = self.tmp_path / str(uuid.uuid4())
         path.mkdir(parents = True)
@@ -84,30 +67,68 @@ class RepoTestClientCreator:
             no_repo_verify=True
         )
         RepoLibrary.sync(directory=path)
+
         if sc_init:
             subprocess.run(["sc", "init"], cwd = path)
         return path
 
-    def _create_branch(self, branch: str):
-        self.project_repo.git.checkout("-b", branch)
-        path = Path(self.project_repo.working_dir) / "README.md"
-        path.write_text(branch)
-        self.project_repo.git.add(A=True)
-        proj_branch = self._resolve_project_branch(branch)
-        self.project_repo.git.commit("--allow-empty", m=proj_branch)
-        self.project_repo.git.push("-u", "origin", f"HEAD:{proj_branch}")
+    def add_branches(self, branches: list[str]):
+        self.branches.extend(branches)
 
+    def add_project(
+            self,
+            annotations: dict[str, str] = {},
+            groups: str | None = None,
+            alt_master: str | None = None,
+            alt_develop: str | None = None,
+        ) -> Project:
+        """Each time this is ran adds a project to the repo client."""
+        proj_name = str(uuid.uuid4())
+        remote_repo = self._create_temp_remote(proj_name)
+        proj_repo = self._create_temp_clone(proj_name, remote_repo)
+
+        proj_settings = Project(
+            name=proj_name,
+            repo=proj_repo,
+            remote=remote_repo,
+            groups=groups,
+            annotations=annotations,
+            alt_master=alt_master,
+            alt_develop=alt_develop
+        )
+        self.project_settings.append(proj_settings)
+        return proj_settings
+
+    def cleanup(self):
+        self.tmp.cleanup()
+
+    def _setup_repositories(self):
+        for branch in self.branches:
+            self._create_project_branches(branch)
+            self._create_manifest_branch(branch)
+
+    def _create_project_branches(self, branch: str):
+        for proj in self.project_settings:
+            proj.repo.git.checkout("-b", branch)
+            path = Path(proj.repo.working_dir) / "README.md"
+            path.write_text(branch)
+            proj.repo.git.add(A=True)
+            proj_branch = self._resolve_project_branch(proj, branch)
+            proj.repo.git.commit("--allow-empty", m=proj_branch)
+            proj.repo.git.push("-u", "origin", f"HEAD:{proj_branch}")
+
+    def _create_manifest_branch(self, branch: str):
         self.man_repo.git.checkout("-b", branch)
         self._write_manifest(Path(self.man_repo.working_dir) / "manifest.xml")
         self.man_repo.git.add(A=True)
         self.man_repo.git.commit("--allow-empty", m=branch)
         self.man_repo.git.push("-u", "origin", f"HEAD:{branch}")
 
-    def _resolve_project_branch(self, branch: str):
-        if branch == "master" and self.project_settings.alt_master:
-            return self.project_settings.alt_master
-        if branch == "develop" and self.project_settings.alt_develop:
-            return self.project_settings.alt_develop
+    def _resolve_project_branch(self, proj: Project, branch: str):
+        if branch == "master" and proj.alt_master:
+            return proj.alt_master
+        if branch == "develop" and proj.alt_develop:
+            return proj.alt_develop
         return branch
 
     def _write_manifest(self, path: Path):
@@ -116,34 +137,49 @@ class RepoTestClientCreator:
         ET.SubElement(
             manifest,
             "remote",
-            {"name": "donut", "fetch": (self.tmp_path / "remotes").as_uri()}
+            {"name": "sc-testing", "fetch": (self.tmp_path / "remotes").as_uri()}
         )
 
         ET.SubElement(
             manifest,
             "default",
-            {"remote": "donut"}
+            {"remote": "sc-testing"}
         )
 
-        attrs = {
-            "name": Path(self.project_repo.working_dir).name,
-            "revision": self.project_repo.active_branch.commit.hexsha,
-        }
-        if self.project_settings.groups:
-            attrs["groups"] = self.project_settings.groups
+        for proj in self.project_settings:
+            attrs = {
+                "name": Path(proj.repo.working_dir).name,
+                "revision": proj.repo.active_branch.commit.hexsha,
+            }
+            if proj.groups:
+                attrs["groups"] = proj.groups
 
-        project = ET.SubElement(
-            manifest,
-            "project",
-            attrs
-        )
+            project = ET.SubElement(
+                manifest,
+                "project",
+                attrs
+            )
 
-        if self.project_settings.annotations:
-            for k, v in self.project_settings.annotations.items():
+            if proj.annotations:
+                for k, v in proj.annotations.items():
+                    ET.SubElement(
+                        project,
+                        "annotation",
+                        {"name": k, "value": v}
+                    )
+
+            if proj.alt_master:
                 ET.SubElement(
                     project,
                     "annotation",
-                    {"name": k, "value": v}
+                    {"name": "GIT_FLOW_BRANCH_MASTER", "value": proj.alt_master}
+                )
+
+            if proj.alt_develop:
+                ET.SubElement(
+                    project,
+                    "annotation",
+                    {"name": "GIT_FLOW_BRANCH_DEVELOP", "value": proj.alt_develop}
                 )
 
         tree = ET.ElementTree(manifest)

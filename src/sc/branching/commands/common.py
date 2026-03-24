@@ -48,6 +48,7 @@ def validate_project_repos(top_dir: Path, manifest: ScManifest):
 
 def require_clean_working_tree(top_dir: Path, manifest: ScManifest):
     """Error if a project or the manifest has a dirty working tree."""
+    validate_project_repos(top_dir, manifest)
     paths = [top_dir / p.path for p in manifest.projects]
     paths.append(top_dir / '.repo' / 'manifests')
 

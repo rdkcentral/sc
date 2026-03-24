@@ -54,7 +54,7 @@ class Pull(Command):
 
         RepoLibrary.sync(self.top_dir, detach=True)
 
-        Init(self.top_dir).run_repo_command()
+        errors = []
         for project in manifest.projects:
             if project.lock_status is not None:
                 continue
@@ -65,14 +65,23 @@ class Pull(Command):
             local_branches = [head.name for head in project_repo.heads]
             if proj_branch_name in local_branches:
                 project_repo.git.checkout(proj_branch_name)
-                project_repo.git.merge(project.revision)
+                try:
+                    project_repo.git.merge(project.revision)
+                except GitCommandError:
+                    errors.append(str(self.top_dir / project.path))
             else:
                 project_repo.git.checkout(project.revision)
                 project_repo.git.checkout('-b', proj_branch_name)
 
             remote_branch = f"{project.remote}/{proj_branch_name}"
-            if remote_branch in [project_repo.remotes[project.remote].refs]:
+            remote_refs = [ref.name for ref in project_repo.remotes[project.remote].refs]
+            if remote_branch in remote_refs:
                 project_repo.git.branch('-u', remote_branch, proj_branch_name)
 
             project_repo.git.lfs('fetch')
             project_repo.git.lfs('checkout')
+
+        if errors:
+            logger.error("Failed to merge pull in:\n" + "\n".join(errors))
+            logger.error("Please resolve merge conflicts.")
+            sys.exit(1)

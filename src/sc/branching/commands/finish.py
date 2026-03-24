@@ -118,7 +118,6 @@ class Finish(Command):
 
         manifest = ScManifest.from_repo_root(self.top_dir / ".repo")
         try:
-            common.validate_project_repos(self.top_dir, manifest)
             common.require_clean_working_tree(self.top_dir, manifest)
         except RuntimeError as e:
             logger.error(e)

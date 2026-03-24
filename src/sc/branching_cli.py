@@ -67,10 +67,9 @@ def feature():
 
 @feature.command()
 @click.argument('name')
-@click.argument('base', default=BranchType.DEVELOP)
-def start(name: str, base: str):
+def start(name: str):
     """Creates a new feature/<branch> from the develop branch, and switched to."""
-    SCBranching.start(BranchType.FEATURE, name, base)
+    SCBranching.start(BranchType.FEATURE, name, BranchType.DEVELOP)
 
 
 @feature.command()
@@ -182,9 +181,10 @@ def finish(name):
 
 
 @release.command()
-def pull():
+@click.argument('name')
+def pull(name: str | None):
     """Pull down the latest changes from the remote branch."""
-    SCBranching.pull(BranchType.RELEASE)
+    SCBranching.pull(BranchType.RELEASE, name)
 
 @release.command()
 @click.argument('name', required=False)
@@ -213,7 +213,7 @@ def hotfix():
 
 @hotfix.command()
 @click.argument('version')
-@click.argument('base', default=BranchType.RELEASE)
+@click.argument('base')
 def start(version: str, base: str):
     """Create a new hotfix branch from a source branch, named <release_prefix><major>.<minor>.<bugfix>"""
     SCBranching.start(BranchType.HOTFIX, version, base)
@@ -262,7 +262,7 @@ def support():
 
 @support.command()
 @click.argument('version')
-@click.argument('base', default = BranchType.RELEASE)
+@click.argument('base')
 def start(version: str, base: str):
     """Start a support branch."""
     SCBranching.start(BranchType.SUPPORT, version, base)
