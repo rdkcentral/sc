@@ -91,6 +91,7 @@ class Start(Command):
 
     def _error_if_branch_exists_on_manifest(self):
         manifest_repo = Repo(self.top_dir / ".repo" / "manifests")
+        manifest_repo.git.fetch()
         remote_branches = [ref.name for ref in manifest_repo.remotes['origin'].refs]
         local_branches = [head.name for head in manifest_repo.heads]
         if f"origin/{self.branch.name}" in remote_branches:

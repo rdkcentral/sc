@@ -21,7 +21,6 @@ from git import GitCommandError, Repo
 from ..branch import Branch
 from .command import Command
 from . import common
-from .init import Init
 from repo_library import RepoLibrary
 from sc_manifest_parser import ScManifest
 
