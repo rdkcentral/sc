@@ -17,6 +17,7 @@ import logging
 import sys
 
 from git import Repo
+from repo_library import RepoLibrary
 from sc_manifest_parser import ScManifest
 
 from ..branch import Branch, BranchType
@@ -25,7 +26,6 @@ from . import common
 from git_flow_library import GitFlowLibrary
 from .init import Init
 from .pull import Pull
-from .tag import TagCheckout
 
 logger = logging.getLogger(__name__)
 
@@ -74,7 +74,20 @@ class Start(Command):
         Pull(self.top_dir, Branch(base_branch_type, base_name)).run_repo_command()
 
     def _checkout_base_tag(self):
-        TagCheckout(self.top_dir, self.base).run_repo_command()
+        manifest_repo = Repo(self.top_dir / ".repo" / "manifests")
+        manifest_repo.git.fetch("--tags")
+
+        if not any(tag.name == self.base for tag in manifest_repo.tags):
+            logger.error(f"Tag {self.base} not found in manifest repo!")
+            sys.exit(1)
+
+        manifest_repo.git.checkout(f"refs/tags/{self.base}")
+        RepoLibrary.sync(
+            self.top_dir,
+            detach=True,
+            no_prune=True,
+            no_manifest_update=True
+        )
 
     def _error_if_branch_exists_on_manifest(self):
         manifest_repo = Repo(self.top_dir / ".repo" / "manifests")

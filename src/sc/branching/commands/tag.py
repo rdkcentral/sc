@@ -225,35 +225,3 @@ class TagCheck(Command):
             cwd=repo_path,
             check=False
         )
-
-@dataclass
-class TagCheckout(Command):
-    tag: str
-    force: bool = False
-    verify: bool = False
-
-    def run_git_command(self):
-        try:
-            Repo(self.top_dir).git.checkout(f"refs/tags/{self.tag}")
-        except git.GitCommandError as e:
-            logger.error(f"Failed to checkout tag: {e}")
-            sys.exit(1)
-
-    def run_repo_command(self):
-        manifest_repo = Repo(self.top_dir / ".repo" / "manifests")
-        manifest_repo.git.fetch("--tags")
-
-        if not any(tag.name == self.tag for tag in manifest_repo.tags):
-            logger.error(f"Tag {self.tag} not found in manifest repo!")
-            sys.exit(1)
-
-        manifest_repo.git.checkout(f"refs/tags/{self.tag}")
-        RepoLibrary.sync(
-            self.top_dir,
-            force_sync=self.force,
-            force_checkout=self.force,
-            verify=self.verify,
-            detach=True,
-            no_prune=True,
-            no_manifest_update=True
-        )

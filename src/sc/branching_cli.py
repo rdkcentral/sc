@@ -334,14 +334,6 @@ def check(tag):
     """Check if a tag exists on all non READ_ONLY repos."""
     SCBranching.tag_check(tag)
 
-@tag.command()
-@click.argument("tag")
-@click.option("-f", "--force", is_flag=True, help="Force checkout.")
-@click.option("-v", "--verify", is_flag=True, help="Run hooks without prompting.")
-def checkout(tag, force, verify):
-    """Checkout a tag."""
-    SCBranching.tag_checkout(tag, force, verify)
-
 @cli.group()
 def show():
     """sc show commands."""
