@@ -34,7 +34,8 @@ from .commands.push import Push
 from .commands.show import ShowBranch, ShowLog, ShowRepoFlowConfig
 from .commands.start import Start
 from .commands.status import Status
-from .commands.tag import TagCheck, TagCreate, TagList, TagPush, TagRm, TagShow
+from .commands.tag import (TagCheck, TagCheckout, TagCreate, TagList, TagPush,
+                           TagRm, TagShow)
 from .commands.reset import Reset
 from .exceptions import ScInitError
 
@@ -194,6 +195,14 @@ class SCBranching:
         top_dir, project_type = detect_project(run_dir)
         run_command_by_project_type(
             TagCheck(top_dir, tag),
+            project_type
+        )
+
+    @staticmethod
+    def tag_checkout(tag: str, force: bool, verify: bool, run_dir: Path = Path.cwd()):
+        top_dir, project_type = detect_project(run_dir)
+        run_command_by_project_type(
+            TagCheckout(top_dir, tag, force, verify),
             project_type
         )
 

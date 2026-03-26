@@ -45,7 +45,7 @@ class Checkout(Command):
                 manifest = ScManifest.from_repo_root(self.top_dir / ".repo")
                 common.require_clean_working_tree(self.top_dir, manifest)
             except RuntimeError as e:
-                logger.error(e)
+                logger.error(e + " Use -f to force checkout but can be desctructive.")
                 sys.exit(1)
 
         manifests_repo = Repo(self.top_dir / '.repo' / 'manifests')
@@ -62,7 +62,8 @@ class Checkout(Command):
             force_checkout=self.force,
             verify=self.verify,
             detach=True,
-            no_prune=True
+            no_prune=True,
+            no_manifest_update=True
         )
         manifest = ScManifest.from_repo_root(self.top_dir / '.repo')
         for project in manifest.projects:

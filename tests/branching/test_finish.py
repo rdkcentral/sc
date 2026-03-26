@@ -41,10 +41,16 @@ class TestFinish(unittest.TestCase):
         read_only_proj_repo = Repo(top_dir / read_only_proj.name)
         self.assertTrue(read_only_proj_repo.head.is_detached)
         self.assertNotIn("donut", read_only_proj_repo.tags)
+        self.assertEqual(
+            read_only_proj.repo.heads["feature/donut"].commit.hexsha,
+            read_only_proj_repo.head.commit.hexsha)
         # TAG_ONLY doesn't tag and doesn't finish
         tag_only_proj_repo = Repo(top_dir / tag_only_proj.name)
         self.assertTrue(tag_only_proj_repo.head.is_detached)
         self.assertNotIn("donut", tag_only_proj_repo.tags)
+        self.assertEqual(
+            tag_only_proj.repo.heads["feature/donut"].commit.hexsha,
+            tag_only_proj_repo.head.commit.hexsha)
 
     def test_release_finish(self):
         self.repo_client.add_branches(["master", "develop", "release/donut"])
@@ -77,10 +83,16 @@ class TestFinish(unittest.TestCase):
         read_only_proj_repo = Repo(top_dir / read_only_proj.name)
         self.assertTrue(read_only_proj_repo.head.is_detached)
         self.assertNotIn("donut", read_only_proj_repo.tags)
+        self.assertEqual(
+            read_only_proj.repo.heads["release/donut"].commit.hexsha,
+            read_only_proj_repo.head.commit.hexsha)
         # TAG_ONLY tags but doesn't finish
         tag_only_proj_repo = Repo(top_dir / tag_only_proj.name)
         self.assertTrue(tag_only_proj_repo.head.is_detached)
         self.assertIn("donut", tag_only_proj_repo.tags)
+        self.assertEqual(
+            tag_only_proj.repo.heads["release/donut"].commit.hexsha,
+            tag_only_proj_repo.head.commit.hexsha)
 
     def test_hotfix_finish(self):
         self.repo_client.add_branches(
@@ -112,10 +124,16 @@ class TestFinish(unittest.TestCase):
         read_only_proj_repo = Repo(top_dir / read_only_proj.name)
         self.assertTrue(read_only_proj_repo.head.is_detached)
         self.assertNotIn("donut", read_only_proj_repo.tags)
+        self.assertEqual(
+            read_only_proj.repo.heads["hotfix/donut"].commit.hexsha,
+            read_only_proj_repo.head.commit.hexsha)
         # TAG_ONLY tags but doesn't finish
         tag_only_proj_repo = Repo(top_dir / tag_only_proj.name)
         self.assertTrue(tag_only_proj_repo.head.is_detached)
         self.assertIn("donut", tag_only_proj_repo.tags)
+        self.assertEqual(
+            tag_only_proj.repo.heads["hotfix/donut"].commit.hexsha,
+            tag_only_proj_repo.head.commit.hexsha)
 
     def test_finish_fails_on_missing_project(self):
         self.repo_client.add_branches(["master", "develop", "feature/donut"])
@@ -143,10 +161,5 @@ class TestFinish(unittest.TestCase):
 
         self.assertIn("require clean working tree", cm.exception.stdout)
 
-
-
-
 if __name__ == "__main__":
     unittest.main()
-
-

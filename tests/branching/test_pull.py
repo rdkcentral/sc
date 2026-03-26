@@ -86,9 +86,6 @@ class TestPull(unittest.TestCase):
         self.assertNotEqual(output.returncode, 0)
 
     def test_develop_pull(self):
-        """Simulate another develop using feature push
-        by updating repo and manifest revision. Then pull.
-        """
         self.repo_client.add_branches(["master", "develop"])
         proj = self.repo_client.add_project()
         top_dir = self.repo_client.create("develop")
@@ -114,9 +111,6 @@ class TestPull(unittest.TestCase):
         self.assertEqual(proj_repo.active_branch.name, "develop")
 
     def test_master_pull(self):
-        """Simulate another develop using feature push
-        by updating repo and manifest revision. Then pull.
-        """
         self.repo_client.add_branches(["master", "develop"])
         proj = self.repo_client.add_project()
         top_dir = self.repo_client.create("develop")

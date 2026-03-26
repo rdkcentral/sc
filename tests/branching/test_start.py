@@ -38,19 +38,6 @@ class TestStart(unittest.TestCase):
             any(ref.name == "release/donut"
                 for ref in self.repo_client.man_remote.branches))
 
-    def test_hotfix_start_base(self):
-        self.repo_client.add_branches(["master", "develop"])
-        proj = self.repo_client.add_project()
-        top_dir = self.repo_client.create("develop")
-
-        subprocess.run(["sc", "hotfix", "start", "donut", "master"], cwd=top_dir)
-
-        proj_repo = Repo(top_dir / proj.name)
-        self.assertNotEqual(proj_repo.branches["develop"].commit.hexsha,
-                            proj_repo.active_branch.commit.hexsha)
-        self.assertEqual(proj_repo.branches["master"].commit.hexsha,
-                         proj_repo.active_branch.commit.hexsha)
-
     def fails_starting_branch_that_already_exists(self):
         self.repo_client.add_branches(["master", "develop", "feature/donut"])
         self.repo_client.add_project()
@@ -59,9 +46,53 @@ class TestStart(unittest.TestCase):
         with self.assertRaises(subprocess.CalledProcessError) as cm:
             subprocess.run(
                 ["sc", "feature", "start", "donut"],
-                cwd=top_dir, capture_output=True, check=True)
+                cwd=top_dir, capture_output=True, check=True, text=True)
 
         self.assertIn("cannot be started", cm.exception.stdout)
+
+    def test_hotfix_start_base(self):
+        self.repo_client.add_branches(["master", "develop", "support/donut"])
+        proj = self.repo_client.add_project()
+        top_dir = self.repo_client.create("develop")
+
+        subprocess.run(["sc", "hotfix", "start", "donut", "support/donut"], cwd=top_dir)
+
+        proj_repo = Repo(top_dir / proj.name)
+        self.assertNotEqual(proj_repo.branches["develop"].commit.hexsha,
+                            proj_repo.active_branch.commit.hexsha)
+        self.assertEqual(proj_repo.branches["support/donut"].commit.hexsha,
+                         proj_repo.active_branch.commit.hexsha)
+
+    def test_hotfix_fail_to_start_from_non_support_base(self):
+        self.repo_client.add_branches(["master", "develop", "feature/donut"])
+        proj = self.repo_client.add_project()
+        top_dir = self.repo_client.create("develop")
+
+        with self.assertRaises(subprocess.CalledProcessError) as cm:
+            subprocess.run(
+                ["sc", "hotfix", "start", "donut", "feature/donut"],
+                cwd=top_dir, capture_output=True, check=True, text=True)
+
+        self.assertIn(
+            "You can only start hotfix branches from support branches",
+            cm.exception.stdout)
+
+    def test_support_start_from_tag(self):
+        self.repo_client.add_branches(["master", "develop"])
+        proj = self.repo_client.add_project()
+        top_dir = self.repo_client.create("master")
+        proj.repo.git.checkout("master")
+        proj.repo.git.tag("test-tag")
+        tagged_sha = proj.repo.head.commit.hexsha
+        proj.repo.git.commit("--allow-empty", m="test commit")
+        proj.repo.git.push()
+        proj.repo.git.push("--tags")
+
+        subprocess.run(["sc", "support", "start", "donut", "test-tag"], cwd=top_dir)
+
+        proj_repo = Repo(top_dir / proj.name)
+        self.assertEqual(proj_repo.active_branch.name, "support/donut")
+        self.assertEqual(proj_repo.head.commit.hexsha, tagged_sha)
 
 if __name__ == "__main__":
     unittest.main()

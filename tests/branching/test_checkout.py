@@ -14,7 +14,7 @@ class TestCheckout(unittest.TestCase):
     def tearDown(self):
         self.repo_client.cleanup()
 
-    def test_checkout(self):
+    def test_feature_checkout(self):
         self.repo_client.add_branches(["master", "develop", "feature/donut"])
         proj = self.repo_client.add_project()
         top_dir = self.repo_client.create("develop")
@@ -70,10 +70,13 @@ class TestCheckout(unittest.TestCase):
         test_file = top_dir / proj.name / "README.md"
         test_file.unlink()
 
-        output = subprocess.run(
-            ["sc", "develop", "checkout"], cwd=top_dir, capture_output=True)
+        with self.assertRaises(subprocess.CalledProcessError) as cm:
+            subprocess.run(
+                ["sc", "develop", "checkout"],
+                cwd=top_dir, capture_output=True, check=True, text=True)
 
-        self.assertNotEqual(output.returncode, 0)
+        self.assertNotEqual(cm.exception.returncode, 0)
+        self.assertIn("clean working tree", cm.exception.stderr)
 
     def test_alt_develop_checkout(self):
         self.repo_client.add_branches(["master", "develop", "feature/donut"])
@@ -151,7 +154,7 @@ class TestCheckout(unittest.TestCase):
             manifest.get_project_by_name(proj.name).revision,
             proj_repo.active_branch.commit.hexsha)
 
-    def test_finish_fails_on_missing_project(self):
+    def test_checkout_fails_on_missing_project(self):
         self.repo_client.add_branches(["master", "develop", "feature/donut"])
         proj = self.repo_client.add_project()
         top_dir = self.repo_client.create("feature/donut")
@@ -162,20 +165,7 @@ class TestCheckout(unittest.TestCase):
                 ["sc", "develop", "checkout"],
                 cwd=top_dir, capture_output=True, check=True, text=True)
 
-        self.assertIn("Repository validation failed", cm.exception.stdout)
-
-    def test_finish_fails_on_unclean_tree(self):
-        self.repo_client.add_branches(["master", "develop", "feature/donut"])
-        proj = self.repo_client.add_project()
-        top_dir = self.repo_client.create("feature/donut")
-        (top_dir / proj.name / "README.md").unlink()
-
-        with self.assertRaises(subprocess.CalledProcessError) as cm:
-            subprocess.run(
-                ["sc", "develop", "checkout"],
-                cwd=top_dir, capture_output=True, check=True, text=True)
-
-        self.assertIn("require clean working tree", cm.exception.stdout)
+        self.assertIn("Repository validation failed", cm.exception.stderr)
 
 if __name__ == "__main__":
     unittest.main()

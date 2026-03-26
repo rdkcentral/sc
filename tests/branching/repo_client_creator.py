@@ -10,7 +10,9 @@ from repo_library import RepoLibrary
 
 @dataclass
 class Project:
-    """Here repo is the repo used to set up and not the repo in the final client."""
+    """The repo here is used to mutate the state of the remote, not the final repo
+    that will be created upon RepoTestClientCreator.create()
+    """
     name: str
     repo: Repo
     remote: Repo

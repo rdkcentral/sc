@@ -17,14 +17,15 @@ import logging
 import sys
 
 from git import Repo
+from sc_manifest_parser import ScManifest
 
-from ..branch import Branch
+from ..branch import Branch, BranchType
 from .command import Command
 from . import common
 from git_flow_library import GitFlowLibrary
 from .init import Init
 from .pull import Pull
-from sc_manifest_parser import ScManifest
+from .tag import TagCheckout
 
 logger = logging.getLogger(__name__)
 
@@ -39,18 +40,15 @@ class Start(Command):
 
     def run_repo_command(self):
         self._error_on_sc_uninitialised()
+        self._error_if_branch_exists_on_manifest()
+        if self.branch.type == BranchType.HOTFIX and not self.base.startswith("support/"):
+            logger.error("You can only start hotfix branches from support branches!")
+            sys.exit(1)
 
-        manifest_dir = self.top_dir / '.repo' / 'manifests'
-
-        manifest_repo = Repo(manifest_dir)
-        self._error_if_branch_exists(manifest_repo)
-
-        if '/' in self.base:
-            base_branch_type, base_name = self.base.split('/', 1)
+        if self.branch.type == BranchType.SUPPORT:
+            self._checkout_base_tag()
         else:
-            base_branch_type, base_name = self.base, None
-
-        Pull(self.top_dir, Branch(base_branch_type, base_name)).run_repo_command()
+            self._checkout_base_branch()
 
         manifest = ScManifest.from_repo_root(self.top_dir / '.repo')
 
@@ -62,11 +60,24 @@ class Start(Command):
             project_repo.git.checkout(
                 '-b', common.resolve_project_branch_name(self.branch, project))
 
+        manifest_repo = Repo(self.top_dir / ".repo" / "manifests")
         manifest_repo.git.checkout('-b', self.branch.name)
         manifest_repo.git.commit("--allow-empty", m=f"Starting {self.branch.name}")
         manifest_repo.git.push("-u", "origin", self.branch.name)
 
-    def _error_if_branch_exists(self, manifest_repo: Repo):
+    def _checkout_base_branch(self):
+        if '/' in self.base:
+            base_branch_type, base_name = self.base.split('/', 1)
+        else:
+            base_branch_type, base_name = self.base, None
+
+        Pull(self.top_dir, Branch(base_branch_type, base_name)).run_repo_command()
+
+    def _checkout_base_tag(self):
+        TagCheckout(self.top_dir, self.base)
+
+    def _error_if_branch_exists_on_manifest(self):
+        manifest_repo = Repo(self.top_dir / ".repo" / "manifests")
         remote_branches = [ref.name for ref in manifest_repo.remotes['origin'].refs]
         local_branches = [head.name for head in manifest_repo.heads]
         if f"origin/{self.branch.name}" in remote_branches:

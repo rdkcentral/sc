@@ -1,7 +1,6 @@
 import subprocess
 import unittest
 
-from git import Repo
 from git_flow_library import GitFlowLibrary
 from sc_manifest_parser import ScManifest
 
