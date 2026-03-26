@@ -76,7 +76,7 @@ class TestCheckout(unittest.TestCase):
                 cwd=top_dir, capture_output=True, check=True, text=True)
 
         self.assertNotEqual(cm.exception.returncode, 0)
-        self.assertIn("clean working tree", cm.exception.stderr)
+        self.assertIn("clean working tree", cm.exception.stdout)
 
     def test_alt_develop_checkout(self):
         self.repo_client.add_branches(["master", "develop", "feature/donut"])
@@ -165,7 +165,7 @@ class TestCheckout(unittest.TestCase):
                 ["sc", "develop", "checkout"],
                 cwd=top_dir, capture_output=True, check=True, text=True)
 
-        self.assertIn("Repository validation failed", cm.exception.stderr)
+        self.assertIn("Repository validation failed", cm.exception.stdout)
 
 if __name__ == "__main__":
     unittest.main()

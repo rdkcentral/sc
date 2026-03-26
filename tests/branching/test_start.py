@@ -1,7 +1,9 @@
+from pathlib import Path
 import subprocess
 import unittest
 
 from git import Repo
+from sc_manifest_parser import ScManifest
 
 from .repo_client_creator import RepoTestClientCreator
 
@@ -38,7 +40,7 @@ class TestStart(unittest.TestCase):
             any(ref.name == "release/donut"
                 for ref in self.repo_client.man_remote.branches))
 
-    def fails_starting_branch_that_already_exists(self):
+    def test_fails_starting_branch_that_already_exists(self):
         self.repo_client.add_branches(["master", "develop", "feature/donut"])
         self.repo_client.add_project()
         top_dir = self.repo_client.create("develop")
@@ -80,13 +82,24 @@ class TestStart(unittest.TestCase):
     def test_support_start_from_tag(self):
         self.repo_client.add_branches(["master", "develop"])
         proj = self.repo_client.add_project()
-        top_dir = self.repo_client.create("master")
+        top_dir = self.repo_client.create("develop")
+        # --- Mutate remote state ---
         proj.repo.git.checkout("master")
-        proj.repo.git.tag("test-tag")
-        tagged_sha = proj.repo.head.commit.hexsha
-        proj.repo.git.commit("--allow-empty", m="test commit")
+        tagged_sha = proj.repo.active_branch.commit.hexsha
+        proj.repo.git.commit("--allow-empty", m="extra_commit")
         proj.repo.git.push()
-        proj.repo.git.push("--tags")
+        new_sha = proj.repo.active_branch.commit.hexsha
+
+        self.repo_client.man_repo.git.checkout("master")
+        self.repo_client.man_repo.git.tag("test-tag")
+        self.repo_client.man_repo.git.push("--tags")
+        man = ScManifest(Path(self.repo_client.man_repo.working_dir) / "manifest.xml")
+        man.projects[0].revision = new_sha
+        man.write()
+        self.repo_client.man_repo.git.add(A=True)
+        self.repo_client.man_repo.git.commit(m="extra commit")
+        self.repo_client.man_repo.git.push()
+        # --- End remote mutation ---
 
         subprocess.run(["sc", "support", "start", "donut", "test-tag"], cwd=top_dir)
 

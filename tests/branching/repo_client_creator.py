@@ -79,7 +79,7 @@ class RepoTestClientCreator:
 
     def add_project(
             self,
-            annotations: dict[str, str] = {},
+            annotations: dict[str, str] = None,
             groups: str | None = None,
             alt_master: str | None = None,
             alt_develop: str | None = None,

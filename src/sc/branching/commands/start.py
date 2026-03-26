@@ -74,7 +74,7 @@ class Start(Command):
         Pull(self.top_dir, Branch(base_branch_type, base_name)).run_repo_command()
 
     def _checkout_base_tag(self):
-        TagCheckout(self.top_dir, self.base)
+        TagCheckout(self.top_dir, self.base).run_repo_command()
 
     def _error_if_branch_exists_on_manifest(self):
         manifest_repo = Repo(self.top_dir / ".repo" / "manifests")
