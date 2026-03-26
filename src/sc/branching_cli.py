@@ -67,10 +67,9 @@ def feature():
 
 @feature.command()
 @click.argument('name')
-@click.argument('base', default=BranchType.DEVELOP)
-def start(name: str, base: str):
+def start(name: str):
     """Creates a new feature/<branch> from the develop branch, and switched to."""
-    SCBranching.start(BranchType.FEATURE, name, base)
+    SCBranching.start(BranchType.FEATURE, name, BranchType.DEVELOP)
 
 
 @feature.command()
@@ -175,16 +174,17 @@ def start(version: str):
 
 
 @release.command()
-@click.argument('tag_name', required=False)
-def finish(tag_name):
-    """Merge release branch master and develop and tag it with the `<tag name>` provided."""
-    SCBranching.finish(BranchType.RELEASE, tag_name)
+@click.argument('name', required=False)
+def finish(name):
+    """Merge release branch."""
+    SCBranching.finish(BranchType.RELEASE, name)
 
 
 @release.command()
-def pull():
+@click.argument('name')
+def pull(name: str | None):
     """Pull down the latest changes from the remote branch."""
-    SCBranching.pull(BranchType.RELEASE)
+    SCBranching.pull(BranchType.RELEASE, name)
 
 @release.command()
 @click.argument('name', required=False)
@@ -213,7 +213,7 @@ def hotfix():
 
 @hotfix.command()
 @click.argument('version')
-@click.argument('base', default=BranchType.RELEASE)
+@click.argument('base')
 def start(version: str, base: str):
     """Create a new hotfix branch from a source branch, named <release_prefix><major>.<minor>.<bugfix>"""
     SCBranching.start(BranchType.HOTFIX, version, base)
@@ -243,12 +243,11 @@ def pull(name: str | None):
 
 
 @hotfix.command()
-@click.argument('tag_name', required=False)
+@click.argument('name', required=False)
 @click.argument('base', required=False)
-def finish(tag_name, base):
-    """Merge this hotfix branch if it's support branch and tagged"""
-    logger.info(f"tag_name {tag_name}, base {base}")
-    SCBranching.finish(BranchType.HOTFIX, tag_name, base)
+def finish(name, base):
+    """Merge this hotfix branch."""
+    SCBranching.finish(BranchType.HOTFIX, name, base)
 
 @hotfix.command()
 def list():
@@ -263,7 +262,7 @@ def support():
 
 @support.command()
 @click.argument('version')
-@click.argument('base', default = BranchType.RELEASE)
+@click.argument('base')
 def start(version: str, base: str):
     """Start a support branch."""
     SCBranching.start(BranchType.SUPPORT, version, base)

@@ -13,14 +13,18 @@
 # limitations under the License.
 
 from dataclasses import dataclass
+import logging
 from pathlib import Path
 
+import git
 from git import Repo
-
-from .command import Command
 from git_flow_library import GitFlowLibrary
 from repo_library import RepoLibrary
 from sc_manifest_parser import ProjectElementInterface, ScManifest
+
+from .command import Command
+
+logger = logging.getLogger(__name__)
 
 @dataclass
 class Init(Command):
@@ -29,17 +33,16 @@ class Init(Command):
             GitFlowLibrary.init(self.top_dir)
 
     def run_repo_command(self):
-        Init.init_gitflow_for_manifest(self.top_dir)
+        self._init_gitflow_for_manifest()
 
         manifest = ScManifest.from_repo_root(self.top_dir / ".repo")
         for project in manifest.projects:
-            if project.lock_status == None:
-                Init.init_gitflow_for_project(self.top_dir, project)
+            if project.lock_status is None:
+                self._init_gitflow_for_project(project)
 
-    @staticmethod
-    def init_gitflow_for_manifest(top_dir: Path):
-        manifest_repo = Repo(top_dir / '.repo' / 'manifests')
-        branch = RepoLibrary.get_manifest_branch(top_dir)
+    def _init_gitflow_for_manifest(self):
+        manifest_repo = Repo(self.top_dir / '.repo' / 'manifests')
+        branch = RepoLibrary.get_manifest_branch(self.top_dir)
         Init._setup_gitflow_branch(
             manifest_repo,
             "master"
@@ -48,18 +51,25 @@ class Init(Command):
             manifest_repo,
             "develop"
         )
-        GitFlowLibrary.init(top_dir / '.repo' / 'manifests')
+        GitFlowLibrary.init(self.top_dir / '.repo' / 'manifests')
         manifest_repo.git.switch('-C', branch)
         remote_branch = f"origin/{branch}"
         remote_branches = [r.name for r in manifest_repo.remotes["origin"].refs]
         if remote_branch in remote_branches:
             manifest_repo.git.branch('-u', remote_branch, branch)
 
-    @staticmethod
-    def init_gitflow_for_project(top_dir: Path, project: ProjectElementInterface):
-        directory = top_dir / project.path
-        branch = RepoLibrary.get_manifest_branch(top_dir)
-        repo = Repo(directory)
+    def _init_gitflow_for_project(self, project: ProjectElementInterface):
+        directory = self.top_dir / project.path
+        try:
+            repo = Repo(directory)
+        except git.NoSuchPathError:
+            logger.warning(f"Project path {directory} is not a valid directory!")
+            return
+        except git.InvalidGitRepositoryError:
+            logger.warning(f"Project path {directory} is not a valid git repository!")
+            return
+
+        branch = RepoLibrary.get_manifest_branch(self.top_dir)
         remote = project.remote
 
         Init._setup_gitflow_branch(
@@ -80,7 +90,6 @@ class Init(Command):
         remote_branch = f"{project.remote}/{branch}"
         remote_branches = [r.name for r in repo.remotes[project.remote].refs]
         if remote_branch in remote_branches:
-            print("Set tracking branch")
             repo.git.branch('-u', remote_branch, branch)
 
     @staticmethod

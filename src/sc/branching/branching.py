@@ -25,7 +25,7 @@ from .branch import Branch, BranchType
 from .commands.checkout import Checkout
 from .commands.clean import Clean
 from .commands.command import Command
-from .commands.finish import Finish, FinishOperationError
+from .commands.finish import Finish
 from .commands.group import GroupShow
 from .commands.init import Init
 from .commands.list import List
@@ -34,7 +34,8 @@ from .commands.push import Push
 from .commands.show import ShowBranch, ShowLog, ShowRepoFlowConfig
 from .commands.start import Start
 from .commands.status import Status
-from .commands.tag import TagCheck, TagCreate, TagList, TagPush, TagRm, TagShow
+from .commands.tag import (TagCheck, TagCreate, TagList, TagPush,
+                           TagRm, TagShow)
 from .commands.reset import Reset
 from .exceptions import ScInitError
 

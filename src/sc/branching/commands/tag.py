@@ -19,9 +19,12 @@ from pathlib import Path
 import subprocess
 import sys
 
+import git
 from git import Repo
+from repo_library import RepoLibrary
 from sc_manifest_parser import ScManifest
 
+from . import common
 from .command import Command
 
 logger = logging.getLogger(__name__)
@@ -49,6 +52,15 @@ class TagShow(Command):
 
     def _git_show(self, repo_path: Path):
         try:
+            Repo(repo_path)
+        except git.NoSuchPathError:
+            logger.warning(f"Project path {repo_path} is not a valid directory!")
+            return
+        except git.InvalidGitRepositoryError:
+            logger.warning(f"Project path {repo_path} is not a valid git repository!")
+            return
+
+        try:
             out = subprocess.run(
                 ["git", "show", self.tag, "--color=always"],
                 cwd=repo_path,
@@ -57,8 +69,8 @@ class TagShow(Command):
                 text=True
             )
             print(out.stdout)
-        except subprocess.CalledProcessError:
-            logger.warning(f"Tag {self.tag} not found!")
+        except subprocess.CalledProcessError as e:
+            logger.warning(f"Failed to show tag! {e.stderr}")
 
 @dataclass
 class TagList(Command):
@@ -83,7 +95,13 @@ class TagCreate(Command):
 
     def run_repo_command(self):
         manifest = ScManifest.from_repo_root(self.top_dir / '.repo')
-        self._error_if_tag_already_exists(manifest)
+
+        try:
+            common.validate_project_repos(self.top_dir, manifest)
+            self._error_if_tag_already_exists(manifest)
+        except RuntimeError as e:
+            logger.error(e)
+            sys.exit(1)
 
         for proj in manifest.projects:
             logger.info(f"Operating on: {self.top_dir / proj.path}")
@@ -110,11 +128,10 @@ class TagCreate(Command):
             existing.append(self.top_dir / '.repo' / 'manifests')
 
         if existing:
-            logger.error(
+            raise RuntimeError(
                 "Tag already exists in the following projects:\n" +
                 "\n".join(str(p) for p in existing)
             )
-            sys.exit(1)
 
     def _tag_exists(self, repo_path: Path):
         return any(t.name == self.tag for t in Repo(repo_path).tags)
