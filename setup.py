@@ -30,12 +30,14 @@ setup(
     package_dir={"": "src"},
     install_requires=[
         'Click>=8',
+        'docker~=7.0',
+        'gitpython>=3',
+        'jira>=3.10',
+        'pydantic>=2',
+        'python-redmine>=2.5',
         'pyyaml~=6.0',
         'rich>=14',
         'requests==2.31.0', # Docker SDK breaks on 2.32.0
-        'docker~=7.0',
-        'gitpython>=3',
-        'pydantic>=2',
         'repo_library @ git+https://github.com/rdkcentral/sc-repo-library.git@master',
         'git_flow_library @ git+https://github.com/rdkcentral/sc-git-flow-library.git@master',
         'sc_manifest_parser @ git+https://github.com/rdkcentral/sc-manifest-parser.git@main'

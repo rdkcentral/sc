@@ -14,16 +14,18 @@
 
 from dataclasses import dataclass
 import logging
+import sys
 
 from git import Repo
+from repo_library import RepoLibrary
+from sc_manifest_parser import ScManifest
 
-from ..branch import Branch
+from ..branch import Branch, BranchType
 from .command import Command
 from . import common
 from git_flow_library import GitFlowLibrary
 from .init import Init
 from .pull import Pull
-from sc_manifest_parser import ScManifest
 
 logger = logging.getLogger(__name__)
 
@@ -38,21 +40,15 @@ class Start(Command):
 
     def run_repo_command(self):
         self._error_on_sc_uninitialised()
+        self._error_if_branch_exists_on_manifest()
+        if self.branch.type == BranchType.HOTFIX and not self.base.startswith("support/"):
+            logger.error("You can only start hotfix branches from support branches!")
+            sys.exit(1)
 
-        manifest_dir = self.top_dir / '.repo' / 'manifests'
-
-        manifest_repo = Repo(manifest_dir)
-        remote_branches = [ref.name for ref in manifest_repo.remotes['origin'].refs]
-        local_branches = [head.name for head in manifest_repo.heads]
-        if self.branch.name in remote_branches or self.branch.name in local_branches:
-            logger.error(f"Branch {self.branch.name} already exists and can't be started.")
-
-        if '/' in self.base:
-            base_branch_type, base_name = self.base.split('/', 1)
+        if self.branch.type == BranchType.SUPPORT:
+            self._checkout_base_tag()
         else:
-            base_branch_type, base_name = self.base, None
-
-        Pull(self.top_dir, Branch(base_branch_type, base_name)).run_repo_command()
+            self._checkout_base_branch()
 
         manifest = ScManifest.from_repo_root(self.top_dir / '.repo')
 
@@ -64,6 +60,48 @@ class Start(Command):
             project_repo.git.checkout(
                 '-b', common.resolve_project_branch_name(self.branch, project))
 
+        manifest_repo = Repo(self.top_dir / ".repo" / "manifests")
         manifest_repo.git.checkout('-b', self.branch.name)
         manifest_repo.git.commit("--allow-empty", m=f"Starting {self.branch.name}")
-        manifest_repo.remote("origin").push(self.branch.name)
+        manifest_repo.git.push("-u", "origin", self.branch.name)
+
+    def _checkout_base_branch(self):
+        if '/' in self.base:
+            base_branch_type, base_name = self.base.split('/', 1)
+        else:
+            base_branch_type, base_name = self.base, None
+
+        Pull(self.top_dir, Branch(base_branch_type, base_name)).run_repo_command()
+
+    def _checkout_base_tag(self):
+        manifest_repo = Repo(self.top_dir / ".repo" / "manifests")
+        manifest_repo.git.fetch("--tags")
+
+        if not any(tag.name == self.base for tag in manifest_repo.tags):
+            logger.error(f"Tag {self.base} not found in manifest repo!")
+            sys.exit(1)
+
+        manifest_repo.git.checkout(f"refs/tags/{self.base}")
+        RepoLibrary.sync(
+            self.top_dir,
+            detach=True,
+            no_prune=True,
+            no_manifest_update=True
+        )
+
+    def _error_if_branch_exists_on_manifest(self):
+        manifest_repo = Repo(self.top_dir / ".repo" / "manifests")
+        manifest_repo.git.fetch()
+        remote_branches = [ref.name for ref in manifest_repo.remotes['origin'].refs]
+        local_branches = [head.name for head in manifest_repo.heads]
+        if f"origin/{self.branch.name}" in remote_branches:
+            logger.error(
+                f"Branch {self.branch.name} exists on the remote manifest repo "
+                "so cannot be started."
+            )
+            sys.exit(1)
+        elif self.branch.name in local_branches:
+            logger.error(
+                f"Branch {self.branch.name} already exists locally in the manifest "
+                "repo so cannot be started.")
+            sys.exit(1)

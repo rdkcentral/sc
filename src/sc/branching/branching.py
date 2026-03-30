@@ -18,26 +18,31 @@ from pathlib import Path
 import sys
 
 from git import Repo
+from git_flow_library import GitFlowLibrary
+from repo_library import RepoLibrary
 
 from .branch import Branch, BranchType
 from .commands.checkout import Checkout
 from .commands.clean import Clean
 from .commands.command import Command
-from .commands.finish import Finish, FinishOperationError
+from .commands.finish import Finish
+from .commands.group import GroupShow
 from .commands.init import Init
 from .commands.list import List
 from .commands.pull import Pull
 from .commands.push import Push
+from .commands.show import ShowBranch, ShowLog, ShowRepoFlowConfig
 from .commands.start import Start
 from .commands.status import Status
+from .commands.tag import (TagCheck, TagCreate, TagList, TagPush,
+                           TagRm, TagShow)
 from .commands.reset import Reset
 from .exceptions import ScInitError
-from git_flow_library import GitFlowLibrary
-from repo_library import RepoLibrary
 
 logger = logging.getLogger(__name__)
 
 class ProjectType(Enum):
+    """Git or repo."""
     GIT = "git"
     REPO = "repo"
 
@@ -81,7 +86,7 @@ class SCBranching:
         )
 
     @staticmethod
-    def sc_status(
+    def status(
         run_dir: Path = Path.cwd(),
     ):
         top_dir, project_type = detect_project(run_dir)
@@ -91,7 +96,7 @@ class SCBranching:
         )
 
     @staticmethod
-    def sc_clean(
+    def clean(
         run_dir: Path = Path.cwd(),
     ):
         top_dir, project_type = detect_project(run_dir)
@@ -101,7 +106,7 @@ class SCBranching:
         )
 
     @staticmethod
-    def sc_reset(
+    def reset(
         run_dir: Path = Path.cwd(),
     ):
         top_dir, project_type = detect_project(run_dir)
@@ -109,7 +114,6 @@ class SCBranching:
             Reset(top_dir),
             project_type
         )
-
 
     @staticmethod
     def push(
@@ -133,14 +137,10 @@ class SCBranching:
     ):
         top_dir, project_type = detect_project(run_dir)
         branch = create_branch(project_type, top_dir, branch_type, name)
-        try:
-            run_command_by_project_type(
-                Finish(top_dir, branch, base),
-                project_type
-            )
-        except FinishOperationError as e:
-            logger.error(e)
-            sys.exit(1)
+        run_command_by_project_type(
+            Finish(top_dir, branch, base),
+            project_type
+        )
 
     @staticmethod
     def list(branch_type: BranchType, run_dir: Path = Path.cwd()):
@@ -149,6 +149,87 @@ class SCBranching:
             List(top_dir, branch_type),
             project_type
         )
+
+    @staticmethod
+    def tag_list(run_dir: Path = Path.cwd()):
+        top_dir, project_type = detect_project(run_dir)
+        run_command_by_project_type(
+            TagList(top_dir),
+            project_type
+        )
+
+    @staticmethod
+    def tag_show(tag: str, run_dir: Path = Path.cwd()):
+        top_dir, project_type = detect_project(run_dir)
+        run_command_by_project_type(
+            TagShow(top_dir, tag),
+            project_type
+        )
+
+    @staticmethod
+    def tag_create(tag: str, run_dir: Path = Path.cwd()):
+        top_dir, project_type = detect_project(run_dir)
+        run_command_by_project_type(
+            TagCreate(top_dir, tag),
+            project_type
+        )
+
+    @staticmethod
+    def tag_rm(tag: str, remote: bool, run_dir: Path = Path.cwd()):
+        top_dir, project_type = detect_project(run_dir)
+        run_command_by_project_type(
+            TagRm(top_dir, tag, remote),
+            project_type
+        )
+
+    @staticmethod
+    def tag_push(tag: str, run_dir: Path = Path.cwd()):
+        top_dir, project_type = detect_project(run_dir)
+        run_command_by_project_type(
+            TagPush(top_dir, tag),
+            project_type
+        )
+
+    @staticmethod
+    def tag_check(tag: str, run_dir: Path = Path.cwd()):
+        top_dir, project_type = detect_project(run_dir)
+        run_command_by_project_type(
+            TagCheck(top_dir, tag),
+            project_type
+        )
+
+    @staticmethod
+    def show_branch(run_dir: Path = Path.cwd()):
+        top_dir, project_type = detect_project(run_dir)
+        run_command_by_project_type(
+            ShowBranch(top_dir),
+            project_type
+        )
+
+    @staticmethod
+    def show_repo_flow_config(run_dir: Path = Path.cwd()):
+        top_dir, project_type = detect_project(run_dir)
+        run_command_by_project_type(
+            ShowRepoFlowConfig(top_dir),
+            project_type
+        )
+
+    @staticmethod
+    def show_log(run_dir: Path = Path.cwd()):
+        top_dir, project_type = detect_project(run_dir)
+        run_command_by_project_type(
+            ShowLog(top_dir),
+            project_type
+        )
+
+    @staticmethod
+    def group_show(group: str | None, run_dir: Path = Path.cwd()):
+        top_dir, project_type = detect_project(run_dir)
+        run_command_by_project_type(
+            GroupShow(top_dir, group),
+            project_type
+        )
+
 
 def detect_project(run_dir: Path) -> tuple[Path | ProjectType]:
     if root := RepoLibrary.get_repo_root_dir(run_dir):

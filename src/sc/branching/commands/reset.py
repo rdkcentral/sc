@@ -38,4 +38,4 @@ class Reset(Command):
             if project.lock_status is not None:
                 continue
 
-            self._reset_repo(self.top_dir/project.path,project.revision)
+            self._reset_repo(self.top_dir / project.path, project.revision)
