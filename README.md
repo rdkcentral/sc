@@ -1,6 +1,6 @@
 <div align="center">
 
-# Software Control (SC) 
+# Software Control (SC)
 ![language](https://img.shields.io/badge/language-python-239120)
 ![OS](https://img.shields.io/badge/OS-linux%2C%20macOS-0078D4)
 
@@ -11,7 +11,7 @@ SC is a collection of CLI tools, centered around version control and docker work
 ## Table of Contents
 - [Requirements](#requirements)
 - [Installing](#installing)
-  
+
 ## Requirements
 
 * Install Python 3.10+
@@ -23,7 +23,27 @@ SC is a collection of CLI tools, centered around version control and docker work
 
 ## Installing
 
+pip is the default package manager for Python, however, Ubuntu 23.04+ won't allow you to install CLI tools globally and you'll need to use a venv or another package management tool. Therefore, we recommend uv. A modern, faster package manager which allows global CLI tooling and comes with extra features such as easy upgrades.
+
+### pip
+
 ```shell
 pip install git+https://github.com/rdkcentral/sc.git@main
 ```
 
+### uv
+
+Install uv guide [here!](https://docs.astral.sh/uv/getting-started/installation/)
+
+```shell
+# Install sc as a global tool
+uv tool install git+https://github.com/rdkcentral/sc.git@main
+
+sc --help
+
+# Update sc to latest
+uv tool upgrade sc
+
+# Uninstall sc
+uv tool uninstall sc
+```
