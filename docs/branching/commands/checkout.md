@@ -1,7 +1,5 @@
 # Branching Checkout Command
 
-## Overview
-
 Used to checkout sc branching branches.
 
 ## Usage
@@ -9,4 +7,7 @@ Used to checkout sc branching branches.
 `sc <master/develop> checkout`
 `sc <feature/release/support/hotfix> checkout <branch_name>`
 
-Checkout a branch of the manifest and sync all projects to the manifest.
+## Behaviour
+
+- Git: Checkout the git repository to that branch.
+- Repo: Checkout that branch of the manifest and sync all projects to the manifest.
