@@ -12,14 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import logging
-
 import click
 
 from sc.branching import SCBranching
 from sc.branching.branch import BranchType
-
-logger = logging.getLogger(__name__)
 
 @click.group()
 def cli():

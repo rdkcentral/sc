@@ -12,13 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import logging
-
 import click
 
 from sc.branching import SCBranching
-
-logger = logging.getLogger(__name__)
 
 @click.group()
 def cli():
@@ -26,7 +22,7 @@ def cli():
 
 @cli.command()
 def init():
-    """Initialise for branching commands."""
+    """Initialise project for branching commands."""
     SCBranching.init()
 
 @cli.command()
@@ -102,11 +98,12 @@ def repo_flow_config():
 
 @show.command()
 def log():
+    """Show git log for all projects."""
     SCBranching.show_log()
 
-@show.command()
+@show.command(name="tag")
 @click.argument("tag")
-def tag(tag):
+def show_tag(tag):
     """Show information about a tag."""
     SCBranching.tag_show(tag)
 
