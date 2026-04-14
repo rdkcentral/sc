@@ -20,7 +20,8 @@ from pathlib import Path
 
 import click
 
-from . import branching_cli, clone_cli, docker_cli, review_cli, sc_logging
+from . import branching_cli, clone_cli, docker_cli, review_cli, project_cli, sc_logging
+from .help import GroupedHelp
 
 CONFIG_DIR = Path(Path.home(), '.sc_config')
 CONFIG_PATH = Path(CONFIG_DIR, 'config.yaml')
@@ -40,16 +41,17 @@ def entry_point():
     sc_logging.setup_logging(DEBUG_MODE)
     sc_logging.enable_library_logging("repo_library")
     sc_logging.enable_library_logging("git_flow_library")
-    
+
     # Add commands
-    add_commands_under_cli(branching_cli.cli)
-    add_commands_under_cli(clone_cli.cli)
-    add_commands_under_cli(docker_cli.cli)
-    add_commands_under_cli(review_cli.cli)
+    add_commands_under_cli(branching_cli.cli, "Branching", 0)
+    add_commands_under_cli(project_cli.cli, "Project", 1)
+    add_commands_under_cli(clone_cli.cli, "Clone", 2)
+    add_commands_under_cli(docker_cli.cli, "Docker", 3)
+    add_commands_under_cli(review_cli.cli, "Review", 4)
 
     cli()
 
-@click.group()
+@click.group(cls=GroupedHelp)
 def cli():
     pass
 
@@ -58,6 +60,9 @@ def version():
     """Display SC Version."""
     click.echo(metadata.version("sc"))
 
-def add_commands_under_cli(other_cli: click.Group):
+def add_commands_under_cli(other_cli: click.Group, section: str, order: int):
     for cmd in other_cli.commands.values():
+        if section:
+            setattr(cmd, "section", section)
+            setattr(cmd, "section_order", order)
         cli.add_command(cmd)

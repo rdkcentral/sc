@@ -18,7 +18,8 @@ import logging
 import subprocess
 import sys
 
-from git import GitCommandError, Repo
+import git
+from git import Repo
 from sc_manifest_parser import ProjectElementInterface, ScManifest
 
 from .command import Command
@@ -71,21 +72,30 @@ class GroupShow(Command):
             extra={"markup": True}
         )
 
-        repo = Repo(proj_dir)
-        if repo.remotes:
-            remote = repo.remotes[0]
-            url = next(remote.urls)
-            remote_status = f"{remote.name}  {url}"
-        else:
-            remote_status = "No remotes configured"
+        try:
+            repo = Repo(proj_dir)
+            if repo.remotes:
+                remote = repo.remotes[0]
+                url = next(remote.urls)
+                remote_status = f"{remote.name}  {url}"
+            else:
+                remote_status = "No remotes configured"
 
-        logger.info(f"Remote Status: {remote_status}")
-
-        subprocess.run(
-            ["git", "branch", "-vv", "--color=always"],
-            cwd=proj_dir,
-            check=False
-        )
+            logger.info(f"Remote Status: {remote_status}")
+            
+            subprocess.run(
+                ["git", "branch", "-vv", "--color=always"],
+                cwd=proj_dir,
+                check=False
+            )
+        except git.NoSuchPathError:
+            logger.error(
+                f"[bold red]Project path {proj_dir} isn't a valid directory![/]",
+                extra={"markup": True})
+        except git.InvalidGitRepositoryError:
+            logger.error(
+                f"[bold red]Project path {proj_dir} isn't a valid git repository![/]",
+                extra={"markup": True})
 
 @dataclass
 class GroupTag(Command):
@@ -123,7 +133,7 @@ class GroupTag(Command):
                 if self.push:
                     repo.git.push(proj.remote, self.tag)
                     logger.info("Pushed tag.")
-            except GitCommandError as e:
+            except git.GitCommandError as e:
                 failures.append((proj.path, str(e)))
 
         if not group_found:
@@ -160,7 +170,7 @@ class GroupCheckout(Command):
             try:
                 Repo(proj_dir).git.checkout(self.branch)
                 logger.info(f"Checked out {self.branch}")
-            except GitCommandError as e:
+            except git.GitCommandError as e:
                 logger.error(f"Failed to checkout branch: {e}")
 
         if not group_found:
@@ -216,7 +226,7 @@ class GroupPull(Command):
             try:
                 Repo(proj_dir).git.pull()
                 logger.info("Pulled project.")
-            except GitCommandError as e:
+            except git.GitCommandError as e:
                 logger.error(f"Failed to pull project: {e}")
 
         if not group_found:
@@ -244,7 +254,7 @@ class GroupFetch(Command):
             try:
                 Repo(proj_dir).git.fetch()
                 logger.info("Fetched project.")
-            except GitCommandError as e:
+            except git.GitCommandError as e:
                 logger.error(f"Failed to fetch project: {e}")
 
         if not group_found:
@@ -273,7 +283,7 @@ class GroupPush(Command):
             try:
                 repo.git.push("-u", proj.remote, repo.active_branch.name)
                 logger.info("Pushed project.")
-            except GitCommandError as e:
+            except git.GitCommandError as e:
                 logger.error(f"Failed to push project: {e}")
 
         if not group_found:

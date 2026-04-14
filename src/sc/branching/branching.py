@@ -35,7 +35,8 @@ from .commands.push import Push
 from .commands.show import ShowBranch, ShowLog, ShowRepoFlowConfig
 from .commands.start import Start
 from .commands.status import Status
-from .commands.tag import TagCheck, TagCreate, TagList, TagPush, TagRm, TagShow
+from .commands.tag import (TagCheck, TagCreate, TagList, TagPush,
+                           TagRm, TagShow)
 from .commands.reset import Reset
 from .exceptions import ScInitError
 

@@ -20,13 +20,14 @@ import subprocess
 import sys
 
 from git import GitCommandError, Repo
-
-from ..branch import Branch, BranchType
-from .command import Command
-from .checkout import Checkout
 from git_flow_library import GitFlowLibrary
 from repo_library import RepoLibrary
 from sc_manifest_parser import ScManifest
+
+from . import common
+from ..branch import Branch, BranchType
+from .command import Command
+from .checkout import Checkout
 
 logger = logging.getLogger(__name__)
 
@@ -107,8 +108,20 @@ class Finish(Command):
                     "Please use `sc hotfix finish <branch_name> <base>"
                 )
                 sys.exit(1)
+            if not self._branch_exists_locally_in_manifest(base):
+                logger.error(
+                    f"Base {base} doesn't exist locally in manifest! "
+                    "You may need to check it out first.")
+                sys.exit(1)
         else:
             base = None
+
+        manifest = ScManifest.from_repo_root(self.top_dir / ".repo")
+        try:
+            common.require_clean_working_tree(self.top_dir, manifest)
+        except RuntimeError as e:
+            logger.error(e)
+            sys.exit(1)
 
         if RepoLibrary.get_manifest_branch(self.top_dir) != self.branch.name:
             Checkout(self.top_dir, self.branch).run_repo_command()
@@ -215,6 +228,7 @@ class Finish(Command):
         Args:
             base (str | None): Set the base branch if provided.
         """
+        logger.info(f"Operating on manifest.")
         manifest_dir = self.top_dir / ".repo" / "manifests"
         if base:
             self._set_branch_base(base, manifest_dir)
@@ -236,7 +250,7 @@ class Finish(Command):
 
             self._auto_resolve_manifest_conflicts(rev_only_change_branches)
 
-    def _rebase_manifest(self, base: str | None):
+    def _rebase_manifest(self, base: str):
         """Rewrites the manifest with any newer commits pulled on top.
 
         Args:

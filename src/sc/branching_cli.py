@@ -12,52 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import logging
-
 import click
 
 from sc.branching import SCBranching
 from sc.branching.branch import BranchType
 
-logger = logging.getLogger(__name__)
-
 @click.group()
 def cli():
     pass
-
-@cli.command()
-def init():
-    """Initialise for branching commands."""
-    SCBranching.init()
-
-@cli.command()
-def clean():
-    """Clean all modules. (git clean -fdx)."""
-    SCBranching.clean()
-
-@cli.command()
-def status():
-    """Show the working tree status."""
-    SCBranching.status()
-
-@cli.command()
-def reset():
-    """Clean and Reset all modules to remote manifest. (git reset --hard REMOTE)"""
-    SCBranching.reset()
-
-@cli.command()
-def build():
-    """Executes build related commands specified in a yaml file."""
-    pass
-
-@cli.command()
-@click.option("-n", "--no-checkout", is_flag=True, help="Do not checkout the branch.")
-@click.option("-b", "--force-broken", is_flag=True, help="Do not checkout the branch.")
-@click.option("-s", "--force-sync", is_flag=True, help="Do not checkout the branch.")
-def sync(no_checkout, force_broken, force_sync):
-    """Perform sync, and re-checkout branch"""
-    pass
-
 
 # Feature branch commands
 @cli.group()
@@ -67,10 +29,9 @@ def feature():
 
 @feature.command()
 @click.argument('name')
-@click.argument('base', default=BranchType.DEVELOP)
-def start(name: str, base: str):
+def start(name: str):
     """Creates a new feature/<branch> from the develop branch, and switched to."""
-    SCBranching.start(BranchType.FEATURE, name, base)
+    SCBranching.start(BranchType.FEATURE, name, BranchType.DEVELOP)
 
 
 @feature.command()
@@ -175,16 +136,17 @@ def start(version: str):
 
 
 @release.command()
-@click.argument('tag_name', required=False)
-def finish(tag_name):
-    """Merge release branch master and develop and tag it with the `<tag name>` provided."""
-    SCBranching.finish(BranchType.RELEASE, tag_name)
+@click.argument('name', required=False)
+def finish(name):
+    """Merge release branch."""
+    SCBranching.finish(BranchType.RELEASE, name)
 
 
 @release.command()
-def pull():
+@click.argument('name')
+def pull(name: str | None):
     """Pull down the latest changes from the remote branch."""
-    SCBranching.pull(BranchType.RELEASE)
+    SCBranching.pull(BranchType.RELEASE, name)
 
 @release.command()
 @click.argument('name', required=False)
@@ -213,7 +175,7 @@ def hotfix():
 
 @hotfix.command()
 @click.argument('version')
-@click.argument('base', default=BranchType.RELEASE)
+@click.argument('base')
 def start(version: str, base: str):
     """Create a new hotfix branch from a source branch, named <release_prefix><major>.<minor>.<bugfix>"""
     SCBranching.start(BranchType.HOTFIX, version, base)
@@ -243,12 +205,11 @@ def pull(name: str | None):
 
 
 @hotfix.command()
-@click.argument('tag_name', required=False)
+@click.argument('name', required=False)
 @click.argument('base', required=False)
-def finish(tag_name, base):
-    """Merge this hotfix branch if it's support branch and tagged"""
-    logger.info(f"tag_name {tag_name}, base {base}")
-    SCBranching.finish(BranchType.HOTFIX, tag_name, base)
+def finish(name, base):
+    """Merge this hotfix branch."""
+    SCBranching.finish(BranchType.HOTFIX, name, base)
 
 @hotfix.command()
 def list():
@@ -263,7 +224,7 @@ def support():
 
 @support.command()
 @click.argument('version')
-@click.argument('base', default = BranchType.RELEASE)
+@click.argument('base')
 def start(version: str, base: str):
     """Start a support branch."""
     SCBranching.start(BranchType.SUPPORT, version, base)
@@ -294,133 +255,6 @@ def list():
 def checkout(name, force, verify):
     """Checkout a support branch."""
     SCBranching.checkout(BranchType.SUPPORT, name, force, verify)
-
-@cli.group()
-def tag():
-    pass
-
-@tag.command()
-def list():
-    """List tags in manifest or git repo."""
-    SCBranching.tag_list()
-
-@tag.command()
-@click.argument("tag")
-def show(tag):
-    """Show information about a tag in all repos."""
-    SCBranching.tag_show(tag)
-
-@tag.command()
-@click.argument("tag")
-def create(tag):
-    """Create a tag in all non READ_ONLY repos."""
-    SCBranching.tag_create(tag)
-
-@tag.command()
-@click.argument("tag")
-@click.option('-r', '--remote', is_flag=True, help="Remove in remotes as well as local.")
-def rm(tag, remote):
-    """Remove a tag in all non READ_ONLY repos."""
-    SCBranching.tag_rm(tag, remote)
-
-@tag.command()
-@click.argument("tag")
-def push(tag):
-    """Push given tag in all non READ_ONLY repos."""
-    SCBranching.tag_push(tag)
-
-@tag.command()
-@click.argument("tag")
-def check(tag):
-    """Check if a tag exists on all non READ_ONLY repos."""
-    SCBranching.tag_check(tag)
-
-@cli.group()
-def group():
-    """Commands on a group of projects in the manifest."""
-
-@group.command()
-@click.argument("group")
-@click.argument("branch")
-def checkout(group, branch):
-    """Checkout all projects in a group to a branch."""
-    SCBranching.group_checkout(group, branch)
-
-@group.command()
-@click.argument("group")
-@click.argument("command", nargs=-1)
-def cmd(group, command):
-    """Run a command in all projects in a group."""
-    SCBranching.group_cmd(group, command)
-
-@group.command()
-@click.argument("group")
-def fetch(group):
-    """Git fetch projects in a group."""
-    SCBranching.group_fetch(group)
-
-@group.command()
-@click.argument("group")
-def pull(group):
-    """Pull projects in a group."""
-    SCBranching.group_pull(group)
-
-@group.command()
-@click.argument("group")
-def push(group):
-    """Push projects in a group."""
-    SCBranching.group_push(group)
-
-@group.command()
-@click.argument("group", required=False)
-def show(group):
-    """List groups or show information about a group."""
-    SCBranching.group_show(group)
-
-@group.command()
-@click.argument("group")
-@click.argument("tag")
-@click.option("-m", "--message", help="Add a message to the tags.")
-@click.option("-p", "--push", is_flag=True, help="Push the tags to remote.")
-def tag(group, tag, message, push):
-    """Tag all projects in a group."""
-    SCBranching.group_tag(group, tag, message, push)
-
-@cli.group()
-def show():
-    """sc show commands."""
-    pass
-
-@show.command()
-def branch():
-    """Show the current status of branching."""
-    SCBranching.show_branch()
-
-@show.command()
-def repo_flow_config():
-    """Show git flow config for all projects."""
-    SCBranching.show_repo_flow_config()
-
-@show.command()
-def log():
-    SCBranching.show_log()
-
-@show.command()
-@click.argument("tag")
-def tag(tag):
-    """Show information about a tag."""
-    SCBranching.tag_show(tag)
-
-@show.command()
-def tags():
-    """List tags on the manifest."""
-    SCBranching.tag_list()
-
-@show.command()
-@click.argument("group", required=False)
-def group(group):
-    """List groups or show information about a group."""
-    SCBranching.group_show(group)
 
 if __name__ == '__main__':
     cli()
