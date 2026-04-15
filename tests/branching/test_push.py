@@ -1,3 +1,17 @@
+# Copyright 2025 RDK Management
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import shutil
 import subprocess
 import unittest
@@ -338,6 +352,20 @@ class TestPush(unittest.TestCase):
                 cwd=top_dir, capture_output=True, check=True, text=True)
 
         self.assertIn("Repository validation failed", cm.exception.stdout)
+
+    def test_doesnt_push_if_remote_contains_commit(self):
+        self.repo_client.add_branches(["master", "develop"])
+        proj = self.repo_client.add_project()
+        top_dir = self.repo_client.create("develop")
+
+        subprocess.run(["sc", "feature", "start", "donut"], cwd=top_dir)
+        output = subprocess.run(
+            ["sc", "feature", "push"], input="donut\n",
+            cwd=top_dir, capture_output=True, text=True
+        )
+
+        self.assertIn("Remote already contains commit. Skipping.", output.stdout)
+        self.assertNotIn("feature/donut", [b.name for b in proj.remote.branches])
 
 if __name__ == "__main__":
     unittest.main()
