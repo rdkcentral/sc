@@ -232,7 +232,7 @@ class SCBranching:
         )
 
     @staticmethod
-    def group_cmd(group: str, command: tuple[str], run_dir: Path = Path.cwd()):
+    def group_cmd(group: str, command: tuple[str, ...], run_dir: Path = Path.cwd()):
         top_dir, project_type = detect_project(run_dir)
         run_command_by_project_type(
             GroupCmd(top_dir, group, command),

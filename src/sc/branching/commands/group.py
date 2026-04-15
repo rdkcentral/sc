@@ -82,7 +82,7 @@ class GroupShow(Command):
                 remote_status = "No remotes configured"
 
             logger.info(f"Remote Status: {remote_status}")
-            
+
             subprocess.run(
                 ["git", "branch", "-vv", "--color=always"],
                 cwd=proj_dir,
@@ -138,6 +138,7 @@ class GroupTag(Command):
 
         if not group_found:
             logger.error(f"No projects match {self.group}!")
+            return
 
         if failures:
             logger.error("Tagging completed with errors:")
@@ -180,7 +181,7 @@ class GroupCheckout(Command):
 class GroupCmd(Command):
     """Run a command in all projects in a group."""
     group: str
-    command: tuple[str]
+    command: tuple[str, ...]
 
     def run_git_command(self):
         logger.error("sc group cmd must be ran inside a repo project!")
@@ -197,7 +198,7 @@ class GroupCmd(Command):
             group_found = True
             subprocess.run(
                 self.command,
-                cwd=proj.path,
+                cwd=self.top_dir / proj.path,
                 check=False
             )
 
@@ -291,4 +292,7 @@ class GroupPush(Command):
 
 def _project_in_group(proj: ProjectElementInterface, group: str) -> bool:
     """Does a project belong to a group."""
-    return proj.groups and group in proj.groups.split(",")
+    if not proj.groups:
+        return False
+
+    return group in proj.groups.split(",")

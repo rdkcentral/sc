@@ -105,7 +105,7 @@ class TestGroup(unittest.TestCase):
         proj_a.repo.git.push()
         proj_a_new_sha = proj_a.repo.active_branch.commit.hexsha
         proj_b.repo.git.commit("--allow-empty", m="New commit")
-        proj_b.repo.git.push
+        proj_b.repo.git.push()
         proj_b_new_sha = proj_b.repo.active_branch.commit.hexsha
 
         subprocess.run(
