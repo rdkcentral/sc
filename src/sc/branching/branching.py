@@ -26,7 +26,8 @@ from .commands.checkout import Checkout
 from .commands.clean import Clean
 from .commands.command import Command
 from .commands.finish import Finish
-from .commands.group import GroupShow
+from .commands.group import (GroupCheckout, GroupCmd, GroupFetch, GroupPush, GroupPull,
+                             GroupShow, GroupTag)
 from .commands.init import Init
 from .commands.list import List
 from .commands.pull import Pull
@@ -207,6 +208,14 @@ class SCBranching:
         )
 
     @staticmethod
+    def show_log(run_dir: Path = Path.cwd()):
+        top_dir, project_type = detect_project(run_dir)
+        run_command_by_project_type(
+            ShowLog(top_dir),
+            project_type
+        )
+
+    @staticmethod
     def show_repo_flow_config(run_dir: Path = Path.cwd()):
         top_dir, project_type = detect_project(run_dir)
         run_command_by_project_type(
@@ -215,10 +224,42 @@ class SCBranching:
         )
 
     @staticmethod
-    def show_log(run_dir: Path = Path.cwd()):
+    def group_checkout(group: str, branch: str, run_dir: Path = Path.cwd()):
         top_dir, project_type = detect_project(run_dir)
         run_command_by_project_type(
-            ShowLog(top_dir),
+            GroupCheckout(top_dir, group, branch),
+            project_type
+        )
+
+    @staticmethod
+    def group_cmd(group: str, command: tuple[str, ...], run_dir: Path = Path.cwd()):
+        top_dir, project_type = detect_project(run_dir)
+        run_command_by_project_type(
+            GroupCmd(top_dir, group, command),
+            project_type
+        )
+
+    @staticmethod
+    def group_fetch(group: str, run_dir: Path = Path.cwd()):
+        top_dir, project_type = detect_project(run_dir)
+        run_command_by_project_type(
+            GroupFetch(top_dir, group),
+            project_type
+        )
+
+    @staticmethod
+    def group_pull(group: str, run_dir: Path = Path.cwd()):
+        top_dir, project_type = detect_project(run_dir)
+        run_command_by_project_type(
+            GroupPull(top_dir, group),
+            project_type
+        )
+
+    @staticmethod
+    def group_push(group: str, run_dir: Path = Path.cwd()):
+        top_dir, project_type = detect_project(run_dir)
+        run_command_by_project_type(
+            GroupPush(top_dir, group),
             project_type
         )
 
@@ -230,6 +271,19 @@ class SCBranching:
             project_type
         )
 
+    @staticmethod
+    def group_tag(
+        group: str,
+        tag: str,
+        message: str | None,
+        push: bool,
+        run_dir: Path = Path.cwd()
+    ):
+        top_dir, project_type = detect_project(run_dir)
+        run_command_by_project_type(
+            GroupTag(top_dir, group, tag, message, push),
+            project_type
+        )
 
 def detect_project(run_dir: Path) -> tuple[Path | ProjectType]:
     if root := RepoLibrary.get_repo_root_dir(run_dir):

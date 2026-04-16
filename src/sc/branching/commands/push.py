@@ -103,7 +103,7 @@ class Push(Command):
         if not self._local_branch_exists(proj_repo, proj_branch_name):
             logger.info("Branch doesn't exist in project. Skipping.")
             return False
-        if self._remote_branch_contains(proj_repo, proj.remote, proj_branch_name):
+        if self._remote_contains_commit(proj_repo, proj.remote):
             logger.info("Remote already contains commit. Skipping.")
             return False
         return True
@@ -136,14 +136,12 @@ class Push(Command):
     def _local_branch_exists(self, repo: Repo, branch: str) -> bool:
         return branch in [h.name for h in repo.heads]
 
-    def _remote_branch_contains(self, repo: Repo, remote: str, branch: str) -> bool:
-        try:
-            remote_commit = repo.refs[f"{remote}/{branch}"]
-        except IndexError:
-            return False
+    def _remote_contains_commit(self, repo: Repo, remote: str) -> bool:
+        """Any branch on remote contains current latest commit."""
+        output = repo.git.branch("-r", "--contains", repo.active_branch.commit.hexsha)
 
-        local_commit = repo.heads[branch].commit
-        return repo.is_ancestor(local_commit, remote_commit)
+        return any(line.strip().startswith(f"{remote}/")
+                   for line in output.splitlines())
 
     def _update_manifest_revisions(self, manifest: ScManifest):
         for proj in manifest.projects:
