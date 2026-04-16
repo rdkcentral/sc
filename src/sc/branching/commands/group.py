@@ -16,6 +16,7 @@
 from dataclasses import dataclass
 import logging
 import subprocess
+import sys
 
 import git
 from git import Repo
@@ -43,14 +44,11 @@ class GroupShow(Command):
         manifest = ScManifest.from_repo_root(self.top_dir / '.repo')
         group_shown = False
         for proj in manifest.projects:
-            project_groups = proj.groups
-            if not project_groups or self.group not in project_groups.split(","):
-                continue
-
-            group_shown = True
-            self._show_project(proj)
-            print()
-            logger.info("-" * 100)
+            if _project_in_group(proj, self.group):
+                group_shown = True
+                self._show_project(proj)
+                print()
+                logger.info("-" * 100)
 
         if not group_shown:
             logger.warning(f"No project matching group `{self.group}` found!")
@@ -98,3 +96,203 @@ class GroupShow(Command):
             logger.error(
                 f"[bold red]Project path {proj_dir} isn't a valid git repository![/]",
                 extra={"markup": True})
+
+@dataclass
+class GroupTag(Command):
+    """Tag all projects belonging to a group."""
+    group: str
+    tag: str
+    message: str | None
+    push: bool
+
+    def run_git_command(self):
+        logger.error("`sc group tag` must be ran inside a repo project!")
+        sys.exit(1)
+
+    def run_repo_command(self):
+        manifest = ScManifest.from_repo_root(self.top_dir / '.repo')
+        failures = []
+        group_found = False
+
+        for proj in manifest.projects:
+            if not _project_in_group(proj, self.group):
+                continue
+
+            group_found = True
+            proj_path = self.top_dir / proj.path
+            logger.info(f"Operating on: {proj_path}")
+            repo = Repo(proj_path)
+
+            try:
+                if self.message:
+                    repo.git.tag(self.tag, "-m", self.message)
+                else:
+                    repo.git.tag(self.tag)
+                logger.info(f"Tagged {proj_path}")
+
+                if self.push:
+                    repo.git.push(proj.remote, self.tag)
+                    logger.info("Pushed tag.")
+            except git.GitCommandError as e:
+                failures.append((proj.path, str(e)))
+
+        if not group_found:
+            logger.error(f"No projects match {self.group}!")
+            return
+
+        if failures:
+            logger.error("Tagging completed with errors:")
+            for path, err in failures:
+                logger.error(f"{path} -> {err}")
+        else:
+            logger.info("Tagging completed successfully.")
+
+@dataclass
+class GroupCheckout(Command):
+    """Checkout a branch on all projects in a group."""
+    group: str
+    branch: str
+
+    def run_git_command(self):
+        logger.error("sc group checkout must be ran inside a repo project!")
+        sys.exit(1)
+
+    def run_repo_command(self):
+        group_found = False
+
+        manifest = ScManifest.from_repo_root(self.top_dir / '.repo')
+        for proj in manifest.projects:
+            if not _project_in_group(proj, self.group):
+                continue
+
+            group_found = True
+            proj_dir = self.top_dir / proj.path
+            logger.info(f"Operating on: {proj_dir}")
+            try:
+                Repo(proj_dir).git.checkout(self.branch)
+                logger.info(f"Checked out {self.branch}")
+            except git.GitCommandError as e:
+                logger.error(f"Failed to checkout branch: {e}")
+
+        if not group_found:
+            logger.error(f"No projects matching group: {self.group}")
+
+@dataclass
+class GroupCmd(Command):
+    """Run a command in all projects in a group."""
+    group: str
+    command: tuple[str, ...]
+
+    def run_git_command(self):
+        logger.error("sc group cmd must be ran inside a repo project!")
+        sys.exit(1)
+
+    def run_repo_command(self):
+        group_found = False
+
+        manifest = ScManifest.from_repo_root(self.top_dir / '.repo')
+        for proj in manifest.projects:
+            if not _project_in_group(proj, self.group):
+                continue
+
+            group_found = True
+            subprocess.run(
+                self.command,
+                cwd=self.top_dir / proj.path,
+                check=False
+            )
+
+        if not group_found:
+            logger.error(f"No projects matching group: {self.group}")
+
+@dataclass
+class GroupPull(Command):
+    group: str
+
+    def run_git_command(self):
+        logger.error("sc group pull must be ran inside a repo project!")
+        sys.exit(1)
+
+    def run_repo_command(self):
+        group_found = False
+
+        manifest = ScManifest.from_repo_root(self.top_dir / '.repo')
+        for proj in manifest.projects:
+            if not _project_in_group(proj, self.group):
+                continue
+
+            proj_dir = self.top_dir / proj.path
+            logger.info(f"Operating in {proj_dir}")
+            group_found = True
+            try:
+                Repo(proj_dir).git.pull()
+                logger.info("Pulled project.")
+            except git.GitCommandError as e:
+                logger.error(f"Failed to pull project: {e}")
+
+        if not group_found:
+            logger.error(f"No projects matching group: {self.group}")
+
+@dataclass
+class GroupFetch(Command):
+    group: str
+
+    def run_git_command(self):
+        logger.error("sc group fetch must be ran inside a repo project!")
+        sys.exit(1)
+
+    def run_repo_command(self):
+        group_found = False
+
+        manifest = ScManifest.from_repo_root(self.top_dir / '.repo')
+        for proj in manifest.projects:
+            if not _project_in_group(proj, self.group):
+                continue
+
+            proj_dir = self.top_dir / proj.path
+            logger.info(f"Operating in {proj_dir}")
+            group_found = True
+            try:
+                Repo(proj_dir).git.fetch()
+                logger.info("Fetched project.")
+            except git.GitCommandError as e:
+                logger.error(f"Failed to fetch project: {e}")
+
+        if not group_found:
+            logger.error(f"No projects matching group: {self.group}")
+
+@dataclass
+class GroupPush(Command):
+    group: str
+
+    def run_git_command(self):
+        logger.error("sc group push must be ran inside a repo project!")
+        sys.exit(1)
+
+    def run_repo_command(self):
+        group_found = False
+
+        manifest = ScManifest.from_repo_root(self.top_dir / '.repo')
+        for proj in manifest.projects:
+            if not _project_in_group(proj, self.group):
+                continue
+
+            proj_dir = self.top_dir / proj.path
+            logger.info(f"Operating in {proj_dir}")
+            group_found = True
+            repo = Repo(proj_dir)
+            try:
+                repo.git.push("-u", proj.remote, repo.active_branch.name)
+                logger.info("Pushed project.")
+            except git.GitCommandError as e:
+                logger.error(f"Failed to push project: {e}")
+
+        if not group_found:
+            logger.error(f"No projects matching group: {self.group}")
+
+def _project_in_group(proj: ProjectElementInterface, group: str) -> bool:
+    """Does a project belong to a group."""
+    if not proj.groups:
+        return False
+
+    return group in proj.groups.split(",")
