@@ -48,9 +48,8 @@ class TestPush(unittest.TestCase):
         read_only_sha = Repo(top_dir / read_only_proj.name).head.commit.hexsha
 
         subprocess.run(
-            ["sc", "feature", "push"],
+            ["sc", "feature", "push", "-m", "donut"],
             cwd=top_dir,
-            input="donut\n",
             text=True
         )
 
@@ -100,9 +99,8 @@ class TestPush(unittest.TestCase):
         read_only_sha = Repo(top_dir / read_only_proj.name).head.commit.hexsha
 
         subprocess.run(
-            ["sc", "master", "push"],
+            ["sc", "master", "push", "-m", "donut"],
             cwd=top_dir,
-            input="donut\n",
             text=True
         )
 
@@ -152,9 +150,8 @@ class TestPush(unittest.TestCase):
         read_only_sha = Repo(top_dir / read_only_proj.name).head.commit.hexsha
 
         subprocess.run(
-            ["sc", "release", "push", "donut"],
+            ["sc", "release", "push", "donut", "-m", "donut"],
             cwd=top_dir,
-            input="donut\n",
             text=True
         )
 
@@ -204,9 +201,8 @@ class TestPush(unittest.TestCase):
         read_only_sha = Repo(top_dir / read_only_proj.name).head.commit.hexsha
 
         subprocess.run(
-            ["sc", "develop", "push"],
+            ["sc", "develop", "push", "-m", "donut"],
             cwd=top_dir,
-            input="donut\n",
             text=True
         )
 
@@ -256,9 +252,8 @@ class TestPush(unittest.TestCase):
         read_only_sha = Repo(top_dir / read_only_proj.name).head.commit.hexsha
 
         subprocess.run(
-            ["sc", "support", "push", "donut"],
+            ["sc", "support", "push", "donut", "-m", "donut"],
             cwd=top_dir,
-            input="donut\n",
             text=True
         )
 
@@ -308,9 +303,8 @@ class TestPush(unittest.TestCase):
         read_only_sha = Repo(top_dir / read_only_proj.name).head.commit.hexsha
 
         subprocess.run(
-            ["sc", "hotfix", "push", "donut"],
+            ["sc", "hotfix", "push", "donut", "-m", "donut"],
             cwd=top_dir,
-            input="donut\n",
             text=True
         )
 
@@ -348,7 +342,7 @@ class TestPush(unittest.TestCase):
 
         with self.assertRaises(subprocess.CalledProcessError) as cm:
             subprocess.run(
-                ["sc", "feature", "push"], input="donut\n",
+                ["sc", "feature", "push", "-m", "donut"],
                 cwd=top_dir, capture_output=True, check=True, text=True)
 
         self.assertIn("Repository validation failed", cm.exception.stdout)
@@ -360,7 +354,7 @@ class TestPush(unittest.TestCase):
 
         subprocess.run(["sc", "feature", "start", "donut"], cwd=top_dir)
         output = subprocess.run(
-            ["sc", "feature", "push"], input="donut\n",
+            ["sc", "feature", "push", "-m", "donut"],
             cwd=top_dir, capture_output=True, text=True
         )
 

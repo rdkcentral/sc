@@ -31,6 +31,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class Push(Command):
     branch: Branch
+    message: str | None
 
     def run_git_command(self):
         repo = Repo(self.top_dir)
@@ -153,10 +154,12 @@ class Push(Command):
         manifest_repo = Repo(self.top_dir / '.repo' / 'manifests')
         manifest_repo.git.add(A=True)
         if manifest_repo.is_dirty():
-            msg = self._prompt_commit_msg()
+            commit_command = ["git", "commit"]
+            if self.message:
+                commit_command.extend(["-m", self.message])
             try:
                 subprocess.run(
-                    ["git", "commit", "-m", msg],
+                    commit_command,
                     cwd=self.top_dir / ".repo" / "manifests",
                     check=True
                 )
@@ -180,10 +183,3 @@ class Push(Command):
         except subprocess.CalledProcessError:
             logger.error("Failed to push manifest! Resolve errors and push again.")
             sys.exit(1)
-
-    def _prompt_commit_msg(self) -> str:
-        while True:
-            msg = input("Input commit message for manifest: ")
-            if msg:
-                return msg
-            logger.warning("Cannot provide an empty commit message!")
