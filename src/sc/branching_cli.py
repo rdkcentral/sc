@@ -52,9 +52,10 @@ def pull(name):
 
 @feature.command()
 @click.argument('name', required=False)
-def push(name):
-    """Push to remote, if a repo project updates the manifest with the lastest commits."""
-    SCBranching.push(BranchType.FEATURE, name)
+@click.option("-m", "--message", help="Manifest commit message (Repo only).")
+def push(name, message):
+    """Push to remote, if a Repo project updates the manifest."""
+    SCBranching.push(BranchType.FEATURE, name, message)
 
 
 @feature.command()
@@ -82,9 +83,10 @@ def pull():
 
 
 @develop.command()
-def push():
-    """Push develop branch to remote, if a repo project updates the manifest with the lastest commits."""
-    SCBranching.push(BranchType.DEVELOP)
+@click.option("-m", "--message", help="Manifest commit message (Repo only).")
+def push(message):
+    """Push develop branch to remote, if a Repo project updates the manifest."""
+    SCBranching.push(BranchType.DEVELOP, None, message)
 
 
 @develop.command()
@@ -109,9 +111,10 @@ def pull():
 
 
 @master.command()
-def push():
-    """Push master branch to remote, if a repo project updates the manifest with the lastest commits."""
-    SCBranching.push(BranchType.MASTER)
+@click.option("-m", "--message", help="Manifest commit message (Repo only).")
+def push(message):
+    """Push master branch to remote, if a Repo project updates the manifest."""
+    SCBranching.push(BranchType.MASTER, None, message)
 
 
 @master.command()
@@ -150,9 +153,10 @@ def pull(name: str | None):
 
 @release.command()
 @click.argument('name', required=False)
-def push(name: str):
-    """Push release branch to remote, if a repo project updates the manifest with the lastest commits."""
-    SCBranching.push(BranchType.RELEASE, name)
+@click.option("-m", "--message", help="Manifest commit message (Repo only).")
+def push(name: str, message):
+    """Push release branch to remote, if a Repo project updates the manifest."""
+    SCBranching.push(BranchType.RELEASE, name, message)
 
 @release.command()
 @click.argument('name')
@@ -192,9 +196,10 @@ def checkout(name, force, verify):
 
 @hotfix.command()
 @click.argument('name', required=False)
-def push(name):
-    """Push to remote, if it's a repo project also updates the manifest with the lastest commits."""
-    SCBranching.push(BranchType.HOTFIX, name)
+@click.option("-m", "--message", help="Manifest commit message (Repo only).")
+def push(name, message):
+    """Push to remote, if it's a Repo project updates the manifest."""
+    SCBranching.push(BranchType.HOTFIX, name, message)
 
 
 @hotfix.command()
@@ -232,9 +237,10 @@ def start(version: str, base: str):
 
 @support.command()
 @click.argument('name', required=False)
-def push(name):
-    """Push to remote, if it's a repo project also updates the manifest with the lastest commits."""
-    SCBranching.push(BranchType.SUPPORT, name)
+@click.option("-m", "--message", help="Manifest commit message (Repo only).")
+def push(name, message):
+    """Push to remote, if it's a Repo project updates."""
+    SCBranching.push(BranchType.SUPPORT, name, message)
 
 
 @support.command()
