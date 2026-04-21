@@ -53,7 +53,7 @@ def pull(name):
 @feature.command()
 @click.argument('name', required=False)
 def push(name):
-    """Push to remote, if a repo project updates the manifest with the lastest commits."""
+    """Push to remote; for Repo projects, also updates the manifest."""
     SCBranching.push(BranchType.FEATURE, name)
 
 
@@ -83,8 +83,8 @@ def pull():
 
 @develop.command()
 def push():
-    """Push develop branch to remote, if a repo project updates the manifest with the lastest commits."""
-    SCBranching.push(BranchType.DEVELOP)
+    """Push to remote; for Repo projects, also updates the manifest."""
+    SCBranching.push(BranchType.DEVELOP, None)
 
 
 @develop.command()
@@ -110,8 +110,8 @@ def pull():
 
 @master.command()
 def push():
-    """Push master branch to remote, if a repo project updates the manifest with the lastest commits."""
-    SCBranching.push(BranchType.MASTER)
+    """Push to remote; for Repo projects, also updates the manifest."""
+    SCBranching.push(BranchType.MASTER, None)
 
 
 @master.command()
@@ -151,7 +151,7 @@ def pull(name: str | None):
 @release.command()
 @click.argument('name', required=False)
 def push(name: str):
-    """Push release branch to remote, if a repo project updates the manifest with the lastest commits."""
+    """Push to remote; for Repo projects, also updates the manifest."""
     SCBranching.push(BranchType.RELEASE, name)
 
 @release.command()
@@ -193,7 +193,7 @@ def checkout(name, force, verify):
 @hotfix.command()
 @click.argument('name', required=False)
 def push(name):
-    """Push to remote, if it's a repo project also updates the manifest with the lastest commits."""
+    """Push to remote; for Repo projects, also updates the manifest."""
     SCBranching.push(BranchType.HOTFIX, name)
 
 
@@ -233,7 +233,7 @@ def start(version: str, base: str):
 @support.command()
 @click.argument('name', required=False)
 def push(name):
-    """Push to remote, if it's a repo project also updates the manifest with the lastest commits."""
+    """Push to remote; for Repo projects, also updates the manifest."""
     SCBranching.push(BranchType.SUPPORT, name)
 
 
