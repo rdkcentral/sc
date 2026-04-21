@@ -120,13 +120,12 @@ class SCBranching:
     def push(
         branch_type: BranchType,
         name: str | None = None,
-        message: str | None = None,
         run_dir: Path = Path.cwd()
     ):
         top_dir, project_type = detect_project(run_dir)
         branch = create_branch(project_type, top_dir, branch_type, name)
         run_command_by_project_type(
-            Push(top_dir, branch, message),
+            Push(top_dir, branch),
             project_type
         )
 

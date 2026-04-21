@@ -32,9 +32,6 @@ logger = logging.getLogger(__name__)
 class Push(Command):
     branch: Branch
 
-    # Repo only
-    message: str | None = None
-
     def run_git_command(self):
         repo = Repo(self.top_dir)
         remote = repo.remotes[0].name
@@ -156,12 +153,9 @@ class Push(Command):
         manifest_repo = Repo(self.top_dir / '.repo' / 'manifests')
         manifest_repo.git.add(A=True)
         if manifest_repo.is_dirty():
-            commit_command = ["git", "commit"]
-            if self.message:
-                commit_command.extend(["-m", self.message])
             try:
                 subprocess.run(
-                    commit_command,
+                    ["git", "commit"],
                     cwd=self.top_dir / ".repo" / "manifests",
                     check=True
                 )
