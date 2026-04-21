@@ -54,7 +54,7 @@ def pull(name):
 @click.argument('name', required=False)
 @click.option("-m", "--message", help="Manifest commit message (Repo only).")
 def push(name, message):
-    """Push to remote, if a Repo project updates the manifest."""
+    """Push to remote; for Repo projects, also updates the manifest."""
     SCBranching.push(BranchType.FEATURE, name, message)
 
 
@@ -85,7 +85,7 @@ def pull():
 @develop.command()
 @click.option("-m", "--message", help="Manifest commit message (Repo only).")
 def push(message):
-    """Push develop branch to remote, if a Repo project updates the manifest."""
+    """Push to remote; for Repo projects, also updates the manifest."""
     SCBranching.push(BranchType.DEVELOP, None, message)
 
 
@@ -113,7 +113,7 @@ def pull():
 @master.command()
 @click.option("-m", "--message", help="Manifest commit message (Repo only).")
 def push(message):
-    """Push master branch to remote, if a Repo project updates the manifest."""
+    """Push to remote; for Repo projects, also updates the manifest."""
     SCBranching.push(BranchType.MASTER, None, message)
 
 
@@ -155,7 +155,7 @@ def pull(name: str | None):
 @click.argument('name', required=False)
 @click.option("-m", "--message", help="Manifest commit message (Repo only).")
 def push(name: str, message):
-    """Push release branch to remote, if a Repo project updates the manifest."""
+    """Push to remote; for Repo projects, also updates the manifest."""
     SCBranching.push(BranchType.RELEASE, name, message)
 
 @release.command()
@@ -198,7 +198,7 @@ def checkout(name, force, verify):
 @click.argument('name', required=False)
 @click.option("-m", "--message", help="Manifest commit message (Repo only).")
 def push(name, message):
-    """Push to remote, if it's a Repo project updates the manifest."""
+    """Push to remote; for Repo projects, also updates the manifest."""
     SCBranching.push(BranchType.HOTFIX, name, message)
 
 
@@ -239,7 +239,7 @@ def start(version: str, base: str):
 @click.argument('name', required=False)
 @click.option("-m", "--message", help="Manifest commit message (Repo only).")
 def push(name, message):
-    """Push to remote, if it's a Repo project updates."""
+    """Push to remote; for Repo projects, also updates the manifest."""
     SCBranching.push(BranchType.SUPPORT, name, message)
 
 

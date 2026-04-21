@@ -33,7 +33,7 @@ class Push(Command):
     branch: Branch
 
     # Repo only
-    message: str | None
+    message: str | None = None
 
     def run_git_command(self):
         repo = Repo(self.top_dir)
