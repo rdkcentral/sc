@@ -11,9 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import os
 import shutil
+import stat
 import subprocess
+import tempfile
 import unittest
 
 from git import Repo
@@ -22,6 +24,22 @@ from sc_manifest_parser import ScManifest
 from .repo_client_creator import RepoTestClientCreator
 
 class TestPush(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        # Override git's commit editor
+        cls.script = tempfile.NamedTemporaryFile(delete=False, mode="w")
+        cls.script.write("#!/usr/bin/env sh\necho test > \"$1\"\n")
+        cls.script.close()
+
+        os.chmod(cls.script.name, os.stat(cls.script.name).st_mode | stat.S_IEXEC)
+
+        cls.env = os.environ.copy()
+        cls.env["GIT_EDITOR"] = cls.script.name
+
+    @classmethod
+    def tearDownClass(cls):
+        os.unlink(cls.script.name)
+
     def setUp(self):
         self.repo_client = RepoTestClientCreator()
 
@@ -49,9 +67,7 @@ class TestPush(unittest.TestCase):
 
         subprocess.run(
             ["sc", "feature", "push"],
-            cwd=top_dir,
-            input="donut\n",
-            text=True
+            cwd=top_dir, text=True, env=self.env
         )
 
         manifest = ScManifest.from_repo_root(top_dir / ".repo")
@@ -101,9 +117,7 @@ class TestPush(unittest.TestCase):
 
         subprocess.run(
             ["sc", "master", "push"],
-            cwd=top_dir,
-            input="donut\n",
-            text=True
+            cwd=top_dir, text=True, env=self.env
         )
 
         manifest = ScManifest.from_repo_root(top_dir / ".repo")
@@ -153,9 +167,7 @@ class TestPush(unittest.TestCase):
 
         subprocess.run(
             ["sc", "release", "push", "donut"],
-            cwd=top_dir,
-            input="donut\n",
-            text=True
+            cwd=top_dir, text=True, env=self.env
         )
 
         manifest = ScManifest.from_repo_root(top_dir / ".repo")
@@ -205,9 +217,7 @@ class TestPush(unittest.TestCase):
 
         subprocess.run(
             ["sc", "develop", "push"],
-            cwd=top_dir,
-            input="donut\n",
-            text=True
+            cwd=top_dir, text=True, env=self.env
         )
 
         manifest = ScManifest.from_repo_root(top_dir / ".repo")
@@ -257,9 +267,7 @@ class TestPush(unittest.TestCase):
 
         subprocess.run(
             ["sc", "support", "push", "donut"],
-            cwd=top_dir,
-            input="donut\n",
-            text=True
+            cwd=top_dir, text=True, env=self.env
         )
 
         manifest = ScManifest.from_repo_root(top_dir / ".repo")
@@ -309,9 +317,7 @@ class TestPush(unittest.TestCase):
 
         subprocess.run(
             ["sc", "hotfix", "push", "donut"],
-            cwd=top_dir,
-            input="donut\n",
-            text=True
+            cwd=top_dir, text=True, env=self.env
         )
 
         manifest = ScManifest.from_repo_root(top_dir / ".repo")
@@ -348,8 +354,8 @@ class TestPush(unittest.TestCase):
 
         with self.assertRaises(subprocess.CalledProcessError) as cm:
             subprocess.run(
-                ["sc", "feature", "push"], input="donut\n",
-                cwd=top_dir, capture_output=True, check=True, text=True)
+                ["sc", "feature", "push"],
+                cwd=top_dir, capture_output=True, check=True, text=True, env=self.env)
 
         self.assertIn("Repository validation failed", cm.exception.stdout)
 
@@ -360,8 +366,8 @@ class TestPush(unittest.TestCase):
 
         subprocess.run(["sc", "feature", "start", "donut"], cwd=top_dir)
         output = subprocess.run(
-            ["sc", "feature", "push"], input="donut\n",
-            cwd=top_dir, capture_output=True, text=True
+            ["sc", "feature", "push"],
+            cwd=top_dir, capture_output=True, text=True, env=self.env
         )
 
         self.assertIn("Remote already contains commit. Skipping.", output.stdout)
