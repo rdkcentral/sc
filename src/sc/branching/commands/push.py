@@ -103,7 +103,10 @@ class Push(Command):
         if not self._local_branch_exists(proj_repo, proj_branch_name):
             logger.info("Branch doesn't exist in project. Skipping.")
             return False
-        if self._remote_contains_commit(proj_repo, proj.remote):
+        if (
+            not self.branch.is_primary_branch()
+            and self._remote_contains_commit(proj_repo, proj.remote)
+        ):
             logger.info("Remote already contains commit. Skipping.")
             return False
         return True
