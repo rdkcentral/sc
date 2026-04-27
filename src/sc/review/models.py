@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from dataclasses import dataclass
+from datetime import datetime
+from enum import Enum
+from pathlib import Path
 
 @dataclass
 class Ticket:
@@ -23,3 +26,26 @@ class Ticket:
     status: str | None = None
     target_version: str | None = None
     title: str | None = None
+
+class CRStatus(str, Enum):
+    OPEN = "Open"
+    CLOSED = "Closed"
+    MERGED = "Merged"
+
+    def __str__(self):
+        return self.value
+
+@dataclass
+class CodeReview:
+    url: str
+    status: CRStatus
+
+@dataclass
+class RepoInfo:
+    branch: str
+    directory: str | Path
+    remote_url: str
+    commit_sha: str
+    commit_author: str
+    commit_date: datetime
+    commit_message: str

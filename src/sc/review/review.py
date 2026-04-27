@@ -22,12 +22,13 @@ from urllib import parse
 
 from git import Repo
 
-from git_flow_library import GitFlowLibrary
-from sc_manifest_parser import ScManifest
 from .exceptions import RemoteUrlNotFound, TicketIdentifierNotFound
-from .review_config import ReviewConfig, TicketHostCfg
-from .ticketing_instances import TicketingInstance, TicketingInstanceFactory
 from .git_instances import GitFactory, GitInstance
+from git_flow_library import GitFlowLibrary
+from .models import CodeReview, RepoInfo
+from .review_config import ReviewConfig, TicketHostCfg
+from sc_manifest_parser import ScManifest
+from .ticketing_instances import TicketingInstance, TicketingInstanceFactory
 
 logger = logging.getLogger(__name__)
 
@@ -65,8 +66,14 @@ class Review:
         ticket_id = f"{ticketing_cfg.project_prefix or ''}{ticket_num}"
         ticket = ticketing_instance.read_ticket(ticket_id)
 
+        repo_info = get_repo_info(repo)
         git_instance = self._create_git_instance(repo.remote().url)
-        comment_data = self._create_comment_data(repo, git_instance)
+        repo_slug = get_repo_slug(repo.remotes[0].url)
+        cr = git_instance.get_code_review(repo_slug, repo.active_branch.name)
+        target_branch = self._get_target_branch(repo.working_dir, repo.active_branch.name)
+        create_pr_url = git_instance.get_create_cr_url(
+            repo_slug, repo.active_branch.name, target_branch)
+        comment_data = self._create_comment_data(repo_info, create_pr_url, cr)
 
         logger.info(f"Ticket URL: [{ticket.url if ticket else 'None'}]")
         logger.info("Ticket info: \n")
@@ -107,9 +114,17 @@ class Review:
             if not proj_repo.active_branch.tracking_branch():
                 continue
 
+            repo_info = get_repo_info(proj_repo)
             proj_git = self._create_git_instance(proj_repo.remotes[project.remote].url)
+            repo_slug = get_repo_slug(proj_repo.remotes[0].url)
+            cr = proj_git.get_code_review(repo_slug, proj_repo.active_branch.name)
+            target_branch = self._get_target_branch(
+                proj_repo.working_dir, proj_repo.active_branch.name)
+            create_pr_url = proj_git.get_create_cr_url(
+                repo_slug, proj_repo.active_branch.name, target_branch)
+
             comment_data = self._create_comment_data(
-                proj_repo, proj_git)
+                repo_info, create_pr_url, cr)
             comments.append(comment_data)
 
         manifest_git = self._create_git_instance(manifest_repo.remote().url)
@@ -150,7 +165,7 @@ class Review:
     def _create_git_instance(self, remote_url: str) -> GitInstance:
         git_url_patterns = self._config.get_git_patterns()
         try:
-            remote_pattern = self._match_remote_url(
+            remote_pattern = match_remote_url(
                 remote_url, git_url_patterns)
         except RemoteUrlNotFound as e:
             raise RemoteUrlNotFound(
@@ -163,40 +178,6 @@ class Review:
             base_url=git_data.url
         )
 
-    def _match_remote_url(
-            self,
-            remote_url: str,
-            git_patterns: Iterable[str]
-        ) -> str:
-        """Match the remote url to a pattern in the git instance config.
-
-        Args:
-            remote_url (str): The remote url of the git repository.
-            git_patterns (Iterable[str]): An iterable of patterns to check against.
-
-        Raises:
-            RemoteUrlNotFound: Raised when the remote url matches no patterns.
-
-        Returns:
-            str: The matched pattern.
-        """
-        for pattern in git_patterns:
-            if pattern in remote_url:
-                return pattern
-        raise RemoteUrlNotFound(f"{remote_url} doesn't match any patterns!")
-
-    def _get_repo_slug(self, remote_url: str) -> str:
-        """Return the repository slug (e.g. "org/repo") from a remote url."""
-        if remote_url.startswith("git@"):
-            slug = remote_url.split(":", 1)[1]
-        else:
-            slug = parse.urlparse(remote_url).path.lstrip("/")
-
-        if slug.endswith(".git"):
-            slug = slug[:-4]
-
-        return slug
-
     def _get_target_branch(self, directory: Path, source_branch: str) -> str:
         if GitFlowLibrary.is_gitflow_enabled(directory):
             base = GitFlowLibrary.get_branch_base(source_branch, directory)
@@ -207,31 +188,25 @@ class Review:
     def _prompt_yn(self, msg: str) -> bool:
         return input(f"{msg} (y/n): ").strip().lower() == 'y'
 
-    def _create_comment_data(self, repo: Repo, git_instance: GitInstance) -> CommentData:
-        branch_name = repo.active_branch.name
-        repo_slug = self._get_repo_slug(repo.remotes[0].url)
-        cr = git_instance.get_code_review(repo_slug, branch_name)
-
-        target_branch = self._get_target_branch(repo.working_dir, branch_name)
-        create_pr_url = git_instance.get_create_cr_url(
-            repo_slug, branch_name, target_branch)
-
-        commit = repo.head.commit
-
+    def _create_comment_data(
+            self,
+            repo_info: RepoInfo,
+            create_pr_url: str,
+            cr: CodeReview | None) -> CommentData:
         review_status = str(cr.status) if cr else "Not Created"
         review_url = cr.url if cr else None
 
         return CommentData(
-            branch=branch_name,
-            directory=repo.working_dir,
-            remote_url=repo.remotes[0].url,
+            branch=repo_info.branch,
+            directory=repo_info.directory,
+            remote_url=repo_info.remote_url,
             review_status=review_status,
             review_url=review_url,
             create_pr_url=create_pr_url,
-            commit_sha=commit.hexsha[:10],
-            commit_author=f"{commit.author.name} <{commit.author.email}>",
-            commit_date=commit.committed_datetime,
-            commit_message=commit.message.strip()
+            commit_sha=repo_info.commit_sha,
+            commit_author=repo_info.commit_author,
+            commit_date=repo_info.commit_date,
+            commit_message=repo_info.commit_message
         )
 
     def _create_ticketing_instance(self, cfg: TicketHostCfg) -> TicketingInstance:
@@ -361,3 +336,51 @@ class Review:
         )
 
         return "\n".join([*header, "", *review, "", *commit])
+
+def get_repo_slug(remote_url: str) -> str:
+    """Return the repository slug (e.g. "org/repo") from a remote url."""
+    if remote_url.startswith("git@"):
+        slug = remote_url.split(":", 1)[1]
+    else:
+        slug = parse.urlparse(remote_url).path.lstrip("/")
+
+    slug = slug.strip("/")
+
+    if slug.endswith(".git"):
+        slug = slug[:-4]
+
+    return slug
+
+def match_remote_url(
+        remote_url: str,
+        git_patterns: Iterable[str]
+    ) -> str:
+    """Match the remote url to a pattern in the git instance config.
+
+    Args:
+        remote_url (str): The remote url of the git repository.
+        git_patterns (Iterable[str]): An iterable of patterns to check against.
+
+    Raises:
+        RemoteUrlNotFound: Raised when the remote url matches no patterns.
+
+    Returns:
+        str: The matched pattern.
+    """
+    for pattern in git_patterns:
+        if pattern in remote_url:
+            return pattern
+    raise RemoteUrlNotFound(f"{remote_url} doesn't match any patterns!")
+
+def get_repo_info(repo: Repo) -> RepoInfo:
+    commit = repo.head.commit
+
+    return RepoInfo(
+        branch=repo.active_branch.name,
+        directory=repo.working_dir,
+        remote_url=repo.remotes[0].url,
+        commit_sha=commit.hexsha[:10],
+        commit_author=f"{commit.author.name} <{commit.author.email}>",
+        commit_date=commit.committed_date,
+        commit_message=commit.message.strip()
+    )
