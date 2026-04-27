@@ -15,7 +15,7 @@
 import requests
 import urllib.parse
 
-from sc.review.code_review import CodeReview, CRStatus
+from sc.review.models import CodeReview, CRStatus
 from ..git_instance import GitInstance
 
 class GitlabInstance(GitInstance):

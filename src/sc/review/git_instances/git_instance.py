@@ -14,7 +14,7 @@
 
 from abc import ABC, abstractmethod
 
-from ..code_review import CodeReview
+from ..models import CodeReview
 
 class GitInstance(ABC):
     def __init__(self, token: str, base_url: str | None):

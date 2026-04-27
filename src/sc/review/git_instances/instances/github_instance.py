@@ -14,7 +14,7 @@
 
 import requests
 
-from sc.review.code_review import CRStatus, CodeReview
+from sc.review.models import CRStatus, CodeReview
 from ..git_instance import GitInstance
 
 class GithubInstance(GitInstance):

@@ -49,3 +49,83 @@ class RepoInfo:
     commit_author: str
     commit_date: datetime
     commit_message: str
+
+@dataclass
+class CommentData:
+    branch: str
+    directory: str | Path
+    remote_url: str
+    review_status: str
+    review_url: str | None
+    create_pr_url: str
+    commit_sha: str
+    commit_author: str
+    commit_date: datetime
+    commit_message: str
+
+    def to_terminal(self) -> str:
+        """Generate the information for one repo to be displayed in the terminal.
+
+        Returns:
+            str: Information from one repo to be displayed in the terminal.
+        """
+        def c(code, text):
+            return f"\033[{code}m{text}\033[0m"
+
+        header = [
+            f"Branch: [{self.branch}]",
+            f"Directory: [{self.directory}]",
+            f"Git: [{self.remote_url}]",
+        ]
+
+        if self.review_url:
+            review_status = f"Review Status: [{c('32', self.review_status)}]"
+            review_link = f"Review URL: [{c('32', self.review_url)}]"
+        else:
+            review_status = f"Review Status: [{c('31', self.review_status)}]"
+            review_link = f"Create Review URL: [{c('33', self.create_pr_url)}]"
+
+        review = [review_status, review_link]
+
+        commit = (
+            f"Last Commit: [{self.commit_sha}]",
+            f"Author: [{self.commit_author}]",
+            f"Date: [{self.commit_date}]",
+            "",
+            f"{self.commit_message}"
+        )
+
+        return "\n".join([*header, "", *review, "", *commit])
+
+    def to_ticket(self) -> str:
+        """Generate the information for one repo formatted for a ticket comment.
+
+        Returns:
+            str: A formatted ticket comment.
+        """
+        header = [
+            f"Branch: [{self.branch}]",
+            f"Directory: [{self.directory}]",
+            f"Git: [{self.remote_url}]",
+        ]
+
+        if self.review_url:
+            review_status = f"Review Status: [{self.review_status}]"
+            review_link = f"Review URL: [{self.review_url}]"
+        else:
+            review_status = f"Review Status: [{self.review_status}]"
+            review_link = f"Create Review URL: [{self.create_pr_url}]"
+
+        review = [review_status, review_link]
+
+        commit = (
+            "<pre>",
+            f"Last Commit: [{self.commit_sha}]",
+            f"Author: [{self.commit_author}]",
+            f"Date: [{self.commit_date}]",
+            "",
+            f"{self.commit_message}",
+            "</pre>"
+        )
+
+        return "\n".join([*header, "", *review, "", *commit])

@@ -17,9 +17,10 @@ import logging
 from pathlib import Path
 import sys
 
+from .exceptions import ReviewException
 from git_flow_library import GitFlowLibrary
 from repo_library import RepoLibrary
-from .exceptions import ReviewException
+from .repo_source import ManifestRepoSource, SingleRepoSource
 from .review import Review
 from .review_config import ReviewConfig, TicketHostCfg, GitInstanceCfg
 from .ticketing_instances import TicketingInstanceFactory
@@ -28,14 +29,16 @@ from .git_instances import GitFactory
 logger = logging.getLogger(__name__)
 
 def review():
+    if root := RepoLibrary.get_repo_root_dir(Path.cwd()):
+        repo_source = ManifestRepoSource(root.parent)
+    elif root := GitFlowLibrary.get_git_root(Path.cwd()):
+        repo_source = SingleRepoSource(root.parent)
+    else:
+        logger.error("Not in a repo project or git repository!")
+        sys.exit(1)
+
     try:
-        if root := RepoLibrary.get_repo_root_dir(Path.cwd()):
-            Review(root.parent).run_repo_command()
-        elif root := GitFlowLibrary.get_git_root(Path.cwd()):
-            Review(root.parent).run_git_command()
-        else:
-            logger.error("Not in a repo project or git repository!")
-            sys.exit(1)
+        Review(repo_source).run()
     except (ReviewException, ConnectionError) as e:
         logger.error(e)
         sys.exit(1)
