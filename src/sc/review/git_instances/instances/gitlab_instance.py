@@ -97,8 +97,8 @@ class GitlabInstance(GitInstance):
             self,
             repo: str,
             source_branch: str,
-            target_branch: str="develop"
-        ):
+            target_branch: str = "develop"
+        ) -> str:
         params = {
             "merge_request[source_branch]": source_branch,
             "merge_request[target_branch]": target_branch,

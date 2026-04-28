@@ -1,6 +1,6 @@
 import logging
 
-from .review_config import TicketHostCfg
+from .review_config import TicketHostModel
 
 logger = logging.getLogger(__name__)
 
@@ -9,7 +9,7 @@ class Prompter:
         return input(f"{msg} (y/n): ").strip().lower() == 'y'
 
     def ticket_selection(
-            self, ticket_conf: dict[str, TicketHostCfg])-> tuple[str, str]:
+            self, ticket_conf: dict[str, TicketHostModel])-> tuple[str, str]:
         """Prompt the user to select a ticketing instance and enter a ticket number.
 
         Raises:

@@ -43,11 +43,7 @@ class GithubInstance(GitInstance):
         except requests.exceptions.ConnectionError as e:
             raise ConnectionError("Network connection to GitHub failed.") from e
 
-    def get_code_review(
-            self,
-            repo: str,
-            source_branch: str,
-            target_branch: str) -> CodeReview | None:
+    def get_code_review(self, repo: str, source_branch: str) -> CodeReview | None:
         """Get information about a code review.
 
         Args:

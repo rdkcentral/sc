@@ -16,7 +16,7 @@ import logging
 
 from .exceptions import TicketIdentifierNotFound
 from .git_host_service import GitHostService
-from .models import CodeReview, CommentData, RepoInfo
+from .models import CodeReview, CommentData, RepoInfo, Ticket
 from .prompter import Prompter
 from .repo_source import RepoSource
 from .ticket_service import TicketService
@@ -49,13 +49,11 @@ class Review:
         comments = []
         for repo_info in self.repo_source.get_repos():
             create_cr_url = None
-            try:
-                cr = self._git_service.get_git_review_data(repo_info)
-            except RuntimeError as e:
-                logger.error(e)
+            cr = self._git_service.get_git_review_data(repo_info)
+            if not cr:
                 create_cr_url = self._git_service.get_create_cr_url(repo_info)
 
-            comments.append(self._create_comment_data(repo_info, cr, create_cr_url))
+            comments.append(self._create_comment_data(repo_info, ticket, cr, create_cr_url))
 
         logger.info(f"Ticket URL: [{ticket.url if ticket else 'None'}]")
         logger.info("Ticket info: \n")
@@ -64,20 +62,22 @@ class Review:
 
         if self._prompter.yn("Update ticket?"):
             ticket_comment = self._generate_combined_ticket_comment(comments)
-            self._ticket_service.update(ticket_instance, ticket.id, ticket_comment)
+            self._ticket_service.update(ticket_instance, ticket, ticket_comment)
 
     def _create_comment_data(
             self,
             repo_info: RepoInfo,
+            ticket: Ticket,
             cr: CodeReview | None,
             create_cr_url: str | None) -> CommentData:
-        review_status = str(cr.status) if cr.status else "Not Created"
-        review_url = cr.url if cr.url else None
+        review_status = str(cr.status) if cr else "Not Created"
+        review_url = cr.url if cr else None
 
         return CommentData(
             branch=repo_info.branch,
             directory=repo_info.directory,
             remote_url=repo_info.remote_url,
+            ticket_url=ticket.url,
             review_status=review_status,
             review_url=review_url,
             create_cr_url=create_cr_url,
@@ -88,8 +88,8 @@ class Review:
         )
 
     def _generate_combined_terminal_comment(self, comments: list[CommentData]) -> str:
-        return "\n\n".join(c.to_terminal() for c in comments)
+        return f"\n{'-'*100}\n".join(c.to_terminal() for c in comments)
 
     def _generate_combined_ticket_comment(self, comments: list[CommentData]) -> str:
-        return "\n\n".join(c.to_ticket() for c in comments)
+        return f"\n{'-'*100}\n".join(c.to_ticket() for c in comments)
 

@@ -71,6 +71,7 @@ class CommentData:
     branch: str
     directory: str | Path
     remote_url: str
+    ticket_url: str
     review_status: str
     review_url: str | None
     create_cr_url: str
@@ -94,6 +95,7 @@ class CommentData:
             f"Git: [{self.remote_url}]",
         ]
 
+        ticket_link = f"Ticket: [{c('34', self.ticket_url)}]"
         if self.review_url:
             review_status = f"Review Status: [{c('32', self.review_status)}]"
             review_link = f"Review URL: [{c('32', self.review_url)}]"
@@ -101,7 +103,7 @@ class CommentData:
             review_status = f"Review Status: [{c('31', self.review_status)}]"
             review_link = f"Create Review URL: [{c('33', self.create_cr_url)}]"
 
-        review = [review_status, review_link]
+        review = [ticket_link, review_status, review_link]
 
         commit = (
             f"Last Commit: [{self.commit_sha}]",
@@ -125,6 +127,7 @@ class CommentData:
             f"Git: [{self.remote_url}]",
         ]
 
+        ticket_link = f"Ticket: [{self.ticket_url}]"
         if self.review_url:
             review_status = f"Review Status: [{self.review_status}]"
             review_link = f"Review URL: [{self.review_url}]"
@@ -132,7 +135,7 @@ class CommentData:
             review_status = f"Review Status: [{self.review_status}]"
             review_link = f"Create Review URL: [{self.create_cr_url}]"
 
-        review = [review_status, review_link]
+        review = [ticket_link, review_status, review_link]
 
         commit = (
             "<pre>",

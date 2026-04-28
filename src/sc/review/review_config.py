@@ -67,7 +67,7 @@ class GitHostModel(BaseModel):
     provider: str
 
 class GitHostConfig:
-    def __init__(self):
+    def __init__(self, config: ConfigManager | None = None):
         self._git_config = ConfigManager('git_instances')
 
     def get_patterns(self) -> set[str]:
