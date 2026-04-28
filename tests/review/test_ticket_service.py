@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 from sc.review.ticket_service import TicketService
 from sc.review.exceptions import TicketIdentifierNotFound
@@ -57,7 +57,7 @@ class TestTicketService(unittest.TestCase):
         self.assertEqual(identifier, "ABC")
         self.assertEqual(ticket_num, "123")
 
-    def test_match_branch_failur(self):
+    def test_match_branch_failure(self):
         self.config.get_identifiers.return_value = ["ABC"]
 
         with self.assertRaises(TicketIdentifierNotFound):

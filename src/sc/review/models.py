@@ -74,7 +74,7 @@ class CommentData:
     ticket_url: str
     review_status: str
     review_url: str | None
-    create_cr_url: str
+    create_cr_url: str | None
     commit_sha: str
     commit_author: str
     commit_date: datetime

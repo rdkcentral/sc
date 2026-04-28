@@ -47,7 +47,7 @@ class GitlabInstance(GitInstance):
             raise ConnectionError(
                 f"Network connection to GitLab failed for {self.base_url}") from e
 
-    def get_code_review(self, repo: str, source_branch: str) -> CodeReview:
+    def get_code_review(self, repo: str, source_branch: str) -> CodeReview | None:
         """Get information about a code review.
 
         Args:

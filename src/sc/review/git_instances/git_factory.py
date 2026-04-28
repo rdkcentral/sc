@@ -22,12 +22,9 @@ class GitFactory:
         "gitlab": GitlabInstance
     }
 
-    def types(cls) -> list[str]:
-        return list(cls._registry.keys())
-
     @cache
-    def create(cls, name: str, token: str, base_url: str | None) -> GitInstance:
+    def create(self, name: str, token: str, base_url: str | None) -> GitInstance:
         try:
-            return cls._registry[name.lower()](token=token, base_url=base_url)
+            return self._registry[name.lower()](token=token, base_url=base_url)
         except KeyError:
             raise ValueError(f"Provider name {name} doesn't match any VCS instance!")
