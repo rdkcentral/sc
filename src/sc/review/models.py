@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
+from urllib import parse
 
 @dataclass
 class Ticket:
@@ -50,6 +51,21 @@ class RepoInfo:
     commit_date: datetime
     commit_message: str
 
+    @property
+    def repo_slug(self) -> str:
+        """Return the repository slug (e.g. "org/repo") from a remote url."""
+        if self.remote_url.startswith("git@"):
+            slug = self.remote_url.split(":", 1)[1]
+        else:
+            slug = parse.urlparse(self.remote_url).path.lstrip("/")
+
+        slug = slug.strip("/")
+
+        if slug.endswith(".git"):
+            slug = slug[:-4]
+
+        return slug
+
 @dataclass
 class CommentData:
     branch: str
@@ -57,7 +73,7 @@ class CommentData:
     remote_url: str
     review_status: str
     review_url: str | None
-    create_pr_url: str
+    create_cr_url: str
     commit_sha: str
     commit_author: str
     commit_date: datetime
@@ -83,7 +99,7 @@ class CommentData:
             review_link = f"Review URL: [{c('32', self.review_url)}]"
         else:
             review_status = f"Review Status: [{c('31', self.review_status)}]"
-            review_link = f"Create Review URL: [{c('33', self.create_pr_url)}]"
+            review_link = f"Create Review URL: [{c('33', self.create_cr_url)}]"
 
         review = [review_status, review_link]
 
@@ -114,7 +130,7 @@ class CommentData:
             review_link = f"Review URL: [{self.review_url}]"
         else:
             review_status = f"Review Status: [{self.review_status}]"
-            review_link = f"Create Review URL: [{self.create_pr_url}]"
+            review_link = f"Create Review URL: [{self.create_cr_url}]"
 
         review = [review_status, review_link]
 

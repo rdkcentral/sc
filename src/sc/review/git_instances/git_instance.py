@@ -35,7 +35,11 @@ class GitInstance(ABC):
         pass
 
     @abstractmethod
-    def get_code_review(self, repo: str, source_branch: str) -> CodeReview:
+    def get_code_review(
+        self,
+        repo: str,
+        source_branch: str,
+        target_branch: str) -> CodeReview:
         """Get information about a branches code review.
 
         Args:

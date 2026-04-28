@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from functools import cache
 
 from .instances import GithubInstance, GitlabInstance
 from .git_instance import GitInstance
@@ -21,11 +22,10 @@ class GitFactory:
         "gitlab": GitlabInstance
     }
 
-    @classmethod
     def types(cls) -> list[str]:
         return list(cls._registry.keys())
 
-    @classmethod
+    @cache
     def create(cls, name: str, token: str, base_url: str | None) -> GitInstance:
         try:
             return cls._registry[name.lower()](token=token, base_url=base_url)
