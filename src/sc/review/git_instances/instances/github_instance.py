@@ -14,7 +14,7 @@
 
 import requests
 
-from sc.review.code_review import CRStatus, CodeReview
+from sc.review.models import CRStatus, CodeReview
 from ..git_instance import GitInstance
 
 class GithubInstance(GitInstance):
@@ -77,6 +77,7 @@ class GithubInstance(GitInstance):
 
         if not prs:
             return None
+
         pr = prs[0]
         # GitHub marks merged PRs as state="closed", merged=True
         if pr.get("merged"):

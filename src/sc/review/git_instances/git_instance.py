@@ -14,7 +14,7 @@
 
 from abc import ABC, abstractmethod
 
-from ..code_review import CodeReview
+from ..models import CodeReview
 
 class GitInstance(ABC):
     def __init__(self, token: str, base_url: str | None):
@@ -35,7 +35,7 @@ class GitInstance(ABC):
         pass
 
     @abstractmethod
-    def get_code_review(self, repo: str, source_branch: str) -> CodeReview:
+    def get_code_review(self, repo: str, source_branch: str) -> CodeReview | None:
         """Get information about a branches code review.
 
         Args:
@@ -43,7 +43,8 @@ class GitInstance(ABC):
             source_branch (str): The branch the code review is made from.
 
         Returns:
-            CodeReview: dataclass with information about the code review.
+            CodeReview | None: dataclass with information about the code review or None
+                if not found.
         """
         pass
 

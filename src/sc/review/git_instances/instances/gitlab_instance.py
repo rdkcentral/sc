@@ -15,7 +15,7 @@
 import requests
 import urllib.parse
 
-from sc.review.code_review import CodeReview, CRStatus
+from sc.review.models import CodeReview, CRStatus
 from ..git_instance import GitInstance
 
 class GitlabInstance(GitInstance):
@@ -47,7 +47,7 @@ class GitlabInstance(GitInstance):
             raise ConnectionError(
                 f"Network connection to GitLab failed for {self.base_url}") from e
 
-    def get_code_review(self, repo: str, source_branch: str) -> CodeReview:
+    def get_code_review(self, repo: str, source_branch: str) -> CodeReview | None:
         """Get information about a code review.
 
         Args:
@@ -97,8 +97,8 @@ class GitlabInstance(GitInstance):
             self,
             repo: str,
             source_branch: str,
-            target_branch: str="develop"
-        ):
+            target_branch: str = "develop"
+        ) -> str:
         params = {
             "merge_request[source_branch]": source_branch,
             "merge_request[target_branch]": target_branch,

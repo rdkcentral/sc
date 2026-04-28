@@ -11,15 +11,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from dataclasses import dataclass
+from pathlib import Path
 
-@dataclass
-class Ticket:
-    url: str
-    author: str | None = None
-    assignee: str | None = None
-    comments: str | None = None
-    id: str | None = None
-    status: str | None = None
-    target_version: str | None = None
-    title: str | None = None
+from git import Repo
+
+from ..models import RepoInfo
+from .repo_source import RepoSource
+
+class SingleRepoSource(RepoSource):
+    def __init__(self, top_dir: Path):
+        self._top_dir = top_dir
+
+    @property
+    def active_branch(self) -> str:
+        return Repo(self._top_dir).active_branch.name
+
+    def get_repos(self) -> list[RepoInfo]:
+        return [self._get_repo_info(Repo(self._top_dir))]

@@ -11,19 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from pathlib import Path
 
-from dataclasses import dataclass
-from enum import Enum
+from git_flow_library import GitFlowLibrary
 
-class CRStatus(str, Enum):
-    OPEN = "Open"
-    CLOSED = "Closed"
-    MERGED = "Merged"
-
-    def __str__(self):
-        return self.value
-
-@dataclass
-class CodeReview:
-    url: str
-    status: CRStatus
+class GitFlowBranchStrategy:
+    def get_target_branch(self, directory: Path, source_branch: str) -> str:
+        if GitFlowLibrary.is_gitflow_enabled(directory):
+            base = GitFlowLibrary.get_branch_base(source_branch, directory)
+            return base if base else GitFlowLibrary.get_develop_branch(directory)
+        else:
+            return "develop"

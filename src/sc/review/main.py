@@ -17,25 +17,28 @@ import logging
 from pathlib import Path
 import sys
 
+from .exceptions import ReviewException
 from git_flow_library import GitFlowLibrary
 from repo_library import RepoLibrary
-from .exceptions import ReviewException
+from .repo_source import ManifestRepoSource, SingleRepoSource
 from .review import Review
-from .review_config import ReviewConfig, TicketHostCfg, GitInstanceCfg
+from .review_config import GitHostConfig, GitHostModel, TicketHostConfig, TicketHostModel
 from .ticketing_instances import TicketingInstanceFactory
 from .git_instances import GitFactory
 
 logger = logging.getLogger(__name__)
 
 def review():
+    if root := RepoLibrary.get_repo_root_dir(Path.cwd()):
+        repo_source = ManifestRepoSource(root.parent)
+    elif root := GitFlowLibrary.get_git_root(Path.cwd()):
+        repo_source = SingleRepoSource(root.parent)
+    else:
+        logger.error("Not in a repo project or git repository!")
+        sys.exit(1)
+
     try:
-        if root := RepoLibrary.get_repo_root_dir(Path.cwd()):
-            Review(root.parent).run_repo_command()
-        elif root := GitFlowLibrary.get_git_root(Path.cwd()):
-            Review(root.parent).run_git_command()
-        else:
-            logger.error("Not in a repo project or git repository!")
-            sys.exit(1)
+        Review(repo_source).run()
     except (ReviewException, ConnectionError) as e:
         logger.error(e)
         sys.exit(1)
@@ -81,8 +84,8 @@ def add_git_instance():
 
     logger.info("Connection validated!")
 
-    git_cfg = GitInstanceCfg(url=url, token=api_key, provider=provider)
-    ReviewConfig().write_git_data(pattern, git_cfg)
+    git_cfg = GitHostModel(url=url, token=api_key, provider=provider)
+    GitHostConfig().write(pattern, git_cfg)
 
     logger.info("Git Provider Added!")
 
@@ -146,7 +149,7 @@ def add_ticketing_instance():
 
     logger.info("Connection successful!")
 
-    ticket_cfg = TicketHostCfg(
+    ticket_cfg = TicketHostModel(
         url=base_url,
         provider=provider,
         api_key=api_token,
@@ -155,6 +158,6 @@ def add_ticketing_instance():
         project_prefix=project_prefix
     )
 
-    ReviewConfig().write_ticketing_data(branch_prefix, ticket_cfg)
+    TicketHostConfig().write(branch_prefix, ticket_cfg)
 
     logger.info("Added ticketing instance!")
