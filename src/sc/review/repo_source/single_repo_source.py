@@ -19,6 +19,7 @@ from ..models import RepoInfo
 from .repo_source import RepoSource
 
 class SingleRepoSource(RepoSource):
+    """Returns information about a singular git repo."""
     def __init__(self, top_dir: Path):
         self._top_dir = top_dir
 

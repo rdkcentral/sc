@@ -12,84 +12,155 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import getpass
 import logging
+from pathlib import Path
+import sys
 
-from .exceptions import TicketIdentifierNotFound
-from .git_host_service import GitHostService
-from .models import CodeReview, CommentData, RepoInfo, Ticket
-from .prompter import Prompter
-from .repo_source import RepoSource
-from .ticket_service import TicketService
+from .exceptions import ReviewException
+from git_flow_library import GitFlowLibrary
+from repo_library import RepoLibrary
+from .repo_source import ManifestRepoSource, SingleRepoSource
+from .ticket_updater import TicketUpdater
+from .review_config import GitHostConfig, GitHostModel, TicketHostConfig, TicketHostModel
+from .ticketing_instances import TicketingInstanceFactory
+from .git_instances import GitFactory
 
 logger = logging.getLogger(__name__)
 
-class Review:
-    def __init__(
-            self,
-            repo_source: RepoSource,
-            ticket_service: TicketService | None = None,
-            git_service: GitHostService | None = None,
-            prompter: Prompter | None = None
-        ):
-        self.repo_source = repo_source
-        self._ticket_service = ticket_service or TicketService()
-        self._git_service = git_service or GitHostService()
-        self._prompter = prompter or Prompter()
+def update_ticket():
+    """Add commit/PR information to your ticket."""
+    if root := RepoLibrary.get_repo_root_dir(Path.cwd()):
+        repo_source = ManifestRepoSource(root.parent)
+    elif root := GitFlowLibrary.get_git_root(Path.cwd()):
+        repo_source = SingleRepoSource(root.parent)
+    else:
+        logger.error("Not in a repo project or git repository!")
+        sys.exit(1)
 
-    def run(self):
-        try:
-            identifier, ticket_num = self._ticket_service.match_branch(
-                self.repo_source.active_branch)
-        except TicketIdentifierNotFound as e:
-            logger.warning(e)
-            identifier, ticket_num = self._ticket_service.prompt_ticket()
+    try:
+        TicketUpdater(repo_source).run()
+    except (ReviewException, ConnectionError) as e:
+        logger.error(e)
+        sys.exit(1)
 
-        ticket_instance, ticket = self._ticket_service.resolve(identifier, ticket_num)
+def add_git_instance():
+    """Add a VCS instance for sc review."""
+    logger.info("Enter Git provider from the list below: ")
+    logger.info("github")
+    logger.info("gitlab")
 
-        comments = []
-        for repo_info in self.repo_source.get_repos():
-            create_cr_url = None
-            cr = self._git_service.get_git_review_data(repo_info)
-            if not cr:
-                create_cr_url = self._git_service.get_create_cr_url(repo_info)
+    provider = input("> ")
+    print("")
 
-            comments.append(self._create_comment_data(repo_info, ticket, cr, create_cr_url))
+    if provider == "github":
+        url = "https://api.github.com"
+        logger.info("Enter a pattern to identify Git from remote url: ")
+        logger.info(
+            "E.G. github.com for all github instances or "
+            "github.com/org for a particular organisation")
+        pattern = input("> ")
+        print("")
+    elif provider == "gitlab":
+        logger.info(
+            "Enter the URL for the gitlab instance (e.g. https://gitlab.com "
+            "or https://your-instance.com): ")
+        url = input("> ")
+        print("")
+        pattern = url.replace("https://", "").replace("http://", "")
+    else:
+        logger.error("Provider matches none in the list!")
+        sys.exit(1)
 
-        logger.info(f"Ticket URL: [{ticket.url if ticket else 'None'}]")
-        logger.info("Ticket info: \n")
-        print(self._generate_combined_terminal_comment(comments))
-        print()
+    logger.info("Enter your api token: ")
+    api_key = getpass.getpass("> ")
+    print("")
 
-        if self._prompter.yn("Update ticket?"):
-            ticket_comment = self._generate_combined_ticket_comment(comments)
-            self._ticket_service.update(ticket_instance, ticket, ticket_comment)
+    instance = GitFactory.create(provider, api_key, url)
 
-    def _create_comment_data(
-            self,
-            repo_info: RepoInfo,
-            ticket: Ticket,
-            cr: CodeReview | None,
-            create_cr_url: str | None) -> CommentData:
-        review_status = str(cr.status) if cr else "Not Created"
-        review_url = cr.url if cr else None
+    try:
+        instance.validate_connection()
+    except ConnectionError as e:
+        logger.error(f"Failed to connect! {e}")
+        sys.exit(1)
 
-        return CommentData(
-            branch=repo_info.branch,
-            directory=repo_info.directory,
-            remote_url=repo_info.remote_url,
-            ticket_url=ticket.url,
-            review_status=review_status,
-            review_url=review_url,
-            create_cr_url=create_cr_url,
-            commit_sha=repo_info.commit_sha,
-            commit_author=repo_info.commit_author,
-            commit_date=repo_info.commit_date,
-            commit_message=repo_info.commit_message
+    logger.info("Connection validated!")
+
+    git_cfg = GitHostModel(url=url, token=api_key, provider=provider)
+    GitHostConfig().write(pattern, git_cfg)
+
+    logger.info("Git Provider Added!")
+
+def add_ticketing_instance():
+    """Add a ticketing instance for sc review."""
+    logger.info("Enter the ticketing provider from the list below: ")
+    logger.info("jira")
+    logger.info("redmine")
+    provider = input("> ")
+    print("")
+
+    if provider not in ("jira", "redmine"):
+        logger.error(f"Provider {provider} not supported!")
+        sys.exit(1)
+
+    logger.info("Enter the branch prefix (e.g ABC for feature/ABC-123_ticket): ")
+    branch_prefix = input("> ")
+    print("")
+
+    username = None
+    if provider == "jira":
+        project_prefix = f"{branch_prefix}-"
+
+        logger.info("Auth type:")
+        logger.info("token")
+        logger.info("basic")
+        auth_type = input("> ")
+        print("")
+
+        if auth_type not in ("token", "basic"):
+            logger.error(f"Auth type {auth_type} not supported!")
+            sys.exit(1)
+
+        if auth_type == "basic":
+            logger.info("Username:")
+            username = input("> ")
+            print("")
+
+    else:
+        project_prefix = None
+        auth_type = "token"
+
+    logger.info("Enter the base URL: ")
+    base_url = input("> ")
+    print("")
+
+    logger.info("API token or password: ")
+    api_token = getpass.getpass("> ")
+    print("")
+
+    try:
+        TicketingInstanceFactory.create(
+            provider=provider,
+            url=base_url,
+            token=api_token,
+            auth_type=auth_type,
+            username=username
         )
+    except ConnectionError as e:
+        logger.error(f"Failed to connect! {e}")
+        sys.exit(1)
 
-    def _generate_combined_terminal_comment(self, comments: list[CommentData]) -> str:
-        return f"\n{'-'*100}\n".join(c.to_terminal() for c in comments)
+    logger.info("Connection successful!")
 
-    def _generate_combined_ticket_comment(self, comments: list[CommentData]) -> str:
-        return f"\n{'-'*100}\n".join(c.to_ticket() for c in comments)
+    ticket_cfg = TicketHostModel(
+        url=base_url,
+        provider=provider,
+        api_key=api_token,
+        username=username,
+        auth_type=auth_type,
+        project_prefix=project_prefix
+    )
 
+    TicketHostConfig().write(branch_prefix, ticket_cfg)
+
+    logger.info("Added ticketing instance!")

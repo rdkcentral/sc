@@ -20,6 +20,7 @@ from ..models import RepoInfo
 from .repo_source import RepoSource
 
 class ManifestRepoSource(RepoSource):
+    """Returns information about repos in a Repo workspace from its manifest."""
     def __init__(self, top_dir: Path):
         self._top_dir = top_dir
         self.manifest_dir = top_dir / ".repo" / "manifests"

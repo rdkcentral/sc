@@ -32,6 +32,7 @@ class TicketService:
 
     def resolve(
             self, identifier: str, ticket_num: str) -> tuple[TicketingInstance, Ticket]:
+        """Match an instance identifier and ticket num to a ticket instance and ticket."""
         cfg = self._config.get(identifier)
         instance = self._factory.create(
             provider=cfg.provider,
@@ -47,6 +48,7 @@ class TicketService:
         return instance, ticket
 
     def update(self, instance: TicketingInstance, ticket: Ticket, comment: str):
+        """Update a ticket on an instance with a comment."""
         instance.add_comment_to_ticket(ticket.id, comment)
 
     def match_branch(self, branch_name: str) -> tuple[str, str]:
@@ -73,4 +75,5 @@ class TicketService:
             f"Found instances {', '.join(host_identifiers)}")
 
     def prompt_ticket(self) -> tuple[str, str]:
+        """Returns identifier and ticket num by user choice."""
         return self._prompter.ticket_selection(self._config.get_config())

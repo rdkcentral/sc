@@ -18,6 +18,7 @@ from git import Repo
 from ..models import RepoInfo
 
 class RepoSource(ABC):
+    """An interface for a source that provides a list of git repositories."""
     @property
     @abstractmethod
     def active_branch(self) -> str:
