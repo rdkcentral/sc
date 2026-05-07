@@ -67,7 +67,7 @@ class TicketService:
         host_identifiers = self._config.get_identifiers()
         for identifier in host_identifiers:
             # Matches the identifier, followed by - or _, followed by a number
-            if m := re.search(fr'{re.escape(identifier)}[-_]?(\d+)', branch_name):
+            if m := re.search(fr'(?:^|/){re.escape(identifier)}[-_]?(\d+)', branch_name):
                 ticket_num = m.group(1)
                 return identifier, ticket_num
         raise TicketIdentifierNotFound(
