@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import MagicMock, patch
 
-from sc.review.review import Review
+from sc.review.ticket_updater import TicketUpdater
 from sc.review.exceptions import TicketIdentifierNotFound
 from sc.review.models import CodeReview, RepoInfo
 
@@ -14,7 +14,7 @@ class TestReview(unittest.TestCase):
         self.git_service = MagicMock()
         self.prompter = MagicMock()
 
-        self.review = Review(
+        self.review = TicketUpdater(
             repo_source=self.repo_source,
             ticket_service=self.ticket_service,
             git_service=self.git_service,

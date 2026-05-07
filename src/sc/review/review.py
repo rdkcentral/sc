@@ -76,7 +76,7 @@ def add_git_instance():
     api_key = getpass.getpass("> ")
     print("")
 
-    instance = GitFactory.create(provider, api_key, url)
+    instance = GitFactory().create(provider, api_key, url)
 
     try:
         instance.validate_connection()

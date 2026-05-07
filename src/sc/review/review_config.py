@@ -41,7 +41,7 @@ class TicketHostConfig:
 
     def get_identifiers(self) -> set[str]:
         """Return all configured ticketing instance identifiers."""
-        return self._ticket_config.get_config().keys()
+        return set(self._ticket_config.get_config().keys())
 
     def get(self, identifier: str) -> TicketHostModel:
         """Return the ticketing config for a specific identifier."""
