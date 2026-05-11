@@ -11,19 +11,21 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from pathlib import Path
 
-from dataclasses import dataclass
-from enum import Enum
+from git import Repo
 
-class CRStatus(str, Enum):
-    OPEN = "Open"
-    CLOSED = "Closed"
-    MERGED = "Merged"
+from ..models import RepoInfo
+from .repo_source import RepoSource
 
-    def __str__(self):
-        return self.value
+class SingleRepoSource(RepoSource):
+    """Returns information about a singular git repo."""
+    def __init__(self, top_dir: Path):
+        self._top_dir = top_dir
 
-@dataclass
-class CodeReview:
-    url: str
-    status: CRStatus
+    @property
+    def active_branch(self) -> str:
+        return Repo(self._top_dir).active_branch.name
+
+    def get_repos(self) -> list[RepoInfo]:
+        return [self._get_repo_info(Repo(self._top_dir))]

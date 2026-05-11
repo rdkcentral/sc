@@ -19,7 +19,7 @@ from redminelib.exceptions import BaseRedmineError, ForbiddenError, ResourceNotF
 from requests.exceptions import RequestException, SSLError
 
 from sc.review.exceptions import PermissionsError, TicketingInstanceUnreachable, TicketNotFound
-from sc.review.ticket import Ticket
+from sc.review.models import Ticket
 from .. import TicketingInstance
 
 class RedmineInstance(TicketingInstance):

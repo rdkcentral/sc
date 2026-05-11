@@ -11,15 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from dataclasses import dataclass
+from pathlib import Path
 
-@dataclass
-class Ticket:
-    url: str
-    author: str | None = None
-    assignee: str | None = None
-    comments: str | None = None
-    id: str | None = None
-    status: str | None = None
-    target_version: str | None = None
-    title: str | None = None
+from git_flow_library import GitFlowLibrary
+
+class GitFlowBranchStrategy:
+    def get_target_branch(self, directory: Path, source_branch: str) -> str:
+        try:
+            base = GitFlowLibrary.get_branch_base(source_branch, directory)
+            return base if base else GitFlowLibrary.get_develop_branch(directory)
+        except RuntimeError:
+            return "develop"
