@@ -21,9 +21,10 @@ def cli():
     pass
 
 @cli.command(name="review")
-def update_ticket():
+@click.option("-s", "--single-git", is_flag=True, help="Review only the current git repo.")
+def update_ticket(single_git: bool):
     """Add commit/PR information to your ticket."""
-    review.update_ticket()
+    review.update_ticket(single_git)
 
 @cli.command()
 def add_git_instance():

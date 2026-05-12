@@ -28,19 +28,22 @@ from .git_instances import GitFactory
 
 logger = logging.getLogger(__name__)
 
-def update_ticket():
+def update_ticket(single_git: bool = False):
     """Add commit/PR information to your ticket."""
-    if root := RepoLibrary.get_repo_root_dir(Path.cwd()):
+    if not single_git and (root := RepoLibrary.get_repo_root_dir(Path.cwd())):
         repo_source = ManifestRepoSource(root.parent)
     elif root := GitFlowLibrary.get_git_root(Path.cwd()):
         repo_source = SingleRepoSource(root.parent)
     else:
-        logger.error("Not in a repo project or git repository!")
+        logger.error(
+            "Not in a git repository!"
+            if single_git else
+            "Not in a git repository or repo workspace!")
         sys.exit(1)
 
     try:
         TicketUpdater(repo_source).run()
-    except (ReviewException, ConnectionError) as e:
+    except (ReviewException, ConnectionError, RuntimeError) as e:
         logger.error(e)
         sys.exit(1)
 
