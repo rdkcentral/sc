@@ -40,7 +40,8 @@ setup(
         'requests==2.31.0', # Docker SDK breaks on 2.32.0
         'repo_library @ git+https://github.com/rdkcentral/sc-repo-library.git@master',
         'git_flow_library @ git+https://github.com/rdkcentral/sc-git-flow-library.git@master',
-        'sc_manifest_parser @ git+https://github.com/rdkcentral/sc-manifest-parser.git@main'
+        'sc_manifest_parser @ git+https://github.com/rdkcentral/sc-manifest-parser.git@main',
+        'yaml_runner @ git+https://github.com/rdkcentral/yaml_runner.git@master'
     ],
     entry_points={
         'console_scripts': [
