@@ -25,6 +25,7 @@ from .branch import Branch, BranchType
 from .commands.checkout import Checkout
 from .commands.clean import Clean
 from .commands.command import Command
+from .commands.delete import Delete
 from .commands.finish import Finish
 from .commands.group import (GroupCheckout, GroupCmd, GroupFetch, GroupPush, GroupPull,
                              GroupShow, GroupTag)
@@ -83,6 +84,21 @@ class SCBranching:
         branch = create_branch(project_type, top_dir, branch_type, name)
         run_command_by_project_type(
             Checkout(top_dir, branch, force=force, verify=verify),
+            project_type
+        )
+    
+    @staticmethod
+    def delete(
+        branch_type: BranchType,
+        name: str | None = None,
+        remote: bool = False,
+        force: bool = False,
+        run_dir: Path = Path.cwd()
+    ):
+        top_dir, project_type = detect_project(run_dir)
+        branch = create_branch(project_type, top_dir, branch_type, name)
+        run_command_by_project_type(
+            Delete(top_dir, branch, remote, force),
             project_type
         )
 
