@@ -31,55 +31,55 @@ class TestDelete(unittest.TestCase):
         proj = self.repo_client.add_project()
         top_dir = self.repo_client.create("feature/donut")
 
-        subprocess.run(["sc", "feature", "delete", "donut", "-f"], cwd=top_dir)
+        subprocess.run(["sc", "feature", "delete", "donut"], cwd=top_dir)
 
         proj_repo = Repo(top_dir / proj.name)
         manifest_repo = Repo(top_dir / ".repo" / "manifests")
         self.assertEqual(proj_repo.active_branch.name, "develop")
         self.assertFalse("feature/donut" in [b.name for b in proj_repo.branches])
-        self.assertTrue("feature/donut" in [r.remote_head for r in proj_repo.remotes[0].refs])
+        self.assertTrue(_remote_branch_exists(proj_repo, "feature/donut"))
         self.assertEqual(manifest_repo.active_branch.name, "develop")
         self.assertFalse("feature/donut" in [b.name for b in manifest_repo.branches])
-        self.assertTrue("feature/donut" in [r.remote_head for r in manifest_repo.remotes[0].refs])
+        self.assertTrue(_remote_branch_exists(manifest_repo, "feature/donut"))
 
     def test_release_delete(self):
         self.repo_client.add_branches(["master", "develop", "release/donut"])
         proj = self.repo_client.add_project()
         top_dir = self.repo_client.create("release/donut")
 
-        subprocess.run(["sc", "release", "delete", "donut", "-f"], cwd=top_dir)
+        subprocess.run(["sc", "release", "delete", "donut"], cwd=top_dir)
 
         proj_repo = Repo(top_dir / proj.name)
         manifest_repo = Repo(top_dir / ".repo" / "manifests")
         self.assertEqual(proj_repo.active_branch.name, "develop")
         self.assertFalse("release/donut" in [b.name for b in proj_repo.branches])
-        self.assertTrue("release/donut" in [r.remote_head for r in proj_repo.remotes[0].refs])
+        self.assertTrue(_remote_branch_exists(proj_repo, "release/donut"))
         self.assertEqual(manifest_repo.active_branch.name, "develop")
         self.assertFalse("release/donut" in [b.name for b in manifest_repo.branches])
-        self.assertTrue("release/donut" in [r.remote_head for r in manifest_repo.remotes[0].refs])
+        self.assertTrue(_remote_branch_exists(manifest_repo, "release/donut"))
     
     def test_hotfix_delete(self):
         self.repo_client.add_branches(["master", "develop", "hotfix/donut"])
         proj = self.repo_client.add_project()
         top_dir = self.repo_client.create("hotfix/donut")
 
-        subprocess.run(["sc", "hotfix", "delete", "donut", "-f"], cwd=top_dir)
+        subprocess.run(["sc", "hotfix", "delete", "donut"], cwd=top_dir)
 
         proj_repo = Repo(top_dir / proj.name)
         manifest_repo = Repo(top_dir / ".repo" / "manifests")
-        self.assertEqual(proj_repo.active_branch.name, "master")
+        self.assertEqual(proj_repo.active_branch.name, "develop")
         self.assertFalse("hotfix/donut" in [b.name for b in proj_repo.branches])
-        self.assertTrue("hotfix/donut" in [r.remote_head for r in proj_repo.remotes[0].refs])
-        self.assertEqual(manifest_repo.active_branch.name, "master")
+        self.assertTrue(_remote_branch_exists(proj_repo, "hotfix/donut"))
+        self.assertEqual(manifest_repo.active_branch.name, "develop")
         self.assertFalse("hotfix/donut" in [b.name for b in manifest_repo.branches])
-        self.assertTrue("hotfix/donut" in [r.remote_head for r in manifest_repo.remotes[0].refs])
+        self.assertTrue(_remote_branch_exists(manifest_repo, "hotfix/donut"))
 
     def test_feature_delete_remote(self):
         self.repo_client.add_branches(["master", "develop", "feature/donut"])
         proj = self.repo_client.add_project()
         top_dir = self.repo_client.create("feature/donut")
 
-        subprocess.run(["sc", "feature", "delete", "donut", "-f", "-r"], cwd=top_dir)
+        subprocess.run(["sc", "feature", "delete", "donut", "-r"], cwd=top_dir)
 
         proj_repo = Repo(top_dir / proj.name)
         manifest_repo = Repo(top_dir / ".repo" / "manifests")
@@ -88,8 +88,8 @@ class TestDelete(unittest.TestCase):
         self.assertFalse(_remote_branch_exists(proj_repo, "feature/donut"))
         self.assertEqual(manifest_repo.active_branch.name, "develop")
         self.assertFalse("feature/donut" in [b.name for b in manifest_repo.branches])
-        self.assertFalse("feature/donut" in [r.remote_head for r in manifest_repo.remotes[0].refs])
+        self.assertFalse(_remote_branch_exists(manifest_repo, "feature/donut"))
 
 def _remote_branch_exists(repo: Repo, branch: str) -> bool:
-    return repo.git.ls_remote("--heads", repo.remotes[0].name, branch)
+    out = repo.git.ls_remote("--heads", repo.remotes[0].name, branch)
     return bool(out.strip())

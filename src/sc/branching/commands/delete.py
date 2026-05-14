@@ -14,9 +14,8 @@
 from dataclasses import dataclass
 import logging
 from pathlib import Path
-import subprocess
-import sys
 
+from git import Repo
 from git_flow_library import GitFlowLibrary
 from sc_manifest_parser import ScManifest
 
@@ -29,12 +28,9 @@ logger = logging.getLogger(__name__)
 class Delete(Command):
     branch: Branch
     remote: bool = False
-    force: bool = False
 
     def run_git_command(self):
-        _git_flow_delete(self.top_dir, self.branch, self.remote, self.force)
-        GitFlowLibrary.delete(
-            self.top_dir, self.branch.type, self.branch.suffix, self.remote)
+        self._delete_branch(self.top_dir)
     
     def run_repo_command(self):
         self._error_on_sc_uninitialised()
@@ -45,21 +41,18 @@ class Delete(Command):
         
         manifest = ScManifest.from_repo_root(self.top_dir / '.repo')
         for proj in manifest.projects:
-            _git_flow_delete(
-                self.top_dir / proj.path, self.branch, self.remote, self.force)
+            if proj.lock_status == None:
+                self._delete_branch(self.top_dir / proj.path, proj.remote)
         
-        _git_flow_delete(
-            self.top_dir / '.repo' / 'manifests', self.branch, self.remote, self.force)
+        self._delete_branch(self.top_dir / '.repo' / 'manifests')
         
-def _git_flow_delete(dir: Path, branch: Branch, remote: bool = False, force: bool = False):
-    try:
-        GitFlowLibrary.delete(
-            dir,
-            branch.type,
-            branch.suffix,
-            remote=remote,
-            force=force
-        )
-    except subprocess.CalledProcessError as e:
-        logger.error(e)
-        sys.exit(1)
+    def _delete_branch(self, dir: Path, remote_name: str | None = None):
+        repo = Repo(dir)
+        if repo.active_branch.name == self.branch.name:
+            repo.git.switch(GitFlowLibrary.get_develop_branch(dir))
+        repo.git.branch("-D", self.branch.name)
+        if self.remote:
+            if not remote_name:
+                remote_name = repo.remotes[0].name
+            repo.git.push(remote_name, f":{self.branch.name}")
+            repo.git.update_ref("-d", f"refs/remotes/m/{self.branch.name}")

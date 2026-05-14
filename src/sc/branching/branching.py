@@ -92,13 +92,12 @@ class SCBranching:
         branch_type: BranchType,
         name: str | None = None,
         remote: bool = False,
-        force: bool = False,
         run_dir: Path = Path.cwd()
     ):
         top_dir, project_type = detect_project(run_dir)
         branch = create_branch(project_type, top_dir, branch_type, name)
         run_command_by_project_type(
-            Delete(top_dir, branch, remote, force),
+            Delete(top_dir, branch, remote),
             project_type
         )
 
