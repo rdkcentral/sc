@@ -14,7 +14,7 @@
 
 import logging
 
-from .exceptions import TicketIdentifierNotFound
+from .exceptions import ReviewException
 from .git_host_service import GitHostService
 from .models import CodeReview, CommentData, RepoInfo, Ticket
 from .prompter import Prompter
@@ -40,11 +40,11 @@ class TicketUpdater:
         try:
             identifier, ticket_num = self._ticket_service.match_branch(
                 self.repo_source.active_branch)
-        except TicketIdentifierNotFound as e:
+            ticket_instance, ticket = self._ticket_service.resolve(identifier, ticket_num)
+        except ReviewException as e:
             logger.warning(e)
             identifier, ticket_num = self._ticket_service.prompt_ticket()
 
-        ticket_instance, ticket = self._ticket_service.resolve(identifier, ticket_num)
 
         comments = []
         for repo_info in self.repo_source.get_repos():

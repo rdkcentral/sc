@@ -13,6 +13,7 @@
 # limitations under the License.
 
 class ReviewException(Exception):
+    """Base exception for sc review errors."""
     pass
 
 class TicketNotFound(ReviewException):
