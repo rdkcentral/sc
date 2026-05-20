@@ -2,11 +2,11 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 from sc.review.ticket_updater import TicketUpdater
-from sc.review.exceptions import TicketIdentifierNotFound
+from sc.review.exceptions import ReviewException, TicketIdentifierNotFound
 from sc.review.models import CodeReview, RepoInfo
 
 
-class TestReview(unittest.TestCase):
+class TestTicketUpdater(unittest.TestCase):
 
     def setUp(self):
         self.repo_source = MagicMock()
@@ -61,6 +61,20 @@ class TestReview(unittest.TestCase):
 
         self.ticket_service.prompt_ticket.assert_called_once()
         self.ticket_service.update.assert_not_called()
+    
+    @patch("builtins.print")
+    def test_ticket_unable_to_resolve_fallback(self, mock_print):
+        self.ticket_service.match_branch.return_value = ("ABC", "123")
+        self.ticket_service.resolve.side_effect = [
+            ReviewException("cannot resolve"),
+            ("ticket_instance", "ticket"),
+        ]
+        self.ticket_service.prompt_ticket.return_value = ("ABC", "123")
+
+        ticket_instance, ticket = self.review._get_ticket_and_instance()
+
+        self.ticket_service.prompt_ticket.assert_called_once()
+        assert self.ticket_service.resolve.call_count == 2
 
     @patch("builtins.print")
     def test_run_git_failure_creates_url(self, mock_print):
