@@ -15,7 +15,7 @@ from dataclasses import dataclass
 import logging
 from pathlib import Path
 
-from git import Repo
+from git import GitCommandError, Repo
 from git_flow_library import GitFlowLibrary
 from sc_manifest_parser import ScManifest
 
@@ -41,7 +41,7 @@ class Delete(Command):
         
         manifest = ScManifest.from_repo_root(self.top_dir / '.repo')
         for proj in manifest.projects:
-            if proj.lock_status == None:
+            if proj.lock_status is None:
                 self._delete_branch(self.top_dir / proj.path, proj.remote)
         
         self._delete_branch(self.top_dir / '.repo' / 'manifests')
@@ -54,5 +54,8 @@ class Delete(Command):
         if self.remote:
             if not remote_name:
                 remote_name = repo.remotes[0].name
-            repo.git.push(remote_name, f":{self.branch.name}")
-            repo.git.update_ref("-d", f"refs/remotes/m/{self.branch.name}")
+            repo.git.push(remote_name, "--delete", f"{self.branch.name}")
+            try:
+                repo.git.update_ref("-d", f"refs/remotes/{remote_name}/{self.branch.name}")
+            except GitCommandError as e:
+                logger.info("Failed to delete remote ref, may just not be fetched: %s", e)
