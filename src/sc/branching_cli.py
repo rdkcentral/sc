@@ -68,6 +68,13 @@ def list():
     """List feature branches."""
     SCBranching.list(BranchType.FEATURE)
 
+@feature.command()
+@click.argument('name', required=False)
+@click.option("-r", "--remote", is_flag=True, help="Delete remote branches.")
+def delete(name, remote):
+    """Delete feature branch."""
+    SCBranching.delete(BranchType.FEATURE, name, remote)
+
 # Develop branch commands
 @cli.group()
 def develop():
@@ -167,6 +174,13 @@ def list():
     """List release branches."""
     SCBranching.list(BranchType.RELEASE)
 
+@release.command()
+@click.argument('name', required=False)
+@click.option("-r", "--remote", is_flag=True, help="Delete remote branches.")
+def delete(name, remote):
+    """Delete release branch."""
+    SCBranching.delete(BranchType.RELEASE, name, remote)
+
 # Hotfix branch commands
 @cli.group()
 def hotfix():
@@ -215,6 +229,13 @@ def finish(name, base):
 def list():
     """List hotfix branches."""
     SCBranching.list(BranchType.HOTFIX)
+
+@hotfix.command()
+@click.argument('name', required=False)
+@click.option("-r", "--remote", is_flag=True, help="Delete remote branches.")
+def delete(name, remote):
+    """Delete hotfix branch."""
+    SCBranching.delete(BranchType.HOTFIX, name, remote)
 
 # Support branch commands
 @cli.group()
