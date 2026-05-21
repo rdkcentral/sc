@@ -57,7 +57,7 @@ class TicketUpdater:
         if self._prompter.yn("Update ticket?"):
             ticket_comment = self._generate_combined_ticket_comment(comments)
             self._ticket_service.update(ticket_instance, ticket, ticket_comment)
-    
+
     def _get_ticket_and_instance(self) -> tuple[TicketingInstance, Ticket]:
         """Get ticket and ticketing instance from branch, on failure prompt the user
         to manually enter.
