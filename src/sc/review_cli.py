@@ -14,23 +14,24 @@
 
 import click
 
-from .review import main
+from .review import review
 
 @click.group()
 def cli():
     pass
 
-@cli.command()
-def review():
+@cli.command(name="review")
+@click.option("-s", "--single-git", is_flag=True, help="Review only the current git repo.")
+def update_ticket(single_git: bool):
     """Add commit/PR information to your ticket."""
-    main.review()
+    review.update_ticket(single_git)
 
 @cli.command()
 def add_git_instance():
     """Add a VCS instance for sc review."""
-    main.add_git_instance()
+    review.add_git_instance()
 
 @cli.command()
 def add_ticketing_instance():
     """Add a ticketing instance for sc review."""
-    main.add_ticketing_instance()
+    review.add_ticketing_instance()

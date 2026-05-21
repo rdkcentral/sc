@@ -19,7 +19,7 @@ from jira import JIRA
 from jira.exceptions import JIRAError
 
 from sc.review.exceptions import PermissionsError, TicketNotFound
-from sc.review.ticket import Ticket
+from sc.review.models import Ticket
 from .. import TicketingInstance
 
 class JiraInstance(TicketingInstance):

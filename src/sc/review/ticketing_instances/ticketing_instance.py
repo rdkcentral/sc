@@ -14,7 +14,7 @@
 
 from abc import ABC, abstractmethod
 
-from ..ticket import Ticket
+from ..models import Ticket
 
 class TicketingInstance(ABC):
     """
