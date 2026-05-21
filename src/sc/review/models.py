@@ -140,7 +140,7 @@ class CommentData:
         ]
 
         ticket_link = f"Ticket: [{self.ticket_url}]"
-        ticket_title = f"Tickt Title: [{self.ticket_title}]"
+        ticket_title = f"Ticket Title: [{self.ticket_title}]"
         if self.review_url:
             review_status = f"Review Status: [{self.review_status}]"
             review_link = f"Review URL: [{self.review_url}]"
