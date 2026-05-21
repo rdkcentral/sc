@@ -28,6 +28,16 @@ class Ticket:
     target_version: str | None = None
     title: str | None = None
 
+    def to_terminal(self) -> str:
+        def c(code, text):
+            return f"\033[{code}m{text}\033[0m"
+
+        return (
+            f"URL: [{c('34', self.url)}]\n"
+            f"ID: [{c('33', self.id)}]\n"
+            f"Title: [{c('33', self.title)}]\n"
+        )
+
 class CRStatus(str, Enum):
     OPEN = "Open"
     CLOSED = "Closed"
@@ -72,6 +82,7 @@ class CommentData:
     directory: str | Path
     remote_url: str
     ticket_url: str
+    ticket_title: str
     review_status: str
     review_url: str | None
     create_cr_url: str | None
@@ -96,6 +107,7 @@ class CommentData:
         ]
 
         ticket_link = f"Ticket: [{c('34', self.ticket_url)}]"
+        ticket_title = f"Ticket Title: [{c('34', self.ticket_title)}]"
         if self.review_url:
             review_status = f"Review Status: [{c('32', self.review_status)}]"
             review_link = f"Review URL: [{c('32', self.review_url)}]"
@@ -103,7 +115,7 @@ class CommentData:
             review_status = f"Review Status: [{c('31', self.review_status)}]"
             review_link = f"Create Review URL: [{c('33', self.create_cr_url)}]"
 
-        review = [ticket_link, review_status, review_link]
+        review = [ticket_link, ticket_title, review_status, review_link]
 
         commit = (
             f"Last Commit: [{self.commit_sha}]",
@@ -128,6 +140,7 @@ class CommentData:
         ]
 
         ticket_link = f"Ticket: [{self.ticket_url}]"
+        ticket_title = f"Tickt Title: [{self.ticket_title}]"
         if self.review_url:
             review_status = f"Review Status: [{self.review_status}]"
             review_link = f"Review URL: [{self.review_url}]"
@@ -135,7 +148,7 @@ class CommentData:
             review_status = f"Review Status: [{self.review_status}]"
             review_link = f"Create Review URL: [{self.create_cr_url}]"
 
-        review = [ticket_link, review_status, review_link]
+        review = [ticket_link, ticket_title, review_status, review_link]
 
         commit = (
             "<pre>",
