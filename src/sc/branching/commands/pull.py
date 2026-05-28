@@ -77,8 +77,7 @@ class Pull(Command):
             if remote_branch in remote_refs:
                 project_repo.git.branch('-u', remote_branch, proj_branch_name)
 
-            project_repo.git.lfs('fetch')
-            project_repo.git.lfs('checkout')
+            project_repo.git.lfs('pull')
 
         if errors:
             logger.error("Failed to merge pull in:\n" + "\n".join(errors))
