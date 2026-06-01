@@ -78,7 +78,7 @@ class RedmineInstance(TicketingInstance):
         comments = issue_contents.get("journals")
         status = issue_contents.get("status", {}).get("name")
         target_version = issue_contents.get("fixed_version", {}).get("name")
-        title = issue_contents.get("subject")
+        title = issue.subject
 
         return Ticket(
             ticket_url,

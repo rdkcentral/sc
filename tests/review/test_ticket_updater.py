@@ -2,11 +2,11 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 from sc.review.ticket_updater import TicketUpdater
-from sc.review.exceptions import TicketIdentifierNotFound
+from sc.review.exceptions import ReviewException, TicketIdentifierNotFound
 from sc.review.models import CodeReview, RepoInfo
 
 
-class TestReview(unittest.TestCase):
+class TestTicketUpdater(unittest.TestCase):
 
     def setUp(self):
         self.repo_source = MagicMock()
@@ -34,7 +34,9 @@ class TestReview(unittest.TestCase):
         self.repo_source.get_repos.return_value = [self.repo_info]
         self.repo_source.active_branch = "feature/test"
 
-        self.ticket = MagicMock(id=1, url="http://ticket")
+        self.ticket = MagicMock(id=1, url="http://ticket", title="Ticket title")
+        self.ticket.to_terminal.return_value = "ticket terminal output"
+
         self.ticket_service.resolve.return_value = ("instance", self.ticket)
 
     @patch("builtins.print")
@@ -42,52 +44,116 @@ class TestReview(unittest.TestCase):
         cr = CodeReview(status="OPEN", url="http://cr")
         self.git_service.get_git_review_data.return_value = cr
         self.ticket_service.match_branch.return_value = ("ABC", "123")
-        self.prompter.yn.return_value = True
+
+        # Use this ticket? yes. Update ticket? yes.
+        self.prompter.yn.side_effect = [True, True]
 
         self.review.run()
 
-        self.ticket_service.update.assert_called_once()
-        self.git_service.get_git_review_data.assert_called_once()
         self.ticket_service.resolve.assert_called_once_with("ABC", "123")
+        self.git_service.get_git_review_data.assert_called_once_with(self.repo_info)
+        self.ticket_service.update.assert_called_once()
 
     @patch("builtins.print")
     def test_run_ticket_not_found_fallback(self, mock_print):
         self.ticket_service.match_branch.side_effect = TicketIdentifierNotFound("err")
         self.ticket_service.prompt_ticket.return_value = ("ABC", "123")
         self.git_service.get_git_review_data.return_value = CodeReview(status=None, url=None)
-        self.prompter.yn.return_value = False
+
+        # Use this ticket? yes. Update ticket? no.
+        self.prompter.yn.side_effect = [True, False]
 
         self.review.run()
 
         self.ticket_service.prompt_ticket.assert_called_once()
+        self.ticket_service.resolve.assert_called_once_with("ABC", "123")
         self.ticket_service.update.assert_not_called()
+
+    @patch("builtins.print")
+    def test_ticket_unable_to_resolve_fallback(self, mock_print):
+        self.ticket_service.match_branch.return_value = ("ABC", "123")
+        self.ticket_service.prompt_ticket.return_value = ("DEF", "456")
+
+        fallback_ticket = MagicMock(id=2, url="http://fallback-ticket", title="Fallback title")
+        fallback_ticket.to_terminal.return_value = "fallback ticket terminal output"
+
+        self.ticket_service.resolve.side_effect = [
+            ReviewException("cannot resolve"),
+            ("ticket_instance", fallback_ticket),
+        ]
+
+        self.prompter.yn.return_value = True
+
+        ticket_instance, ticket = self.review._get_ticket_and_instance()
+
+        self.ticket_service.prompt_ticket.assert_called_once()
+        self.assertEqual(self.ticket_service.resolve.call_count, 2)
+        self.assertEqual(ticket_instance, "ticket_instance")
+        self.assertEqual(ticket, fallback_ticket)
+
+    @patch("builtins.print")
+    def test_user_rejects_detected_ticket_and_enters_new_ticket(self, mock_print):
+        self.ticket_service.match_branch.return_value = ("ABC", "123")
+        self.ticket_service.prompt_ticket.return_value = ("DEF", "456")
+
+        detected_ticket = MagicMock(id=1, url="http://detected-ticket", title="Detected")
+        detected_ticket.to_terminal.return_value = "detected ticket"
+
+        manual_ticket = MagicMock(id=2, url="http://manual-ticket", title="Manual")
+        manual_ticket.to_terminal.return_value = "manual ticket"
+
+        self.ticket_service.resolve.side_effect = [
+            ("detected_instance", detected_ticket),
+            ("manual_instance", manual_ticket),
+        ]
+
+        # Use detected ticket? no. Use manual ticket? yes.
+        self.prompter.yn.side_effect = [False, True]
+
+        ticket_instance, ticket = self.review._get_ticket_and_instance()
+
+        self.assertEqual(ticket_instance, "manual_instance")
+        self.assertEqual(ticket, manual_ticket)
+        self.ticket_service.prompt_ticket.assert_called_once()
+        self.assertEqual(self.ticket_service.resolve.call_count, 2)
 
     @patch("builtins.print")
     def test_run_git_failure_creates_url(self, mock_print):
         self.ticket_service.match_branch.return_value = ("ABC", "123")
         self.git_service.get_git_review_data.return_value = None
         self.git_service.get_create_cr_url.return_value = "http://create"
-        self.prompter.yn.return_value = False
+
+        # Use this ticket? yes. Update ticket? no.
+        self.prompter.yn.side_effect = [True, False]
 
         self.review.run()
 
-        self.git_service.get_create_cr_url.assert_called_once()
+        self.git_service.get_create_cr_url.assert_called_once_with(self.repo_info)
+        self.ticket_service.update.assert_not_called()
 
     def test_create_comment_data(self):
         cr = CodeReview(status="OPEN", url="http://cr")
-        ticket = MagicMock(url="http://ticket")
+        ticket = MagicMock(url="http://ticket", title="Ticket title")
 
         result = self.review._create_comment_data(self.repo_info, ticket, cr, None)
 
         self.assertEqual(result.ticket_url, "http://ticket")
+        self.assertEqual(result.ticket_title, "Ticket title")
         self.assertEqual(result.review_status, "OPEN")
         self.assertEqual(result.review_url, "http://cr")
 
     def test_create_comment_data_no_cr(self):
-        ticket = MagicMock(url="http://ticket")
-        result = self.review._create_comment_data(self.repo_info, ticket, None, "http://create")
+        ticket = MagicMock(url="http://ticket", title="Ticket title")
+
+        result = self.review._create_comment_data(
+            self.repo_info,
+            ticket,
+            None,
+            "http://create"
+        )
 
         self.assertEqual(result.ticket_url, "http://ticket")
+        self.assertEqual(result.ticket_title, "Ticket title")
         self.assertEqual(result.review_status, "Not Created")
         self.assertIsNone(result.review_url)
         self.assertEqual(result.create_cr_url, "http://create")
@@ -95,6 +161,7 @@ class TestReview(unittest.TestCase):
     def test_generate_combined_terminal_comment(self):
         c1 = MagicMock()
         c1.to_terminal.return_value = "A"
+
         c2 = MagicMock()
         c2.to_terminal.return_value = "B"
 
@@ -105,6 +172,7 @@ class TestReview(unittest.TestCase):
     def test_generate_combined_ticket_comment(self):
         c1 = MagicMock()
         c1.to_ticket.return_value = "A"
+
         c2 = MagicMock()
         c2.to_ticket.return_value = "B"
 

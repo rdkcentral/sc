@@ -14,11 +14,12 @@
 
 import logging
 
-from .exceptions import TicketIdentifierNotFound
+from .exceptions import ReviewException
 from .git_host_service import GitHostService
 from .models import CodeReview, CommentData, RepoInfo, Ticket
 from .prompter import Prompter
 from .repo_source import RepoSource
+from .ticketing_instances import TicketingInstance
 from .ticket_service import TicketService
 
 logger = logging.getLogger(__name__)
@@ -37,14 +38,7 @@ class TicketUpdater:
         self._prompter = prompter or Prompter()
 
     def run(self):
-        try:
-            identifier, ticket_num = self._ticket_service.match_branch(
-                self.repo_source.active_branch)
-        except TicketIdentifierNotFound as e:
-            logger.warning(e)
-            identifier, ticket_num = self._ticket_service.prompt_ticket()
-
-        ticket_instance, ticket = self._ticket_service.resolve(identifier, ticket_num)
+        ticket_instance, ticket = self._get_ticket_and_instance()
 
         comments = []
         for repo_info in self.repo_source.get_repos():
@@ -64,6 +58,27 @@ class TicketUpdater:
             ticket_comment = self._generate_combined_ticket_comment(comments)
             self._ticket_service.update(ticket_instance, ticket, ticket_comment)
 
+    def _get_ticket_and_instance(self) -> tuple[TicketingInstance, Ticket]:
+        """Get ticket and ticketing instance from branch, on failure prompt the user
+        to manually enter.
+        """
+        try:
+            identifier, ticket_num = self._ticket_service.match_branch(
+                self.repo_source.active_branch)
+            ticket_instance, ticket = self._ticket_service.resolve(identifier, ticket_num)
+        except ReviewException as e:
+            logger.warning(e)
+            identifier, ticket_num = self._ticket_service.prompt_ticket()
+            ticket_instance, ticket = self._ticket_service.resolve(identifier, ticket_num)
+
+        while True:
+            print(ticket.to_terminal())
+            if self._prompter.yn("Use this ticket?"):
+                return ticket_instance, ticket
+
+            identifier, ticket_num = self._ticket_service.prompt_ticket()
+            ticket_instance, ticket = self._ticket_service.resolve(identifier, ticket_num)
+
     def _create_comment_data(
             self,
             repo_info: RepoInfo,
@@ -78,6 +93,7 @@ class TicketUpdater:
             directory=repo_info.directory,
             remote_url=repo_info.remote_url,
             ticket_url=ticket.url,
+            ticket_title=ticket.title,
             review_status=review_status,
             review_url=review_url,
             create_cr_url=create_cr_url,
