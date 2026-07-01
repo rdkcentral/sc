@@ -120,6 +120,13 @@ def show_group(group):
     """List groups or show information about a group."""
     SCBranching.group_show(group)
 
+@show.command(name="merged_release")
+@click.option("-p", "--previous-release", help="Previous release tag.")
+@click.option("-c", "--current-release", help="Newer release tag, defaults to latest develop.")
+@click.option("-w", "--wiki", is_flag=True, help="Print in a wiki pastable format.")
+def show_merged_release(previous_release, current_release, wiki):
+    SCBranching.show_merged_release(previous_release, current_release, wiki)
+
 
 @cli.group()
 def group():
@@ -171,3 +178,26 @@ def group_show(group):
 def group_tag(group, tag, message, push):
     """Tag all projects in a group."""
     SCBranching.group_tag(group, tag, message, push)
+
+@cli.group()
+def branch():
+    pass
+
+@branch.command(name="rename")
+@click.argument("old_branch")
+@click.argument("new_branch")
+def branch_rename(old_branch, new_branch):
+    SCBranching.branch_rename(old_branch, new_branch)
+
+@branch.command(name="show")
+def branch_show():
+    SCBranching.show_branch()
+
+@branch.command(name="rm_merged")
+@click.option("-n", "--no-merged", is_flag=True, help="Show not merged branches instead.")
+@click.option("-a", "--all", is_flag=True, help="Show all branches.")
+@click.option("-g", "--git", is_flag=True, help="Perform on a single git repo.")
+@click.option("-y", "--yes", is_flag=True, help="Auto yes (no-prompt).")
+@click.option("-d", "--dry", is_flag=True, help="Perform dry run.")
+def branch_rm_merged(no_merged, all, git, yes, dry):
+    SCBranching.branch_rm_merged(no_merged, all, git, yes, dry)

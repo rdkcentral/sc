@@ -14,13 +14,13 @@
 
 import logging
 
-from .exceptions import ReviewException
 from .git_host_service import GitHostService
-from .models import CodeReview, CommentData, RepoInfo, Ticket
-from .prompter import Prompter
+from .models import CodeReview, CommentData, RepoInfo
+from sc.prompter import Prompter
 from .repo_source import RepoSource
-from .ticketing_instances import TicketingInstance
-from .ticket_service import TicketService
+from sc.exceptions import ScError
+from ..services.tickets import Ticket
+from ..services.tickets.ticket_service import TicketService
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +38,7 @@ class TicketUpdater:
         self._prompter = prompter or Prompter()
 
     def run(self):
-        ticket_instance, ticket = self._get_ticket_and_instance()
+        ticket = self._get_ticket()
 
         comments = []
         for repo_info in self.repo_source.get_repos():
@@ -56,28 +56,24 @@ class TicketUpdater:
 
         if self._prompter.yn("Update ticket?"):
             ticket_comment = self._generate_combined_ticket_comment(comments)
-            self._ticket_service.update(ticket_instance, ticket, ticket_comment)
+            ticket.add_comment(ticket_comment)
 
-    def _get_ticket_and_instance(self) -> tuple[TicketingInstance, Ticket]:
+    def _get_ticket(self) -> Ticket:
         """Get ticket and ticketing instance from branch, on failure prompt the user
         to manually enter.
         """
         try:
-            identifier, ticket_num = self._ticket_service.match_branch(
-                self.repo_source.active_branch)
-            ticket_instance, ticket = self._ticket_service.resolve(identifier, ticket_num)
-        except ReviewException as e:
+            ticket = self._ticket_service.get_ticket_from_branch(self.repo_source.active_branch)
+        except ScError as e:
             logger.warning(e)
-            identifier, ticket_num = self._ticket_service.prompt_ticket()
-            ticket_instance, ticket = self._ticket_service.resolve(identifier, ticket_num)
+            ticket = self._ticket_service.prompt_ticket()
 
         while True:
             print(ticket.to_terminal())
             if self._prompter.yn("Use this ticket?"):
-                return ticket_instance, ticket
+                return ticket
 
-            identifier, ticket_num = self._ticket_service.prompt_ticket()
-            ticket_instance, ticket = self._ticket_service.resolve(identifier, ticket_num)
+            ticket = self._ticket_service.prompt_ticket()
 
     def _create_comment_data(
             self,

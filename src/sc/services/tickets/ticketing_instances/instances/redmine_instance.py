@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
 import urllib3
 
 from redminelib import Redmine
@@ -18,9 +20,10 @@ from redminelib.resources import Issue
 from redminelib.exceptions import BaseRedmineError, ForbiddenError, ResourceNotFoundError, AuthError
 from requests.exceptions import RequestException, SSLError
 
-from sc.review.exceptions import PermissionsError, TicketingInstanceUnreachable, TicketNotFound
-from sc.review.models import Ticket
-from .. import TicketingInstance
+from ..ticketing_instance import TicketingInstance
+from sc.exceptions import PermissionsError
+from sc.services.tickets.exceptions import TicketingInstanceUnreachable, TicketNotFound
+from sc.services.tickets.ticket import Ticket, TicketData
 
 class RedmineInstance(TicketingInstance):
     """
@@ -71,7 +74,7 @@ class RedmineInstance(TicketingInstance):
                 ticket_url,
                 additional_info=''.join(str(arg) for arg in e.args))
 
-        issue_contents = issue.__dict__
+        issue_contents = issue._decoded_attrs
 
         author = issue_contents.get("author", {}).get("name")
         assignee = issue_contents.get("assigned_to", {}).get("name")
@@ -80,16 +83,18 @@ class RedmineInstance(TicketingInstance):
         target_version = issue_contents.get("fixed_version", {}).get("name")
         title = issue.subject
 
-        return Ticket(
+        ticket_data = TicketData(
             ticket_url,
+            id=ticket_id,
             author=author,
             assignee=assignee,
             comments=comments,
-            id=ticket_id,
             status=status,
             title=title,
-            target_version=target_version
+            target_version=target_version,
         )
+
+        return Ticket(self, ticket_data)
 
     def add_comment_to_ticket(self, ticket_id: str, comment_message: str):
         """Add a comment to a ticket on the redmine instance
