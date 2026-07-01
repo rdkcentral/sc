@@ -36,7 +36,7 @@ class TicketService:
         self._prompter = prompter or Prompter()
 
     def get_identifiers(self) -> set[str]:
-        """Return all configured ticeting instance identifiers."""
+        """Return all configured ticketing instance identifiers."""
         return self._config.get_identifiers()
 
     def get_ticket(self, identifier: str, ticket_num: str) -> Ticket:

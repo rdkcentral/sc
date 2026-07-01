@@ -64,6 +64,9 @@ class BranchRmMerged(Command):
             print(ticket.to_terminal(one_line=True))
             print(branch.name)
 
+            if self.dry_run:
+                continue
+
             if self.no_prompt:
                 self._delete_branch(path, branch, git_only)
             elif Prompter.yn("Delete branch?"):
@@ -85,8 +88,9 @@ class BranchRmMerged(Command):
 
         feature = GitFlowLibrary.get_config_value("prefix.feature", path)
 
-        merge_type = "--merged" if not self.not_merged else "--not-merged"
-        branches = repo.git.branch("-r", merge_type).splitlines()
+        merge_type = "--merged" if not self.not_merged else "--no-merged"
+        merge_type = "--all" if self.all else merge_type
+        branches = repo.git.branch("-r", merge_type, develop).splitlines()
 
         feature_branches = [
             branch.strip().split("/", 1)[1]

@@ -196,8 +196,8 @@ def branch_show():
 @branch.command(name="rm_merged")
 @click.option("-n", "--no-merged", is_flag=True, help="Show not merged branches instead.")
 @click.option("-a", "--all", is_flag=True, help="Show all branches.")
-@click.option("-g", "--git", is_flag=True, help="Perform on a single git repo.")
 @click.option("-y", "--yes", is_flag=True, help="Auto yes (no-prompt).")
+@click.option("-g", "--git", is_flag=True, help="Perform on a single git repo.")
 @click.option("-d", "--dry", is_flag=True, help="Perform dry run.")
-def branch_rm_merged(no_merged, all, git, yes, dry):
-    SCBranching.branch_rm_merged(no_merged, all, git, yes, dry)
+def branch_rm_merged(no_merged, all, yes, git, dry):
+    SCBranching.branch_rm_merged(no_merged, all, yes, git, dry)

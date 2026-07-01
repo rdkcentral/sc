@@ -35,7 +35,10 @@ class TestBranchRename(unittest.TestCase):
         proj = self.repo_client.add_project()
         top_dir = self.repo_client.create("feature/donut")
 
-        subprocess.run(["sc", "branch", "rename", "feature/donut", "feature/pizza"], cwd=top_dir)
+        subprocess.run(
+            ["sc", "branch", "rename", "feature/donut", "feature/pizza"],
+            cwd=top_dir,
+            check=True)
 
         proj_repo = Repo(top_dir / proj.name)
         manifest_repo = Repo(top_dir / ".repo" / "manifests")

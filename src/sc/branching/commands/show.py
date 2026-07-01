@@ -173,7 +173,7 @@ class ShowMergedRelease(Command):
         curr_release = self.current_release or develop
 
         try:
-            repo = Repo(self.top_dir)
+            repo = Repo(dir)
         except git.InvalidGitRepositoryError as e:
             raise ScError(f"Invalid git repo {dir}") from e
 
@@ -194,15 +194,17 @@ class ShowMergedRelease(Command):
             try:
                 identifier, ticket_num = ticket_service.get_ref_from_branch(line)
                 ref = (identifier, ticket_num)
-                if ref not in found_refs:
-                    ticket = ticket_service.get_ticket(identifier, ticket_num)
-                    if self.wiki:
-                        self._print_wiki(ticket, identifier, ticket_num)
-                    else:
-                        merged = search(search(merged_branches, ticket_num), identifier)
-                        unmerged = search(search(unmerged_branches, ticket_num), identifier)
-                        self._print_default(ticket, merged, unmerged)
-                    found_refs.append(ticket.id)
+                if ref in found_refs:
+                    continue
+
+                ticket = ticket_service.get_ticket(identifier, ticket_num)
+                if self.wiki:
+                    self._print_wiki(ticket, identifier, ticket_num)
+                else:
+                    merged = search(search(merged_branches, ticket_num), identifier)
+                    unmerged = search(search(unmerged_branches, ticket_num), identifier)
+                    self._print_default(ticket, merged, unmerged)
+                found_refs.append(ref)
             except TicketIdentifierNotFound as e:
                 pass
 
