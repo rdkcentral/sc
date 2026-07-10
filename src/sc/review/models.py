@@ -17,27 +17,6 @@ from enum import Enum
 from pathlib import Path
 from urllib import parse
 
-@dataclass
-class Ticket:
-    url: str
-    author: str | None = None
-    assignee: str | None = None
-    comments: str | None = None
-    id: str | None = None
-    status: str | None = None
-    target_version: str | None = None
-    title: str | None = None
-
-    def to_terminal(self) -> str:
-        def c(code, text):
-            return f"\033[{code}m{text}\033[0m"
-
-        return (
-            f"URL: [{c('34', self.url)}]\n"
-            f"ID: [{c('33', self.id)}]\n"
-            f"Title: [{c('33', self.title)}]\n"
-        )
-
 class CRStatus(str, Enum):
     OPEN = "Open"
     CLOSED = "Closed"

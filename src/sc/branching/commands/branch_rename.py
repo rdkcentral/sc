@@ -18,6 +18,12 @@ class BranchState(Enum):
     INVALID = auto()
 
 @dataclass
+class RemoteInfo:
+    name: str
+    old_commit: str | None
+    new_commit: str | None
+
+@dataclass
 class BranchRename(Command):
     old_branch: str
     new_branch: str
@@ -56,58 +62,33 @@ class BranchRename(Command):
         except git.InvalidGitRepositoryError as e:
             raise ScError(f"Invalid git repo: {directory}") from e
 
-        branch_state = self._branch_state(repo, old_branch, new_branch)
+        branch_state = self._get_rename_state(repo, old_branch, new_branch)
         if branch_state is BranchState.INVALID:
             return
 
         try:
-            remote = self._remote_name(repo, remote_name)
+            remote = self._get_remote_name(repo, remote_name)
         except RuntimeError as e:
             logger.warning(f"{e} Skipping remote renaming.")
             remote = None
 
-        old_remote_commit = None
-        new_remote_commit = None
-
-        if remote:
-            try:
-                old_remote_commit = self._remote_branch_commit(repo, remote, old_branch)
-                new_remote_commit = self._remote_branch_commit(repo, remote, new_branch)
-            except git.GitCommandError as e:
-                logger.warning(
-                    f"Unable to inspect remote {remote} in repo {repo.working_dir}. "
-                    f"Skipping branch rename: {e.stderr}"
-                )
-                return
-
-            local_branch = old_branch
-            if branch_state is BranchState.ALREADY_RENAMED:
-                local_branch = new_branch
-
-            if self._remote_target_conflicts(
-                    repo, remote, local_branch, new_branch, new_remote_commit):
-                return
+        # Need to check here so not to rename locally if a different branch already exists
+        # on the remote with the new name.
+        if remote and self._has_remote_conflict(repo, remote, old_branch, new_branch, branch_state):
+            return
 
         if branch_state is BranchState.RENAME_NEEDED:
             self._rename_local(repo, old_branch, new_branch)
 
         if remote:
-            create_missing_remote = (
-                branch_state is BranchState.ALREADY_RENAMED
-                and self._tracks_remote(repo, new_branch, remote)
-            )
-
-            self._finish_remote_rename(
+            self._rename_remote(
                 repo,
                 remote,
                 old_branch,
                 new_branch,
-                old_remote_commit,
-                new_remote_commit,
-                create_missing_remote,
             )
 
-    def _branch_state(self, repo: Repo, old_branch: str, new_branch: str) -> BranchState:
+    def _get_rename_state(self, repo: Repo, old_branch: str, new_branch: str) -> BranchState:
         has_old = self._has_branch(repo, old_branch)
         has_new = self._has_branch(repo, new_branch)
 
@@ -115,7 +96,7 @@ class BranchRename(Command):
             return BranchState.RENAME_NEEDED
 
         if not has_old and has_new:
-            logger.info(f"Branch already renamed in repo {repo.working_dir}. Continuing.")
+            logger.info(f"Branch already renamed in local repo {repo.working_dir}.")
             return BranchState.ALREADY_RENAMED
 
         if has_old and has_new:
@@ -140,27 +121,18 @@ class BranchRename(Command):
                 f"Unable to rename branch in repo {repo.working_dir}: {e.stderr}"
             ) from e
 
-    def _finish_remote_rename(
+    def _rename_remote(
             self,
             repo: Repo,
             remote: str,
             old_branch: str,
             new_branch: str,
-            old_remote_commit: str | None,
-            new_remote_commit: str | None,
-            create_missing_remote: bool):
-        if old_remote_commit is None and new_remote_commit is None and not create_missing_remote:
-            logger.info(
-                f"Remote branch {old_branch} not found in repo {repo.working_dir}. "
-                "Skipping remote renaming."
-            )
-            return
-
+        ):
         try:
             # Push/create the new branch before deleting the old branch.
             repo.git.push("-u", remote, f"{new_branch}:refs/heads/{new_branch}")
 
-            if old_remote_commit is not None:
+            if self._remote_branch_commit(repo, remote, old_branch) is not None:
                 repo.git.push(remote, "--delete", old_branch)
 
             logger.info("Renamed remotely.")
@@ -170,18 +142,37 @@ class BranchRename(Command):
                 f"{e.stderr}"
             )
 
-    def _remote_target_conflicts(
+    def _has_remote_conflict(
             self,
             repo: Repo,
             remote: str,
-            local_branch: str,
+            old_branch: str,
             new_branch: str,
-            new_remote_commit: str | None) -> bool:
+            branch_state: BranchState) -> bool:
+        """
+        True if new branch already exists on remote and isn't the same commit
+        as the branch we are renaming.
+        """
+        try:
+            new_remote_commit = self._remote_branch_commit(repo, remote, new_branch)
+        except git.GitCommandError as e:
+            logger.warning(
+                f"Unable to query remote {remote} in repo {repo.working_dir}. "
+                f"Skipping remote branch rename: {e.stderr}"
+            )
+            return True
+
         if new_remote_commit is None:
+            # New branch doesn't exist on remote.
             return False
+
+        local_branch = old_branch
+        if branch_state is BranchState.ALREADY_RENAMED:
+            local_branch = new_branch
 
         local_commit = self._local_branch_commit(repo, local_branch)
         if local_commit == new_remote_commit:
+            # Already renamed on remote.
             return False
 
         logger.warning(
@@ -190,10 +181,11 @@ class BranchRename(Command):
         )
         return True
 
-    def _remote_name(self, repo: Repo, remote_name: str | None) -> str:
+    def _get_remote_name(self, repo: Repo, remote_name: str | None) -> str:
         if remote_name:
             try:
-                return repo.remote(remote_name).name
+                _ = repo.remote(remote_name)
+                return remote_name
             except ValueError as e:
                 raise RuntimeError(
                     f"No remote named {remote_name} found for {repo.working_dir}.") from e
@@ -222,11 +214,3 @@ class BranchRename(Command):
                 return commit
 
         return None
-
-    def _tracks_remote(self, repo: Repo, branch_name: str, remote_name: str) -> bool:
-        try:
-            tracking_branch = repo.heads[branch_name].tracking_branch()
-        except IndexError:
-            return False
-
-        return tracking_branch is not None and tracking_branch.remote_name == remote_name

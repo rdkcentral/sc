@@ -125,4 +125,4 @@ class TestBranchRename(unittest.TestCase):
         self.assertEqual(proj_repo.active_branch.name, "feature/pizza")
         self.assertEqual(manifest_repo.active_branch.name, "feature/pizza")
         self.assertFalse(_remote_branch_exists(proj_repo, "feature/donut"))
-        self.assertFalse(_remote_branch_exists(proj_repo, "feature/pizza"))
+        self.assertTrue(_remote_branch_exists(proj_repo, "feature/pizza"))

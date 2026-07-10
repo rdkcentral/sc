@@ -16,6 +16,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+import click
+
 if TYPE_CHECKING:
     from .ticketing_instances.ticketing_instance import TicketingInstance
 
@@ -31,15 +33,12 @@ class TicketData:
     title: str | None = None
 
     def to_terminal(self, one_line: bool = False) -> str:
-        def c(code, text):
-            return f"\033[{code}m{text}\033[0m"
-
         sections = [
-            f"URL: [{c('34', self.url)}]",
-            f"ID: [{c('33', self.id)}]",
-            f"Title: [{c('33', self.title)}]",
-            f"Author: [{c('33', self.author)}]",
-            f"Status: [{c('32', self.status)}]"
+            f"URL: [{click.style(self.url, fg='blue')}]",
+            f"ID: [{click.style(self.id, fg='yellow')}]",
+            f"Title: [{click.style(self.title, fg='yellow')}]",
+            f"Author: [{click.style(self.author, fg='yellow')}]",
+            f"Status: [{click.style(self.status, fg='green')}]"
         ]
 
         if one_line:
