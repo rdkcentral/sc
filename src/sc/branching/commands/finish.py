@@ -370,7 +370,12 @@ class Finish(Command):
             rev_only_change_branches.remove(manifest_repo.active_branch.name)
 
             for path in manifest_repo.index.unmerged_blobs().keys():
-                manifest_repo.git.checkout("--ours", path)
+                # Git Flow performs:
+                #   git checkout <target branch>
+                #   git merge <branch being finished>
+                # At this point HEAD is the target branch ("ours"), so use `--theirs` to keep
+                # the version from the branch being finished.
+                manifest_repo.git.checkout("--theirs", path)
             manifest_repo.git.commit("-am", "Automatic conflict resolution.")
 
             try:
