@@ -22,6 +22,8 @@ from git_flow_library import GitFlowLibrary
 from repo_library import RepoLibrary
 
 from .branch import Branch, BranchType
+from .commands.branch_rename import BranchRename
+from .commands.branch_rm_merged import BranchRmMerged
 from .commands.checkout import Checkout
 from .commands.clean import Clean
 from .commands.command import Command
@@ -33,13 +35,13 @@ from .commands.init import Init
 from .commands.list import List
 from .commands.pull import Pull
 from .commands.push import Push
-from .commands.show import ShowBranch, ShowLog, ShowRepoFlowConfig
+from .commands.show import ShowBranch, ShowLog, ShowRepoFlowConfig, ShowMergedRelease
 from .commands.start import Start
 from .commands.status import Status
 from .commands.tag import (TagCheck, TagCreate, TagList, TagPush,
                            TagRm, TagShow)
 from .commands.reset import Reset
-from .exceptions import ScInitError
+from sc.exceptions import ScError
 
 logger = logging.getLogger(__name__)
 
@@ -86,7 +88,7 @@ class SCBranching:
             Checkout(top_dir, branch, force=force, verify=verify),
             project_type
         )
-    
+
     @staticmethod
     def delete(
         branch_type: BranchType,
@@ -239,6 +241,19 @@ class SCBranching:
         )
 
     @staticmethod
+    def show_merged_release(
+        previous_release: str | None,
+        current_release: str | None,
+        wiki: bool,
+        run_dir: Path = Path.cwd()
+    ):
+        top_dir, project_type = detect_project(run_dir)
+        run_command_by_project_type(
+            ShowMergedRelease(top_dir, previous_release, current_release, wiki),
+            project_type
+        )
+
+    @staticmethod
     def group_checkout(group: str, branch: str, run_dir: Path = Path.cwd()):
         top_dir, project_type = detect_project(run_dir)
         run_command_by_project_type(
@@ -300,6 +315,29 @@ class SCBranching:
             project_type
         )
 
+    @staticmethod
+    def branch_rename(old_branch: str, new_branch: str, run_dir: Path = Path.cwd()):
+        top_dir, project_type = detect_project(run_dir)
+        run_command_by_project_type(
+            BranchRename(top_dir, old_branch, new_branch),
+            project_type
+        )
+
+    @staticmethod
+    def branch_rm_merged(
+        not_merged: bool,
+        all: bool,
+        yes: bool,
+        git_only: bool,
+        dry_run: bool,
+        run_dir: Path = Path.cwd()
+    ):
+        top_dir, project_type = detect_project(run_dir)
+        run_command_by_project_type(
+            BranchRmMerged(top_dir, not_merged, all, yes, git_only, dry_run),
+            project_type
+        )
+
 def detect_project(run_dir: Path) -> tuple[Path | ProjectType]:
     if root := RepoLibrary.get_repo_root_dir(run_dir):
         return root.parent, ProjectType.REPO
@@ -334,13 +372,13 @@ def create_branch(
     sys.exit(1)
 
 def run_command_by_project_type(command: Command, project_type: ProjectType):
-    if project_type == ProjectType.GIT:
-        command.run_git_command()
-    elif project_type == ProjectType.REPO:
-        try:
+    try:
+        if project_type == ProjectType.GIT:
+            command.run_git_command()
+        elif project_type == ProjectType.REPO:
             command.run_repo_command()
-        except ScInitError as e:
-            logger.error(e)
-            sys.exit(1)
-    else:
-        raise RuntimeError("Should not get here.")
+        else:
+            raise RuntimeError("Should not get here.")
+    except ScError as e:
+        logger.error(e)
+        sys.exit(1)

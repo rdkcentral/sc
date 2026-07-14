@@ -20,9 +20,14 @@ import subprocess
 
 import git
 from git import Repo
+from git_flow_library import GitFlowLibrary
 from sc_manifest_parser import ProjectElementInterface, ScManifest
 
 from .command import Command
+from sc.exceptions import ScError
+from sc.services.tickets.exceptions import TicketIdentifierNotFound
+from sc.services.tickets.ticket import Ticket
+from sc.services.tickets.ticket_service import TicketService
 
 logger = logging.getLogger(__name__)
 
@@ -133,3 +138,85 @@ class ShowLog(Command):
             cwd=repo_dir,
             check=False
         )
+
+@dataclass
+class ShowMergedRelease(Command):
+    """Show which tickets have been merged between two tags or SHAs.
+
+    Arguments:
+        previous_release (str): Oldest tag/SHA to check merged tickets.
+        current_release (str): Newest tag/SHA to check merged tickets, defaults to
+            None which assigns it to tip of develop.
+        url (bool): Show
+
+    """
+    previous_release: str | None = None
+    current_release: str | None = None
+    wiki: bool = False
+
+    def run_git_command(self):
+        self._show_merged_release(self.top_dir)
+
+    def run_repo_command(self):
+        self._show_merged_release(self.top_dir / '.repo' / 'manifests')
+
+    def _show_merged_release(self, dir: Path):
+        def search(strings: list[str], value: str) -> list[str]:
+            result = []
+            for s in strings:
+                if value in s:
+                    result.append(s)
+            return result
+
+        develop = GitFlowLibrary.get_develop_branch(dir)
+        prev_release = self.previous_release or develop
+        curr_release = self.current_release or develop
+
+        try:
+            repo = Repo(dir)
+        except git.InvalidGitRepositoryError as e:
+            raise ScError(f"Invalid git repo {dir}") from e
+
+        try:
+            git_log = repo.git.log(
+                f"{prev_release}...{curr_release}", format="%s", first_parent=True, merges=True)
+        except git.GitCommandError as e:
+            raise ScError(f"Invalid tag/sha {prev_release} or {curr_release}")
+
+        print(f"Tag: [{prev_release}...{curr_release}]")
+
+        merged_branches = repo.git.branch("-r", "--merged", develop).splitlines()
+        unmerged_branches = repo.git.branch("-r", "--no-merged", develop).splitlines()
+
+        ticket_service = TicketService()
+        found_refs = []
+        for line in git_log.splitlines():
+            try:
+                identifier, ticket_num = ticket_service.get_ref_from_branch(line)
+                ref = (identifier, ticket_num)
+                if ref in found_refs:
+                    continue
+
+                ticket = ticket_service.get_ticket(identifier, ticket_num)
+                if self.wiki:
+                    self._print_wiki(ticket, identifier, ticket_num)
+                else:
+                    merged = search(search(merged_branches, ticket_num), identifier)
+                    unmerged = search(search(unmerged_branches, ticket_num), identifier)
+                    self._print_default(ticket, merged, unmerged)
+                found_refs.append(ref)
+            except TicketIdentifierNotFound as e:
+                pass
+
+    def _print_default(self, ticket: Ticket, merged: list[str], unmerged: list[str]):
+        print(ticket.to_terminal(one_line=True))
+        if merged:
+            print("Merged Branches: ")
+            print("\n".join(merged))
+        if unmerged:
+            print("Un-Merged Branches: ")
+            print("\n".join(unmerged))
+        print()
+
+    def _print_wiki(self, ticket: Ticket, identifier: str, ticket_num: str):
+        print(f"[{identifier}-{ticket_num}]{ticket.url} - {ticket.title}")

@@ -14,7 +14,7 @@
 from collections.abc import Iterable
 
 from .models import CodeReview
-from .exceptions import RemoteUrlNotFound
+from sc.exceptions import ConfigError
 from .git_flow_branch_strategy import GitFlowBranchStrategy
 from .git_instances import GitFactory, GitInstance
 from .models import RepoInfo
@@ -70,5 +70,5 @@ def _match_remote_pattern(remote_url: str, url_patterns: Iterable[str]) -> str:
     for pattern in url_patterns:
         if pattern in remote_url:
             return pattern
-    raise RemoteUrlNotFound(f"{remote_url} doesn't match any patterns! \n"
+    raise ConfigError(f"{remote_url} doesn't match any patterns! \n"
                             f"Remote patterns found: {', '.join(url_patterns)}")
