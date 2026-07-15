@@ -19,6 +19,7 @@ import shutil
 import subprocess
 import sys
 
+from filelock import FileLock, Timeout
 from pydantic import BaseModel
 
 from .cloner import Cloner, RefType
@@ -29,6 +30,7 @@ from sc_manifest_parser import ScManifest
 logger = logging.getLogger(__name__)
 
 REPO_CACHE_DIR = Path.home() / ".caches"
+LOCK_FILE_PATH = REPO_CACHE_DIR / ".lock"
 
 class RepoClonerConfig(BaseModel):
     """
@@ -74,8 +76,19 @@ class RepoCloner(Cloner):
         - Parses the manifest to retrieve projects.
         - Initializes GitFlow for all unlocked projects.
         """
-        reference = self._cache() if self.config.cache else None
+        if self.config.cache:
+            REPO_CACHE_DIR.mkdir(exist_ok=True)
+            try:
+                with FileLock(LOCK_FILE_PATH, timeout=600):
+                    reference = self._cache()
+                    self._clone(directory, reference)
+            except Timeout:
+                logger.error(f"The cache lock file {LOCK_FILE_PATH} remained 10 minutes.")
+                sys.exit(1)
+        else:
+            self._clone(directory, None)
 
+    def _clone(self, directory: Path, reference: Path | None):
         self._init_repo(directory=directory, reference=reference)
         RepoLibrary.sync(
             directory,
@@ -95,7 +108,6 @@ class RepoCloner(Cloner):
         Returns:
             Path: The directory of the mirrored cache.
         """
-        REPO_CACHE_DIR.mkdir(exist_ok=True)
         manifest_hostname = self._get_manifest_hostname(self.config.uri)
         host_cache_dir = Path(REPO_CACHE_DIR / manifest_hostname)
         host_cache_dir.mkdir(exist_ok=True)
