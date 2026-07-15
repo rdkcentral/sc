@@ -18,7 +18,9 @@ from pathlib import Path
 import shutil
 import subprocess
 import sys
+import time
 
+from filelock import FileLock, Timeout
 from pydantic import BaseModel
 
 from .cloner import Cloner, RefType
@@ -29,6 +31,8 @@ from sc_manifest_parser import ScManifest
 logger = logging.getLogger(__name__)
 
 REPO_CACHE_DIR = Path.home() / ".caches"
+CACHE_LOCK_PATH = REPO_CACHE_DIR / ".lock"
+CACHE_MAX_WAIT = 600
 
 class RepoClonerConfig(BaseModel):
     """
@@ -74,8 +78,42 @@ class RepoCloner(Cloner):
         - Parses the manifest to retrieve projects.
         - Initializes GitFlow for all unlocked projects.
         """
-        reference = self._cache() if self.config.cache else None
+        if self.config.cache:
+            self._clone_with_cache(directory)
+        else:
+            self._clone(directory)
 
+    def _clone_with_cache(self, directory: Path):
+        REPO_CACHE_DIR.mkdir(exist_ok=True)
+
+        started = time.monotonic()
+        lock = FileLock(CACHE_LOCK_PATH)
+
+        logger.info("Acquiring cache lock.")
+        while True:
+            try:
+                lock.acquire(timeout=20)
+                break
+            except Timeout:
+                waited = int(time.monotonic() - started)
+                if waited < CACHE_MAX_WAIT:
+                    logger.info(
+                        f"Cache is in use by another process, waited {waited} seconds..."
+                    )
+                else:
+                    logger.error(
+                        f"Cache remained locked past the set wait time of {CACHE_MAX_WAIT} seconds."
+                    )
+                    sys.exit(1)
+        logger.info("Cache lock acquired.")
+
+        try:
+            reference = self._cache()
+            self._clone(directory, reference)
+        finally:
+            lock.release()
+
+    def _clone(self, directory: Path, reference: Path | None = None):
         self._init_repo(directory=directory, reference=reference)
         RepoLibrary.sync(
             directory,
@@ -95,7 +133,6 @@ class RepoCloner(Cloner):
         Returns:
             Path: The directory of the mirrored cache.
         """
-        REPO_CACHE_DIR.mkdir(exist_ok=True)
         manifest_hostname = self._get_manifest_hostname(self.config.uri)
         host_cache_dir = Path(REPO_CACHE_DIR / manifest_hostname)
         host_cache_dir.mkdir(exist_ok=True)
