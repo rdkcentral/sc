@@ -89,9 +89,10 @@ class RepoCloner(Cloner):
         started = time.monotonic()
         lock = FileLock(CACHE_LOCK_PATH)
 
+        logger.info("Acquiring cache lock.")
         while True:
             try:
-                lock.acquire(timeout=5)
+                lock.acquire(timeout=20)
                 break
             except Timeout:
                 waited = int(time.monotonic() - started)
@@ -101,9 +102,10 @@ class RepoCloner(Cloner):
                     )
                 else:
                     logger.error(
-                        f"Cache remained lock past the set wait time of {CACHE_MAX_WAIT} seconds."
+                        f"Cache remained locked past the set wait time of {CACHE_MAX_WAIT} seconds."
                     )
                     sys.exit(1)
+        logger.info("Cache lock acquired.")
 
         try:
             reference = self._cache()
