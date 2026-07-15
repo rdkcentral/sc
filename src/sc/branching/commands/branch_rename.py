@@ -27,6 +27,8 @@ class RemoteInfo:
 class BranchRename(Command):
     old_branch: str
     new_branch: str
+    local_only: bool
+    git_only: bool
 
     def run_git_command(self):
         self._rename_branch(self.top_dir, self.old_branch, self.new_branch)
