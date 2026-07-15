@@ -18,6 +18,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import sys
+import time
 
 from filelock import FileLock, Timeout
 from pydantic import BaseModel
@@ -30,7 +31,8 @@ from sc_manifest_parser import ScManifest
 logger = logging.getLogger(__name__)
 
 REPO_CACHE_DIR = Path.home() / ".caches"
-LOCK_FILE_PATH = REPO_CACHE_DIR / ".lock"
+CACHE_LOCK_PATH = REPO_CACHE_DIR / ".lock"
+CACHE_MAX_WAIT = 600
 
 class RepoClonerConfig(BaseModel):
     """
@@ -77,18 +79,39 @@ class RepoCloner(Cloner):
         - Initializes GitFlow for all unlocked projects.
         """
         if self.config.cache:
-            REPO_CACHE_DIR.mkdir(exist_ok=True)
-            try:
-                with FileLock(LOCK_FILE_PATH, timeout=600):
-                    reference = self._cache()
-                    self._clone(directory, reference)
-            except Timeout:
-                logger.error(f"The cache lock file {LOCK_FILE_PATH} remained 10 minutes.")
-                sys.exit(1)
+            self._clone_with_cache(directory)
         else:
-            self._clone(directory, None)
+            self._clone(directory)
 
-    def _clone(self, directory: Path, reference: Path | None):
+    def _clone_with_cache(self, directory: Path):
+        REPO_CACHE_DIR.mkdir(exist_ok=True)
+
+        started = time.monotonic()
+        lock = FileLock(CACHE_LOCK_PATH)
+
+        while True:
+            try:
+                lock.acquire(timeout=5)
+                break
+            except Timeout:
+                waited = int(time.monotonic() - started)
+                if waited < CACHE_MAX_WAIT:
+                    logger.info(
+                        f"Cache is in use by another process, waited {waited} seconds..."
+                    )
+                else:
+                    logger.error(
+                        f"Cache remained lock past the set wait time of {CACHE_MAX_WAIT} seconds."
+                    )
+                    sys.exit(1)
+
+        try:
+            reference = self._cache()
+            self._clone(directory, reference)
+        finally:
+            lock.release()
+
+    def _clone(self, directory: Path, reference: Path | None = None):
         self._init_repo(directory=directory, reference=reference)
         RepoLibrary.sync(
             directory,
