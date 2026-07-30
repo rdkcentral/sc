@@ -316,10 +316,16 @@ class SCBranching:
         )
 
     @staticmethod
-    def branch_rename(old_branch: str, new_branch: str, run_dir: Path = Path.cwd()):
+    def branch_rename(
+        old_branch: str,
+        new_branch: str,
+        local_only: bool,
+        git_only: bool,
+        run_dir: Path = Path.cwd()
+    ):
         top_dir, project_type = detect_project(run_dir)
         run_command_by_project_type(
-            BranchRename(top_dir, old_branch, new_branch),
+            BranchRename(top_dir, old_branch, new_branch, local_only, git_only),
             project_type
         )
 

@@ -23,7 +23,13 @@ class TicketHostConfig:
 
     def get_config(self) -> dict[str, TicketHostModel]:
         """Return all ticketing instance configs keyed by identifier."""
-        return {k: TicketHostModel(**v) for k,v in self._ticket_config.get_config().items()}
+        result: dict[str, TicketHostModel] = {}
+        for k, v in self._ticket_config.get_config().items():
+            try:
+                result[k] = TicketHostModel(**v)
+            except ValidationError as e:
+                raise ConfigError(f"Invalid config for ticketing instance {k}: {e}") from e
+        return result
 
     def get_identifiers(self) -> set[str]:
         """Return all configured ticketing instance identifiers."""

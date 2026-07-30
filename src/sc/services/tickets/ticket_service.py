@@ -91,6 +91,8 @@ class TicketService:
     @cached_property
     def _branch_id_pattern(self) -> re.Pattern:
         host_identifiers = self._config.get_identifiers()
+        if not host_identifiers:
+            raise TicketIdentifierNotFound("No ticketing instances configured!")
         identifiers_pattern = "|".join(map(re.escape, host_identifiers))
         return re.compile(
             fr'(?:^|/)({identifiers_pattern})[-_]?(\d+)',

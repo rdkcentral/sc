@@ -186,8 +186,10 @@ def branch():
 @branch.command(name="rename")
 @click.argument("old_branch")
 @click.argument("new_branch")
-def branch_rename(old_branch, new_branch):
-    SCBranching.branch_rename(old_branch, new_branch)
+@click.option("-l", "--local-only", is_flag=True, help="Rename locally not on remote.")
+@click.option("-g", "--git-only", is_flag=True, help="Rename current git repo not all Repo workspace.")
+def branch_rename(old_branch, new_branch, local_only, git_only):
+    SCBranching.branch_rename(old_branch, new_branch, local_only, git_only)
 
 @branch.command(name="show")
 def branch_show():

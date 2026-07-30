@@ -147,8 +147,7 @@ class ShowMergedRelease(Command):
         previous_release (str): Oldest tag/SHA to check merged tickets.
         current_release (str): Newest tag/SHA to check merged tickets, defaults to
             None which assigns it to tip of develop.
-        url (bool): Show
-
+        wiki (bool): Print output in wiki pastable format.
     """
     previous_release: str | None = None
     current_release: str | None = None
