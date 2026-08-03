@@ -11,8 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import logging
 
-from sc.exceptions import ScError
+logger = logging.getLogger(__name__)
 
-class ScInitError(ScError):
-    pass
+class Prompter:
+    """Prompts for user input."""
+    @staticmethod
+    def yn(msg: str) -> bool:
+        return input(f"{msg} (y/n): ").strip().lower() == 'y'
+
+    @staticmethod
+    def ask(msg: str) -> str:
+        return input(f"{msg}\n> ").strip()

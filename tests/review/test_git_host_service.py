@@ -2,7 +2,7 @@ import unittest
 from unittest.mock import MagicMock
 
 from sc.review.git_host_service import GitHostService, _match_remote_pattern
-from sc.review.exceptions import RemoteUrlNotFound
+from sc.exceptions import ConfigError
 
 
 class TestGitHostService(unittest.TestCase):
@@ -92,7 +92,7 @@ class TestGitHostService(unittest.TestCase):
         self.assertEqual(result, "github.com")
 
     def test_match_remote_pattern_failure(self):
-        with self.assertRaises(RemoteUrlNotFound):
+        with self.assertRaises(ConfigError):
             _match_remote_pattern(
                 "https://bitbucket.org/org/repo",
                 ["gitlab.com", "github.com"]

@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
 from requests.exceptions import RequestException
 from typing import Literal
 import urllib3
@@ -18,9 +20,10 @@ import urllib3
 from jira import JIRA
 from jira.exceptions import JIRAError
 
-from sc.review.exceptions import PermissionsError, TicketNotFound
-from sc.review.models import Ticket
-from .. import TicketingInstance
+from sc.exceptions import PermissionsError
+from sc.services.tickets.ticket import Ticket, TicketData
+from sc.services.tickets.exceptions import TicketNotFound
+from ..ticketing_instance import TicketingInstance
 
 class JiraInstance(TicketingInstance):
     """A class to handle operations on Jira tickets.
@@ -108,7 +111,7 @@ class JiraInstance(TicketingInstance):
 
         ticket_url = f'{self.url}/browse/{ticket_id}'
 
-        return Ticket(
+        ticket_data = TicketData(
             url=ticket_url,
             assignee=assignee,
             author=author,
@@ -118,6 +121,8 @@ class JiraInstance(TicketingInstance):
             target_version=target_version,
             title=title,
         )
+
+        return Ticket(self, ticket_data)
 
     def add_comment_to_ticket(self, ticket_id: str, comment_message: str):
         """Adds a comment to the ticket
