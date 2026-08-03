@@ -55,6 +55,8 @@ class BranchRename(Command):
         try:
             repo = Repo(directory)
         except git.InvalidGitRepositoryError as e:
+            # We should hopefully never get here. Only if the user is missing repositories
+            # that should be present from their manifest.
             logger.warning(f"Skipping renaming for {directory}: Not a valid git repository.")
             return
 
@@ -109,4 +111,4 @@ class BranchRename(Command):
             if ref == f"refs/heads/{branch_name}":
                 return True
 
-        return None
+        return False
