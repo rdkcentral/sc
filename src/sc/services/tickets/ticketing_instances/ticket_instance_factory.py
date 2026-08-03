@@ -13,7 +13,7 @@
 # limitations under the License.
 from typing import Literal
 
-from sc.review.exceptions import TicketIdentifierNotFound
+from sc.services.tickets.exceptions import TicketIdentifierNotFound
 from .instances import JiraInstance, RedmineInstance
 from .ticketing_instance import TicketingInstance
 

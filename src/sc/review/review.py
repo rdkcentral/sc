@@ -17,14 +17,16 @@ import logging
 from pathlib import Path
 import sys
 
-from .exceptions import ReviewException
 from git_flow_library import GitFlowLibrary
 from repo_library import RepoLibrary
-from .repo_source import ManifestRepoSource, SingleRepoSource
-from .ticket_updater import TicketUpdater
-from .review_config import GitHostConfig, GitHostModel, TicketHostConfig, TicketHostModel
-from .ticketing_instances import TicketingInstanceFactory
+
 from .git_instances import GitFactory
+from .repo_source import ManifestRepoSource, SingleRepoSource
+from .review_config import GitHostConfig, GitHostModel
+from sc.exceptions import ScError
+from ..services.tickets.ticketing_instances import TicketingInstanceFactory
+from ..services.tickets.ticket_config import TicketHostConfig, TicketHostModel
+from .ticket_updater import TicketUpdater
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +45,7 @@ def update_ticket(single_git: bool = False):
 
     try:
         TicketUpdater(repo_source).run()
-    except (ReviewException, ConnectionError, RuntimeError) as e:
+    except (ScError, ConnectionError, RuntimeError) as e:
         logger.error(e)
         sys.exit(1)
 

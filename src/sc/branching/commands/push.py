@@ -36,6 +36,7 @@ class Push(Command):
         repo = Repo(self.top_dir)
         remote = repo.remotes[0].name
         repo.git.push("-u", remote, self.branch.name)
+        repo.git.push("--tags")
 
     def run_repo_command(self):
         self._error_on_sc_uninitialised()
