@@ -20,7 +20,7 @@ import subprocess
 import sys
 import time
 
-from filelock import FileLock, Timeout
+from filelock import SoftFileLock, Timeout
 from pydantic import BaseModel
 
 from .cloner import Cloner, RefType
@@ -86,15 +86,14 @@ class RepoCloner(Cloner):
     def _clone_with_cache(self, directory: Path):
         REPO_CACHE_DIR.mkdir(exist_ok=True)
 
-        lock = FileLock(CACHE_LOCK_PATH)
-        lock_acquired = self._acquire_cache_lock(lock)
+        lock = SoftFileLock(CACHE_LOCK_PATH)
+        self._acquire_cache_lock(lock)
 
         try:
             reference = self._cache()
             self._clone(directory, reference)
         finally:
-            if lock_acquired:
-                lock.release()
+            lock.release()
 
     def _clone(self, directory: Path, reference: Path | None = None):
         self._init_repo(directory=directory, reference=reference)
@@ -159,11 +158,8 @@ class RepoCloner(Cloner):
             logger.error(f"repo init error: {e}")
             sys.exit(1)
 
-    def _acquire_cache_lock(self, lock: FileLock) -> bool:
-        """Try to acquire cache lock. After a certain time bypass it.
-
-        Return True if lock acquired or False if bypassed.
-        """
+    def _acquire_cache_lock(self, lock: SoftFileLock):
+        """Try to acquire cache lock. After a certain time bypass it."""
         started = time.monotonic()
         first_warning = False
 
@@ -172,7 +168,7 @@ class RepoCloner(Cloner):
             try:
                 lock.acquire(timeout=20)
                 logger.info("Cache lock acquired.")
-                return True
+                return
 
             except Timeout:
                 waited = int(time.monotonic() - started)
@@ -192,7 +188,9 @@ class RepoCloner(Cloner):
                         f"Cache remained locked past the set wait time of {CACHE_MAX_WAIT} seconds. "
                         "Force proceeding without acquiring cache lock..."
                     )
-                    return False
+                    lock.break_lock()
+                    lock.acquire()
+                    return
 
     def _get_manifest_hostname(self, url: str) -> str:
         """Extracts the hostname from a given URL.
