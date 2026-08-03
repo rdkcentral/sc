@@ -31,8 +31,8 @@ from sc_manifest_parser import ScManifest
 logger = logging.getLogger(__name__)
 
 REPO_CACHE_DIR = Path.home() / ".caches"
-CACHE_LOCK_PATH = REPO_CACHE_DIR / ".lock"
-CACHE_MAX_WAIT = 600
+CACHE_LOCK_PATH = REPO_CACHE_DIR / ".sc_lock"
+CACHE_MAX_WAIT = 300
 
 class RepoClonerConfig(BaseModel):
     """
@@ -86,32 +86,15 @@ class RepoCloner(Cloner):
     def _clone_with_cache(self, directory: Path):
         REPO_CACHE_DIR.mkdir(exist_ok=True)
 
-        started = time.monotonic()
         lock = FileLock(CACHE_LOCK_PATH)
-
-        logger.info("Acquiring cache lock.")
-        while True:
-            try:
-                lock.acquire(timeout=20)
-                break
-            except Timeout:
-                waited = int(time.monotonic() - started)
-                if waited < CACHE_MAX_WAIT:
-                    logger.info(
-                        f"Cache is in use by another process, waited {waited} seconds..."
-                    )
-                else:
-                    logger.error(
-                        f"Cache remained locked past the set wait time of {CACHE_MAX_WAIT} seconds."
-                    )
-                    sys.exit(1)
-        logger.info("Cache lock acquired.")
+        lock_acquired = self._acquire_cache_lock(lock)
 
         try:
             reference = self._cache()
             self._clone(directory, reference)
         finally:
-            lock.release()
+            if lock_acquired:
+                lock.release()
 
     def _clone(self, directory: Path, reference: Path | None = None):
         self._init_repo(directory=directory, reference=reference)
@@ -175,6 +158,41 @@ class RepoCloner(Cloner):
         except subprocess.CalledProcessError as e:
             logger.error(f"repo init error: {e}")
             sys.exit(1)
+
+    def _acquire_cache_lock(self, lock: FileLock) -> bool:
+        """Try to acquire cache lock. After a certain time bypass it.
+
+        Return True if lock acquired or False if bypassed.
+        """
+        started = time.monotonic()
+        first_warning = False
+
+        logger.info("Acquiring cache lock.")
+        while True:
+            try:
+                lock.acquire(timeout=20)
+                logger.info("Cache lock acquired.")
+                return True
+
+            except Timeout:
+                waited = int(time.monotonic() - started)
+                if waited < CACHE_MAX_WAIT:
+                    logger.info(
+                        f"Cache is in use by another process, waited {waited} seconds..."
+                    )
+
+                    if first_warning == False:
+                        logger.info(f"SC will wait for {CACHE_MAX_WAIT} seconds before bypassing.")
+                        logger.info(
+                            "The cache is user specific, if you believe there is no way your cache "
+                            f"should be in use you could try deleting the lock: {CACHE_LOCK_PATH}")
+                        first_warning = True
+                else:
+                    logger.warning(
+                        f"Cache remained locked past the set wait time of {CACHE_MAX_WAIT} seconds. "
+                        "Force proceeding without acquiring cache lock..."
+                    )
+                    return False
 
     def _get_manifest_hostname(self, url: str) -> str:
         """Extracts the hostname from a given URL.
