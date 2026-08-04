@@ -39,4 +39,3 @@ def _find_config() -> Path:
     if not config_file.exists():
         raise FileNotFoundError("No 'config.yaml' found in Repo manifests dir!")
     return config_file
-    
