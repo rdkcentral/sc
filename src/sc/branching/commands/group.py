@@ -68,7 +68,7 @@ class GroupShow(Command):
         proj_dir = self.top_dir / proj.path
         logger.info(f"Project: {proj_dir}")
         logger.info(
-            f"Lock Status: [bold yellow]\[{proj.lock_status or 'NORMAL'}][/]",
+            rf"Lock Status: [bold yellow]\[{proj.lock_status or 'NORMAL'}][/]",
             extra={"markup": True}
         )
 
