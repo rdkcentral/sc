@@ -14,7 +14,6 @@
 
 import getpass
 import grp
-from netrc import netrc, NetrcParseError
 import os
 from pathlib import Path
 import shlex
@@ -27,9 +26,9 @@ import click
 import docker
 from docker.errors import APIError, TLSParameterError
 
+from .docker_config import DockerConfigManager, RegistryConfig
 from .exceptions import ScDockerException
 from .registry_apis.registry_api_factory import RegistryAPIFactory
-from sc.config_manager import ConfigManager
 
 REGISTRY_WHITELIST = Path("/etc/sc/docker_registry_whitelist")
 
@@ -45,12 +44,7 @@ class SCDocker:
         self.docker_client = docker.from_env()
         self.supported_registry_types = RegistryAPIFactory.get_supported_registry_types()
 
-
-        self.docker_config_manager = ConfigManager('docker')
-        self.docker_config = self.docker_config_manager.get_config()
-
-        self.whitelisted_registries = self._get_whitelisted_registries()
-        self._validate_existing_registries()
+        self.config_manager = DockerConfigManager()
 
     def login(self):
         """Add a registry to your sc docker config so you can pull images from it.
@@ -66,12 +60,14 @@ class SCDocker:
         try:
             images = registry_api.fetch_images(registry_url, username, api_token)
         except Exception as e:
-            click.secho(f"ERROR: An exception occured when fetching images from {registry_url}", fg='red')
+            click.secho(
+                f"ERROR: An exception occured when fetching images from {registry_url}", fg='red')
             click.secho(e)
             sys.exit(1)
         self._validate_images(images, registry_url)
 
-        self._update_user_config(registry_url, registry_type, credential_store, username, api_token)
+        self.config_manager.add_registry(
+            registry_url, registry_type, credential_store, username, api_token)
 
         click.echo(f"\nRegistry {registry_url} has been added to your SC config!")
 
@@ -81,15 +77,14 @@ class SCDocker:
         Args:
             registry_url (str): Registry url to remove.
         """
-        self.docker_config_manager.delete_key_from_config(registry_url)
+        self.config_manager.delete_registry(registry_url)
         click.secho(f"Removed credentials for {registry_url}", fg="green", bold=True)
 
     def list_images(self):
         """List images from all your docker registries.
         """
         remote_images = []
-        if self.docker_config:
-            remote_images = self._fetch_image_names_all_registries_in_config()
+        remote_images = self._fetch_image_names_all_registries_in_config()
 
         # Get local image names and remove duplicates.
         local_images = list({tag.split(":")[0] for image in self.docker_client.images.list() for tag in image.tags})
@@ -159,34 +154,13 @@ class SCDocker:
 
     # ──────────────────────── REGISTRY & AUTH HELPERS ────────────────────────
 
-    def _get_whitelisted_registries(self) -> tuple[str, ...]:
-        if REGISTRY_WHITELIST.exists():
-            with open(REGISTRY_WHITELIST, 'r') as file:
-                return tuple(line.strip() for line in file)
-        return ()
-
-    def _validate_existing_registries(self):
-        """Check if pre-existing registries in config are whitelisted. Exit if not."""
-        if not self.whitelisted_registries:
+    def _validate_registry_on_login(self, registry_url: str):
+        if self.config_manager.registry_url_whitelisted(registry_url):
             return
 
-        invalid_registries = [r for r in self.docker_config if r not in self.whitelisted_registries]
-        if invalid_registries:
-            click.secho("ERROR: Some pre-configured registries are not in the whitelist!", fg="red")
-            for registry in invalid_registries:
-                click.echo(f"- {registry}")
-            click.secho("\nAllowed registries:", fg="green")
-            for reg in self.whitelisted_registries:
-                click.echo(f"- {reg}")
-            sys.exit(1)
-
-    def _validate_registry_on_login(self, registry: str):
-        if not self.whitelisted_registries or registry in self.whitelisted_registries:
-            return
-
-        click.secho(f"ERROR: Login attempt failed. {registry} is not whitelisted!", fg="red")
+        click.secho(f"ERROR: Login attempt failed. {registry_url} is not whitelisted!", fg="red")
         click.secho("You can only log in to these registries:", fg="green")
-        for reg in self.whitelisted_registries:
+        for reg in self.config_manager.get_whitelisted_registries():
             click.echo(f"- {reg}")
         sys.exit(1)
 
@@ -196,67 +170,16 @@ class SCDocker:
             click.secho(f"ERROR: {error_message}", fg="red", bold=True)
             sys.exit(1)
 
-    def _get_registry_creds_by_url(self, registry_url: str) -> tuple[str, str]:
-        registry_conf = self.docker_config[registry_url]
-        if registry_conf['credential_store'] == "netrc":
-            username, api_token = self._get_netrc_creds_by_registry(registry_url)
-        else:
-            username, api_token = registry_conf['username'], registry_conf['api_key']
-
-        return username, api_token
-
-    def _get_netrc_creds_by_registry(self, registry_url: str) -> tuple[str, str]:
-        try:
-            netrc_path = os.getenv('NETRC_PATH')
-            creds = netrc(netrc_path) if netrc_path else netrc()
-
-            if not creds:
-                click.secho("ERROR: Failed to grab credentials from your .netrc", fg="red")
-                click.secho("Netrc missing or empty!", fg='red')
-                sys.exit(1)
-
-            machine = registry_url.split("/")[0]
-            auth = creds.authenticators(machine)
-            if not auth:
-                click.secho(f"ERROR: No authenticators found for machine '{machine}' in .netrc", fg="red")
-                sys.exit(1)
-            username, _, api_token = auth
-            return username, api_token
-        except NetrcParseError as e:
-            click.secho("ERROR: Failed to grab credentials from your .netrc", fg="red")
-            click.secho(f"Error message: {e}")
-            click.secho("You may have to run command: chmod 600 ~/.netrc")
-            sys.exit(1)
-
     def _login_to_registry(self, registry_url: str) -> str:
-        username, api_token = self._get_registry_creds_by_url(registry_url)
-        self._docker_login(username, api_token, registry_url)
+        registry = self.config_manager.get_registry(registry_url)
+        self._docker_login(registry.username, registry.api_key, registry_url)
 
-    def _docker_login(self, username: str, api_token: str, registry_url: str):
+    def _docker_login(self, username: str, api_key: str, registry_url: str):
         try:
-            self.docker_client.login(username=username, password=api_token, registry=registry_url)
+            self.docker_client.login(username=username, password=api_key, registry=registry_url)
         except (APIError, TLSParameterError) as e:
             click.secho("\nERROR: Failed to login with the credentials provided!", fg="red", bold="true")
             click.secho(f"Failed to login to Docker registry {registry_url}: {str(e)}", fg="red")
-            sys.exit(1)
-
-    def _update_user_config(self, registry_url: str, registry_type: str, credential_store: str, username: str, api_token: str):
-        config_dict = {
-            registry_url: {
-                "reg_type": registry_type,
-                "credential_store": credential_store,
-            }
-        }
-
-        if credential_store == "config":
-            config_dict[registry_url]["username"] = username
-            config_dict[registry_url]["api_key"] = api_token
-
-        try:
-            self.docker_config_manager.update_config(config_dict)
-        except Exception as e:
-            error_message = f"Failed to write to the config: {str(e)}"
-            click.secho(f"Error: {error_message}", fg="red", bold="true")
             sys.exit(1)
 
     # ──────────────────────── USER INPUT HELPERS ────────────────────────
@@ -294,7 +217,7 @@ class SCDocker:
 
         if netrc_input == "y":
             credential_store = "netrc"
-            username, api_token = self._get_netrc_creds_by_registry(registry_url)
+            username, api_token = self.config_manager.get_netrc_creds_by_registry(registry_url)
         else:
             credential_store = "config"
             click.echo("\nUsername:")
@@ -321,22 +244,22 @@ class SCDocker:
 
     def _get_local_images(self) -> list[str]:
         return list(
-                {
-                    tag.split(":")[0] for image in
-                    self.docker_client.images.list() for tag in image.tags
-                }
-            )
+            {
+                tag.split(":")[0] for image in
+                self.docker_client.images.list() for tag in image.tags
+            }
+        )
 
     def _get_remote_images(self, image_ref: str) -> list[str]:
-        if registry_url := self._match_registry_from_image_ref(image_ref):
-            return self._fetch_image_names_by_registry(registry_url)
+        if registry := self._match_registry_from_image_ref(image_ref):
+            return self._fetch_image_names_by_registry(registry)
 
         return self._fetch_image_names_all_registries_in_config()
 
-    def _match_registry_from_image_ref(self, image_ref: str) -> str | None:
-        for registry_url in self.docker_config:
-            if image_ref.startswith(registry_url):
-                return registry_url
+    def _match_registry_from_image_ref(self, image_ref: str) -> RegistryConfig | None:
+        for registry in self.config_manager.get_all_registries():
+            if image_ref.startswith(registry.url):
+                return registry
         return None
 
     def _match_image_to_ref(self, images: list[str], image_ref: str) -> str:
@@ -412,8 +335,8 @@ class SCDocker:
         if local:
             return self._fetch_local_tags(image)
 
-        username, api_token = self._get_registry_creds_by_url(registry_url)
-        return self._fetch_remote_tags(image, username, api_token)
+        registry = self.config_manager.get_registry(registry_url)
+        return self._fetch_remote_tags(image, registry)
 
     def _fetch_local_tags(self, image: str):
         local_images = self.docker_client.images.list()
@@ -426,13 +349,13 @@ class SCDocker:
                     tags.append(tag.split(":")[1])
         return tuple(tags)
 
-    def _fetch_remote_tags(self, image: str, username: str, api_token: str) -> tuple[str, ...]:
+    def _fetch_remote_tags(self, image: str, registry: RegistryConfig) -> tuple[str, ...]:
         registry_url, image_name = self._parse_image_reference(image)
-        registry_type = self.docker_config[registry_url]['reg_type']
-        registry_api = RegistryAPIFactory.get_registry_api(registry_type)
+        registry_api = RegistryAPIFactory.get_registry_api(registry.reg_type)
 
         try:
-            return registry_api.fetch_tags(registry_url, username, api_token, image_name)
+            return registry_api.fetch_tags(
+                registry_url, registry.username, registry.api_key, image_name)
         except Exception as e:
             click.secho(
                 f"ERROR: An exception occurred when fetching tags for image {image_name} from {registry_url}",
@@ -445,25 +368,22 @@ class SCDocker:
         in the config.
         """
         return [
-            name
-            for registry_url in self.docker_config
-            for name in self._fetch_image_names_by_registry(registry_url)
+            name for registry in self.config_manager.get_all_registries()
+            for name in self._fetch_image_names_by_registry(registry)
         ]
 
-    def _fetch_image_names_by_registry(self, registry_url: str) -> list[str]:
+    def _fetch_image_names_by_registry(self, registry: RegistryConfig) -> list[str]:
         """Add the registry url to make full image name."""
         return [
-            f"{registry_url}/{image}" for image in
-            self._fetch_images_by_registry(registry_url)
+            f"{registry.url}/{image}" for image in
+            self._fetch_images_by_registry(registry)
         ]
 
-    def _fetch_images_by_registry(self, registry_url: str) -> tuple[str, ...]:
+    def _fetch_images_by_registry(self, registry: RegistryConfig) -> tuple[str, ...]:
         """Return just the project name of images in a registry."""
-        username, api_token = self._get_registry_creds_by_url(registry_url)
-        registry_type = self.docker_config[registry_url]['reg_type']
-        registry_api = RegistryAPIFactory.get_registry_api(registry_type)
+        registry_api = RegistryAPIFactory.get_registry_api(registry.reg_type)
         try:
-            return registry_api.fetch_images(registry_url, username, api_token)
+            return registry_api.fetch_images(registry.url, registry.username, registry.api_key)
         except Exception as e:
             click.secho(
                 f"WARNING: An exception occurred when fetching images from {registry_url}",
@@ -482,7 +402,7 @@ class SCDocker:
         sys.exit(1)
 
     def _check_no_registries(self):
-        if not self.docker_config:
+        if not self.config_manager.get_all_registry_urls():
             click.secho(
                 "WARNING: You have not logged into any registries and therefore can only use",
                 fg = 'red', bold=True)
