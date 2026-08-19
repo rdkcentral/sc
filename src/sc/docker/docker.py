@@ -465,9 +465,11 @@ class SCDocker:
         try:
             return registry_api.fetch_images(registry_url, username, api_token)
         except Exception as e:
-            click.secho(f"ERROR: An exception occured when fetching images from {registry_url}", fg='red')
+            click.secho(
+                f"WARNING: An exception occured when fetching images from {registry_url}",
+                fg='yellow')
             click.secho(e)
-            sys.exit(1)
+            return ()
 
     def _handle_invalid_tag(self, image:str, tag: str, tags: tuple[str, ...]):
         click.echo(
