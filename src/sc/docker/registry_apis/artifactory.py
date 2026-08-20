@@ -20,6 +20,10 @@ class ArtifactoryAPI(RegistryAPI):
     reg_type = "Artifactory"
 
     def fetch_images(self, registry, username, token) -> tuple[str, ...]:
+        if '/' not in registry:
+            raise ValueError(
+                f"Artifactory registry URL must include a namespace, "
+                f"e.g. '{registry}/<namespace>', got '{registry}'")
         artifactory_root, repo = registry.split('/', 1)
         if not username:
             raise ValueError("Username is required for Artifactory API")
@@ -34,6 +38,10 @@ class ArtifactoryAPI(RegistryAPI):
             raise self.RegistryAPIException(self.reg_type, registry, response = response)
 
     def fetch_tags(self, registry, username, token, container_name) -> tuple[str, ...]:
+        if '/' not in registry:
+            raise ValueError(
+                f"Artifactory registry URL must include a namespace, "
+                f"e.g. '{registry}/<namespace>', got '{registry}'")
         artifactory_root, repo = registry.split('/', 1)
         if not username:
             raise ValueError("Username is required for Artifactory API")

@@ -17,6 +17,7 @@ import grp
 from netrc import netrc, NetrcParseError
 import os
 from pathlib import Path
+import re
 import shlex
 import socket
 import subprocess
@@ -181,6 +182,36 @@ class SCDocker:
             sys.exit(1)
 
     def _validate_registry_on_login(self, registry: str):
+        # Format checks first — catch whitespace, prompt-prefix paste
+        # accidents (e.g. "> : ghcr.io/myorg"), schemes (https://...),
+        # and missing /namespace before they reach the registry API and
+        # surface cryptic downstream errors like "not enough values to
+        # unpack" (#64).
+        def _reject(reason):
+            click.secho(
+                f"ERROR: invalid registry URL '{registry}' — {reason}.",
+                fg="red")
+            click.secho(
+                "Expected <host>/<namespace>, e.g. ghcr.io/myorg or "
+                "your.artifactory.com/docker-registry.", fg="red")
+            sys.exit(1)
+
+        if not registry:
+            _reject("empty")
+        if any(c.isspace() for c in registry):
+            _reject("contains whitespace")
+        if "://" in registry:
+            _reject("drop the scheme (http://, https://) — host only")
+        if "/" not in registry:
+            _reject("missing /<namespace>")
+        host, _, path = registry.partition("/")
+        if not host or not path:
+            _reject("missing host or namespace")
+        if not re.match(r'^[a-zA-Z0-9][a-zA-Z0-9._:-]*$', host):
+            _reject(f"host '{host}' has invalid characters")
+        if not re.match(r'^[a-zA-Z0-9][a-zA-Z0-9._/-]*$', path):
+            _reject(f"namespace '{path}' has invalid characters")
+
         if not self.whitelisted_registries or registry in self.whitelisted_registries:
             return
 
@@ -268,7 +299,7 @@ class SCDocker:
         click.echo("Example (GitHub): ghcr.io/organisation")
         click.echo("Example (Artifactory): your.artifactory.com/docker-registry")
 
-        registry_url = click.prompt("> ")
+        registry_url = click.prompt("> ").strip()
         self._validate_registry_on_login(registry_url)
 
         return registry_url
