@@ -40,7 +40,9 @@ class DockerConfigManager:
     RegistryConfig models.
     """
     def __init__(
-            self, config_manager: ConfigManager | None = None, whitelist_path = REGISTRY_WHITELIST):
+            self,
+            config_manager: ConfigManager | None = None,
+            whitelist_path: Path = REGISTRY_WHITELIST):
         self._docker_config_manager = config_manager or ConfigManager('docker')
         self._whitelist_path = whitelist_path
         self._whitelisted_registries = self._get_whitelisted_registries()
@@ -55,20 +57,20 @@ class DockerConfigManager:
         """Get configured registries that are not whitelisted."""
         if self._whitelisted_registries:
             return [
-                r for r in self.get_all_registry_urls()
+                r for r in self.list_registry_urls()
                 if r not in self._whitelisted_registries
             ]
         return []
 
-    def registry_url_whitelisted(self, registry_url: str) -> bool:
+    def is_registry_allowed(self, registry_url: str) -> bool:
         if not self._whitelisted_registries or registry_url in self._whitelisted_registries:
             return True
         return False
 
-    def get_all_registries(self) -> list[RegistryConfig]:
+    def list_registries(self) -> list[RegistryConfig]:
         """Get all registered configs."""
         registries = []
-        for registry_url in self.get_all_registry_urls():
+        for registry_url in self.list_registry_urls():
             registry = self.get_registry(registry_url)
             if registry is not None:
                 registries.append(registry)
@@ -97,7 +99,7 @@ class DockerConfigManager:
     def delete_registry(self, registry_url: str):
         self._docker_config_manager.delete_key_from_config(registry_url)
 
-    def get_all_registry_urls(self) -> list[str]:
+    def list_registry_urls(self) -> list[str]:
         """Return all registry URLs defined in the config."""
         return list(self._docker_config_manager.get_config().keys())
 
@@ -145,6 +147,8 @@ class DockerConfigManager:
             if not auth:
                 raise NetrcError(f"No authenticators found for machine '{machine}' in .netrc")
             username, _, api_key = auth
+            if not username or not api_key:
+                raise NetrcError(f"Incomplete authenticators for machine '{machine}' in .netrc")
             return username, api_key
         except NetrcParseError as e:
             raise NetrcError(
@@ -156,7 +160,7 @@ class DockerConfigManager:
 
     def _validate_registry_url(self, registry_url: str):
         """Raise ScDockerConfigError if the registry url provided is not whitelisted."""
-        if not self.registry_url_whitelisted(registry_url):
+        if not self.is_registry_allowed(registry_url):
             error_msg = [f"Registry '{registry_url}' is not whitelisted"]
             error_msg.append("Allowed registries:")
             for reg in self._whitelisted_registries:

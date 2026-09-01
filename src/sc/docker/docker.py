@@ -30,8 +30,6 @@ from .docker_config import DockerConfigManager, RegistryConfig
 from .exceptions import ScDockerException
 from .registry_apis.registry_api_factory import RegistryAPIFactory
 
-REGISTRY_WHITELIST = Path("/etc/sc/docker_registry_whitelist")
-
 STANDARD_MOUNT_DIRS = ['/home/mirror', '/opt/repo_flow']
 BANNED_MOUNT_DIRS = [
     "/boot", "/dev", "/etc", "/sys", "/proc", "/root", "/srv",
@@ -83,7 +81,6 @@ class SCDocker:
     def list_images(self):
         """List images from all your docker registries.
         """
-        remote_images = []
         remote_images = self._fetch_image_names_all_registries_in_config()
 
         # Get local image names and remove duplicates.
@@ -155,7 +152,7 @@ class SCDocker:
     # ──────────────────────── REGISTRY & AUTH HELPERS ────────────────────────
 
     def _validate_registry_on_login(self, registry_url: str):
-        if self.config_manager.registry_url_whitelisted(registry_url):
+        if self.config_manager.is_registry_allowed(registry_url):
             return
 
         click.secho(f"ERROR: Login attempt failed. {registry_url} is not whitelisted!", fg="red")
@@ -170,7 +167,7 @@ class SCDocker:
             click.secho(f"ERROR: {error_message}", fg="red", bold=True)
             sys.exit(1)
 
-    def _login_to_registry(self, registry_url: str) -> str:
+    def _login_to_registry(self, registry_url: str):
         registry = self.config_manager.get_registry(registry_url)
         self._docker_login(registry.username, registry.api_key, registry_url)
 
@@ -257,7 +254,7 @@ class SCDocker:
         return self._fetch_image_names_all_registries_in_config()
 
     def _match_registry_from_image_ref(self, image_ref: str) -> RegistryConfig | None:
-        for registry in self.config_manager.get_all_registries():
+        for registry in self.config_manager.list_registries():
             if image_ref.startswith(registry.url):
                 return registry
         return None
@@ -368,7 +365,7 @@ class SCDocker:
         in the config.
         """
         return [
-            name for registry in self.config_manager.get_all_registries()
+            name for registry in self.config_manager.list_registries()
             for name in self._fetch_image_names_by_registry(registry)
         ]
 
@@ -386,7 +383,7 @@ class SCDocker:
             return registry_api.fetch_images(registry.url, registry.username, registry.api_key)
         except Exception as e:
             click.secho(
-                f"WARNING: An exception occurred when fetching images from {registry_url}",
+                f"WARNING: An exception occurred when fetching images from {registry.url}",
                 fg='yellow')
             click.secho(e)
             return ()
@@ -402,7 +399,7 @@ class SCDocker:
         sys.exit(1)
 
     def _check_no_registries(self):
-        if not self.config_manager.get_all_registry_urls():
+        if not self.config_manager.list_registry_urls():
             click.secho(
                 "WARNING: You have not logged into any registries and therefore can only use",
                 fg = 'red', bold=True)

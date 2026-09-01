@@ -67,23 +67,23 @@ class TestDockerConfigManager(unittest.TestCase):
         manager = self.create_manager()
 
         self.assertEqual(manager.get_whitelisted_registries(), ())
-        self.assertTrue(manager.registry_url_whitelisted("anything.example.com"))
+        self.assertTrue(manager.is_registry_allowed("anything.example.com"))
 
-    def test_registry_url_whitelisted_returns_true(self):
+    def test_is_registry_allowed_returns_true(self):
         manager = self.create_manager("ghcr.io/example")
 
         self.assertTrue(
-            manager.registry_url_whitelisted("ghcr.io/example")
+            manager.is_registry_allowed("ghcr.io/example")
         )
 
-    def test_registry_url_whitelisted_returns_false(self):
+    def test_is_registry_allowed_returns_false(self):
         manager = self.create_manager("ghcr.io/example")
 
         self.assertFalse(
-            manager.registry_url_whitelisted("docker.io/example")
+            manager.is_registry_allowed("docker.io/example")
         )
 
-    def test_get_all_registry_urls(self):
+    def test_list_registry_urls(self):
         self.config_manager.get_config.return_value = {
             "ghcr.io/example": {},
             "artifactory.example.com/team": {},
@@ -92,7 +92,7 @@ class TestDockerConfigManager(unittest.TestCase):
         manager = self.create_manager()
 
         self.assertEqual(
-            manager.get_all_registry_urls(),
+            manager.list_registry_urls(),
             [
                 "ghcr.io/example",
                 "artifactory.example.com/team",
@@ -211,7 +211,7 @@ class TestDockerConfigManager(unittest.TestCase):
         ):
             manager.get_registry("docker.io/example")
 
-    def test_get_all_registries(self):
+    def test_list_registries(self):
         self.config_manager.get_config.return_value = {
             "ghcr.io/example": {
                 "reg_type": "github",
@@ -229,7 +229,7 @@ class TestDockerConfigManager(unittest.TestCase):
 
         manager = self.create_manager()
 
-        registries = manager.get_all_registries()
+        registries = manager.list_registries()
 
         self.assertEqual(len(registries), 2)
         self.assertEqual(registries[0].url, "ghcr.io/example")
@@ -264,7 +264,7 @@ class TestDockerConfigManager(unittest.TestCase):
             registry_type="github",
             credential_store="config",
             username="user",
-            api_token="token",
+            api_key="token",
         )
 
         self.config_manager.update_config.assert_called_once_with(
@@ -286,7 +286,7 @@ class TestDockerConfigManager(unittest.TestCase):
             registry_type="github",
             credential_store="netrc",
             username="user",
-            api_token="token",
+            api_key="token",
         )
 
         self.config_manager.update_config.assert_called_once_with(
@@ -323,6 +323,8 @@ class TestDockerConfigManager(unittest.TestCase):
                 registry_url="ghcr.io/example",
                 registry_type="github",
                 credential_store="config",
+                username="foo",
+                api_key="bar"
             )
 
         self.assertIsInstance(context.exception.__cause__, OSError)
