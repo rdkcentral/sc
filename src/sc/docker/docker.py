@@ -364,10 +364,10 @@ class SCDocker:
         """Fetch full image names (registry_url/image_name) from all registries
         in the config.
         """
-        return [
-            name for registry in self.config_manager.list_registries()
-            for name in self._fetch_image_names_by_registry(registry)
-        ]
+        image_names = []
+        for registry in self.config_manager.list_registries():
+            image_names.append(self._fetch_image_names_by_registry(registry))
+        return image_names
 
     def _fetch_image_names_by_registry(self, registry: RegistryConfig) -> list[str]:
         """Add the registry url to make full image name."""

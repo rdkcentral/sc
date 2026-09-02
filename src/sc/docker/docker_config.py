@@ -45,22 +45,13 @@ class DockerConfigManager:
             whitelist_path: Path = REGISTRY_WHITELIST):
         self._docker_config_manager = config_manager or ConfigManager('docker')
         self._whitelist_path = whitelist_path
-        self._whitelisted_registries = self._get_whitelisted_registries()
+        self._whitelisted_registries = self._load_whitelisted_registries()
 
     def get_whitelisted_registries(self) -> tuple[str, ...]:
         """Returns a tuple of whitelisted registries. If the tuple is empty all
         registries are valid.
         """
         return self._whitelisted_registries
-
-    def get_invalid_registries(self) -> list[str]:
-        """Get configured registries that are not whitelisted."""
-        if self._whitelisted_registries:
-            return [
-                r for r in self.list_registry_urls()
-                if r not in self._whitelisted_registries
-            ]
-        return []
 
     def is_registry_allowed(self, registry_url: str) -> bool:
         if not self._whitelisted_registries or registry_url in self._whitelisted_registries:
@@ -157,6 +148,8 @@ class DockerConfigManager:
             ) from e
         except FileNotFoundError as e:
             raise NetrcError(f".netrc file not found: {e}") from e
+        except OSError as e:
+            raise NetrcError(f".netrc failed to load: {e}") from e
 
     def _validate_registry_url(self, registry_url: str):
         """Raise ScDockerConfigError if the registry url provided is not whitelisted."""
@@ -167,8 +160,8 @@ class DockerConfigManager:
                 error_msg.append(f"- {reg}")
             raise ScDockerConfigError("\n".join(error_msg))
 
-    def _get_whitelisted_registries(self) -> tuple[str, ...]:
-        """Get registries from whitelist and remove comments (lines starting with #)"""
+    def _load_whitelisted_registries(self) -> tuple[str, ...]:
+        """Load registries from whitelist file and remove comments (lines starting with #)"""
         if self._whitelist_path.exists():
             with self._whitelist_path.open('r') as file:
                 stripped_lines = [line.strip() for line in file]

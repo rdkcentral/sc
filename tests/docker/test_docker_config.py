@@ -99,29 +99,6 @@ class TestDockerConfigManager(unittest.TestCase):
             ],
         )
 
-    def test_get_invalid_registries(self):
-        self.config_manager.get_config.return_value = {
-            "ghcr.io/example": {},
-            "docker.io/example": {},
-        }
-
-        manager = self.create_manager("ghcr.io/example")
-
-        self.assertEqual(
-            manager.get_invalid_registries(),
-            ["docker.io/example"],
-        )
-
-    def test_get_invalid_registries_empty_when_whitelist_missing(self):
-        self.config_manager.get_config.return_value = {
-            "ghcr.io/example": {},
-            "docker.io/example": {},
-        }
-
-        manager = self.create_manager()
-
-        self.assertEqual(manager.get_invalid_registries(), [])
-
     def test_get_registry_returns_none_when_not_configured(self):
         self.config_manager.get_config.return_value = {}
 

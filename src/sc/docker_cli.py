@@ -19,12 +19,12 @@ import sys
 
 import click
 
-from sc.docker import SCDocker
+from sc.docker import SCDocker, ScDockerException
 
 @click.group()
 def cli():
     pass
-    
+
 @cli.group()
 def docker():
     """Run and manage dockers."""
@@ -38,38 +38,50 @@ def docker():
 @click.option('--x11', is_flag=True, help='Forward X11 into the docker.')
 @click.option('-v', '--volume', multiple=True, help='Mount a volume.')
 def run(
-        image: str, 
-        command: tuple[str, ...], 
-        local: bool, 
-        tag: str, 
-        x11: bool, 
+        image: str,
+        command: tuple[str, ...],
+        local: bool,
+        tag: str,
+        x11: bool,
         volume: tuple[str, ...]
     ):
     """Run a docker using its name or its URL and name."""
-    SCDocker().run(
-        image_ref=image, 
-        command=command, 
-        local=local, 
-        tag=tag, 
-        x11=x11, 
-        volumes=volume
-    )
+    try:
+        SCDocker().run(
+            image_ref=image,
+            command=command,
+            local=local,
+            tag=tag,
+            x11=x11,
+            volumes=volume
+        )
+    except ScDockerException as e:
+        click.secho(f"ERROR: {e}", fg="red")
 
 @docker.command()
 def list():
     """List local and remote containers."""
-    SCDocker().list_images()
+    try:
+        SCDocker().list_images()
+    except ScDockerException as e:
+        click.secho(f"ERROR: {e}", fg="red")
 
 @docker.command()
 def login():
     """Login to a docker registry."""
-    SCDocker().login()
+    try:
+        SCDocker().login()
+    except ScDockerException as e:
+        click.secho(f"ERROR: {e}", fg="red")
 
 @docker.command()
 @click.argument('registry_url')
 def logout(registry_url):
     """Logout of a docker registry."""
-    SCDocker().logout(registry_url)
+    try:
+        SCDocker().logout(registry_url)
+    except ScDockerException as e:
+        click.secho(f"ERROR: {e}", fg="red")
 
 def _validate_docker():
     try:
