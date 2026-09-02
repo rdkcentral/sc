@@ -18,7 +18,7 @@ import os
 from pathlib import Path
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 
 from .exceptions import ScDockerConfigError, NetrcError
 from sc.config_manager import ConfigManager
@@ -31,6 +31,13 @@ class RegistryConfig(BaseModel):
     credential_store: Literal["config", "netrc"]
     username: str | None = None
     api_key: str | None = None
+
+    @model_validator(mode="after")
+    def validate_model(self) -> "RegistryConfig":
+        if self.credential_store == "config" and (not self.username or not self.api_key):
+            raise ValueError(
+                f"Registry with config credential store must define username and api_key.")
+        return self
 
 class DockerConfigManager:
     """Manages the docker portion of config in ~/.sc_config/config.yaml and the
@@ -75,7 +82,10 @@ class DockerConfigManager:
         if config is None:
             return None
 
-        registry = RegistryConfig.model_validate({"url": registry_url, **config})
+        try:
+            registry = RegistryConfig.model_validate({"url": registry_url, **config})
+        except ValueError as e:
+            raise ScDockerConfigError(f"Config error for {registry_url}: {e}") from e
 
         if registry.credential_store == "netrc":
             registry.username, registry.api_key = self.get_netrc_creds_by_registry(registry_url)
