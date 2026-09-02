@@ -15,3 +15,10 @@
 class ScDockerException(Exception):
     """Base exception for sc docker errors."""
     pass
+
+class ScDockerConfigError(ScDockerException):
+    """Base exception for config errors."""
+    pass
+
+class NetrcError(ScDockerConfigError):
+    """Failed to load from .netrc"""
