@@ -188,33 +188,6 @@ class TestDockerConfigManager(unittest.TestCase):
         ):
             manager.get_registry("docker.io/example")
 
-    def test_list_registries(self):
-        self.config_manager.get_config.return_value = {
-            "ghcr.io/example": {
-                "reg_type": "github",
-                "credential_store": "config",
-                "username": "user",
-                "api_key": "token",
-            },
-            "artifactory.example.com/team": {
-                "reg_type": "artifactory",
-                "credential_store": "config",
-                "username": "other",
-                "api_key": "secret",
-            },
-        }
-
-        manager = self.create_manager()
-
-        registries = manager.list_registries()
-
-        self.assertEqual(len(registries), 2)
-        self.assertEqual(registries[0].url, "ghcr.io/example")
-        self.assertEqual(
-            registries[1].url,
-            "artifactory.example.com/team",
-        )
-
     def test_delete_registry(self):
         manager = self.create_manager()
 

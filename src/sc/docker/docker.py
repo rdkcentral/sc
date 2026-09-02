@@ -27,7 +27,7 @@ import docker
 from docker.errors import APIError, TLSParameterError
 
 from .docker_config import DockerConfigManager, RegistryConfig
-from .exceptions import ScDockerException
+from .exceptions import NetrcError, ScDockerException
 from .registry_apis.registry_api_factory import RegistryAPIFactory
 
 STANDARD_MOUNT_DIRS = ['/home/mirror', '/opt/repo_flow']
@@ -59,7 +59,7 @@ class SCDocker:
             images = registry_api.fetch_images(registry_url, username, api_token)
         except Exception as e:
             click.secho(
-                f"ERROR: An exception occured when fetching images from {registry_url}", fg='red')
+                f"ERROR: An exception occurred when fetching images from {registry_url}", fg='red')
             click.secho(e)
             sys.exit(1)
         self._validate_images(images, registry_url)
@@ -259,9 +259,9 @@ class SCDocker:
         return self._fetch_image_names_all_registries_in_config()
 
     def _match_registry_from_image_ref(self, image_ref: str) -> RegistryConfig | None:
-        for registry in self.config_manager.list_registries():
-            if image_ref.startswith(registry.url):
-                return registry
+        for registry_url in self.config_manager.list_registry_urls():
+            if image_ref.startswith(registry_url):
+                return self.config_manager.get_registry(registry_url)
         return None
 
     def _match_image_to_ref(self, images: list[str], image_ref: str) -> str:
@@ -343,7 +343,6 @@ class SCDocker:
             raise ScDockerException(
                 f"Got a malformed registry url {registry_url} this occurs when image "
                 "names contain '/'s.")
-
         return self._fetch_remote_tags(image, registry)
 
     def _fetch_local_tags(self, image: str):
@@ -376,8 +375,15 @@ class SCDocker:
         in the config.
         """
         image_names = []
-        for registry in self.config_manager.list_registries():
-            image_names.extend(self._fetch_image_names_by_registry(registry))
+        for registry_url in self.config_manager.list_registry_urls():
+            try:
+                registry = self.config_manager.get_registry(registry_url)
+                image_names.extend(self._fetch_image_names_by_registry(registry))
+            except NetrcError as e:
+                click.secho(
+                    f"WARNING: Failed to get netrc credentials for {registry_url}: '{e}' "
+                    "skipping registry.", fg="yellow")
+                continue
         return image_names
 
     def _fetch_image_names_by_registry(self, registry: RegistryConfig) -> list[str]:

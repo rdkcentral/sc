@@ -58,14 +58,9 @@ class DockerConfigManager:
             return True
         return False
 
-    def list_registries(self) -> list[RegistryConfig]:
-        """Get all registered configs."""
-        registries = []
-        for registry_url in self.list_registry_urls():
-            registry = self.get_registry(registry_url)
-            if registry is not None:
-                registries.append(registry)
-        return registries
+    def list_registry_urls(self) -> list[str]:
+        """Return all registry URLs defined in the config."""
+        return list(self._docker_config_manager.get_config().keys())
 
     def get_registry(self, registry_url: str) -> RegistryConfig | None:
         """Get registry config for a registry by its URL with netrc credentials resolved.
@@ -89,10 +84,6 @@ class DockerConfigManager:
 
     def delete_registry(self, registry_url: str):
         self._docker_config_manager.delete_key_from_config(registry_url)
-
-    def list_registry_urls(self) -> list[str]:
-        """Return all registry URLs defined in the config."""
-        return list(self._docker_config_manager.get_config().keys())
 
     def add_registry(
             self,
