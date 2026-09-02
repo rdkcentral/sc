@@ -57,6 +57,7 @@ def run(
         )
     except ScDockerException as e:
         click.secho(f"ERROR: {e}", fg="red")
+        sys.exit(1)
 
 @docker.command()
 def list():
@@ -65,6 +66,7 @@ def list():
         SCDocker().list_images()
     except ScDockerException as e:
         click.secho(f"ERROR: {e}", fg="red")
+        sys.exit(1)
 
 @docker.command()
 def login():
@@ -73,6 +75,7 @@ def login():
         SCDocker().login()
     except ScDockerException as e:
         click.secho(f"ERROR: {e}", fg="red")
+        sys.exit(1)
 
 @docker.command()
 @click.argument('registry_url')
@@ -82,6 +85,7 @@ def logout(registry_url):
         SCDocker().logout(registry_url)
     except ScDockerException as e:
         click.secho(f"ERROR: {e}", fg="red")
+        sys.exit(1)
 
 def _validate_docker():
     try:

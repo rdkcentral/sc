@@ -169,6 +169,11 @@ class SCDocker:
 
     def _login_to_registry(self, registry_url: str):
         registry = self.config_manager.get_registry(registry_url)
+        # TODO: Create a docker client wrapper and handle this error better.
+        if registry is None:
+            raise ScDockerException(
+                f"Got a malformed registry url {registry_url} this occurs when image "
+                "names contain '/'s.")
         self._docker_login(registry.username, registry.api_key, registry_url)
 
     def _docker_login(self, username: str, api_key: str, registry_url: str):
@@ -333,6 +338,12 @@ class SCDocker:
             return self._fetch_local_tags(image)
 
         registry = self.config_manager.get_registry(registry_url)
+        # TODO: Fix '/' issue by separating how local and remote treats image names.
+        if registry is None:
+            raise ScDockerException(
+                f"Got a malformed registry url {registry_url} this occurs when image "
+                "names contain '/'s.")
+
         return self._fetch_remote_tags(image, registry)
 
     def _fetch_local_tags(self, image: str):
@@ -366,7 +377,7 @@ class SCDocker:
         """
         image_names = []
         for registry in self.config_manager.list_registries():
-            image_names.append(self._fetch_image_names_by_registry(registry))
+            image_names.extend(self._fetch_image_names_by_registry(registry))
         return image_names
 
     def _fetch_image_names_by_registry(self, registry: RegistryConfig) -> list[str]:
