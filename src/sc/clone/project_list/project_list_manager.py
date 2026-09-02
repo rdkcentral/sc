@@ -104,4 +104,6 @@ class ProjectListManager:
                 source.url, path, source.platform, source.token)
         except (RuntimeError, IOError) as e:
             logger.warning(f"Failed to download project list {name}: {e}")
+            if path.exists():
+                return path
             return None
