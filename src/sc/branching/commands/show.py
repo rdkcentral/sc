@@ -192,7 +192,7 @@ class ShowMergedRelease(Command):
         for line in git_log.splitlines():
             try:
                 identifier, ticket_num = ticket_service.get_ref_from_branch(line)
-                ref = (identifier, ticket_num)
+                ref = (identifier.lower(), ticket_num)
                 if ref in found_refs:
                     continue
 
