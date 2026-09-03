@@ -178,7 +178,7 @@ class ShowMergedRelease(Command):
 
         try:
             git_log = repo.git.log(
-                f"{prev_release}...{curr_release}", format="%s", first_parent=True, merges=True)
+                f"{prev_release}...{curr_release}", format="%s")
         except git.GitCommandError as e:
             raise ScError(f"Invalid tag/sha {prev_release} or {curr_release}")
 
