@@ -57,8 +57,7 @@ class GithubInstance(GitInstance):
             CodeReview | None: An object describing a code review.
         """
         url = f"{self.base_url}/repos/{repo}/pulls"
-        owner = repo.split("/")[0]
-        params = {"state": "all", "head": f"{owner}:{source_branch}"}
+        params = {"state": "all", "head": f"{source_branch}"}
 
         try:
             r = requests.get(url, headers=self._headers(), params=params, timeout=10)
