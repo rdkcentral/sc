@@ -22,7 +22,7 @@ from ..git_instance import GitInstance
 class GithubInstance(GitInstance):
     def __init__(self, token: str, base_url: str | None):
         super().__init__(token, base_url or "https://api.github.com")
-        self._gh = Github(f"{self._token}", base_url=self.base_url)
+        self._gh = Github(self._token, base_url=self.base_url, timeout=10)
 
     def validate_connection(self) -> bool:
         try:
@@ -56,9 +56,10 @@ class GithubInstance(GitInstance):
         except requests.exceptions.ConnectionError as e:
             raise RuntimeError("Github request failed") from e
         except UnknownObjectException as e:
-            status = e.data.get("status", e.status)
-            message = e.data.get("message", e.message)
-            raise RuntimeError(f"Github API error {status}: {message}")
+            data = e.data or {}
+            status = data.get("status", e.status)
+            message = data.get("message", e.message)
+            raise RuntimeError(f"Github API error {status}: {message}") from e
 
         if matching_prs.totalCount == 0:
             return None
