@@ -125,6 +125,7 @@ def show_group(group):
 @click.option("-c", "--current-release", help="Newer release tag, defaults to latest develop.")
 @click.option("-w", "--wiki", is_flag=True, help="Print in a wiki pastable format.")
 def show_merged_release(previous_release, current_release, wiki):
+    """Show which tickets have been merged between two releases."""
     SCBranching.show_merged_release(previous_release, current_release, wiki)
 
 
@@ -181,6 +182,7 @@ def group_tag(group, tag, message, push):
 
 @cli.group()
 def branch():
+    """Perform actions on branches."""
     pass
 
 @branch.command(name="rename")
@@ -189,10 +191,12 @@ def branch():
 @click.option("-l", "--local-only", is_flag=True, help="Rename locally not on remote.")
 @click.option("-g", "--git-only", is_flag=True, help="Rename current git repo not all Repo workspace.")
 def branch_rename(old_branch, new_branch, local_only, git_only):
+    """Rename a branch."""
     SCBranching.branch_rename(old_branch, new_branch, local_only, git_only)
 
 @branch.command(name="show")
 def branch_show():
+    """Show information about branch status."""
     SCBranching.show_branch()
 
 @branch.command(name="rm_merged")
@@ -202,4 +206,12 @@ def branch_show():
 @click.option("-g", "--git", is_flag=True, help="Perform on a single git repo.")
 @click.option("-d", "--dry", is_flag=True, help="Perform dry run.")
 def branch_rm_merged(no_merged, all, yes, git, dry):
+    """Delete feature branches which have been merged."""
     SCBranching.branch_rm_merged(no_merged, all, yes, git, dry)
+
+@cli.command()
+@click.option("-c", "--config", help="Path to command setting config.")
+@click.argument("arguments", nargs=-1)
+def build(config, arguments):
+    """Run build commands using a predefined config."""
+    SCBranching.build(config, arguments)
