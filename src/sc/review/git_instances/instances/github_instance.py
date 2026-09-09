@@ -14,34 +14,26 @@
 
 import requests
 
+from github import Github, BadCredentialsException, UnknownObjectException
+
 from sc.review.models import CRStatus, CodeReview
 from ..git_instance import GitInstance
 
 class GithubInstance(GitInstance):
     def __init__(self, token: str, base_url: str | None):
         super().__init__(token, base_url or "https://api.github.com")
-
-    def _headers(self) -> dict:
-        return {
-            "Accept": "application/vnd.github.v3+json",
-            "Authorization": f"Bearer {self._token}"
-        }
+        self._gh = Github(f"{self._token}", base_url=self.base_url)
 
     def validate_connection(self) -> bool:
-        url = f"{self.base_url}/user"
         try:
-            r = requests.get(url, headers=self._headers(), timeout=10)
-            r.raise_for_status()
-            return True
-        except requests.exceptions.Timeout as e:
-            raise ConnectionError("GitHub API request timed out.") from e
-        except requests.exceptions.HTTPError as e:
-            status = e.response.status_code
-            if status in (401, 403):
-                raise ConnectionError("Invalid GitHub token.") from e
-            raise ConnectionError(f"GitHub API error: {status}") from e
+            # Strangely it's only when you try to use the user object, 
+            # that the exception is thrown
+            self._gh.get_user().id
+        except BadCredentialsException as e:
+            raise ConnectionError("Invalid Github credentials") from e
         except requests.exceptions.ConnectionError as e:
             raise ConnectionError("Network connection to GitHub failed.") from e
+        return True
 
     def get_code_review(self, repo: str, source_branch: str) -> CodeReview | None:
         """Get information about a code review.
@@ -56,37 +48,31 @@ class GithubInstance(GitInstance):
         Returns:
             CodeReview | None: An object describing a code review.
         """
-        url = f"{self.base_url}/repos/{repo}/pulls"
-        params = {"state": "all", "head": f"{source_branch}"}
-
         try:
-            r = requests.get(url, headers=self._headers(), params=params, timeout=10)
-            r.raise_for_status()
-            prs = r.json()
-        except requests.Timeout as e:
-            raise RuntimeError("GitHub request timed out") from e
-        except requests.HTTPError as e:
-            raise RuntimeError(
-                f"GitHub API error {e.response.status_code}: {e.response.text}"
-            ) from e
-        except ValueError as e:  # JSON decode error
-            raise RuntimeError("Invalid JSON from GitHub API") from e
-        except requests.RequestException as e:
-            raise RuntimeError("GitHub request failed") from e
+            gh_repo = self._gh.get_repo(f'{repo}')
+            matching_prs = gh_repo.get_pulls(state="all", head=f"{gh_repo.owner.login}:{source_branch}")
+        except BadCredentialsException as e:
+            raise RuntimeError("Invalid Github credentials") from e
+        except requests.exceptions.ConnectionError as e:
+            raise RuntimeError("Github request failed") from e
+        except UnknownObjectException as e:
+            status = e.data.get("status", e.status)
+            message = e.data.get("message", e.message)
+            raise RuntimeError(f"Github API error {status}: {message}")
 
-        if not prs:
+        if matching_prs.totalCount == 0:
             return None
 
-        pr = prs[0]
+        pr = matching_prs[0]
         # GitHub marks merged PRs as state="closed", merged=True
-        if pr.get("merged"):
+        if pr.merged:
             status = CRStatus.MERGED
-        elif pr["state"] == "open":
+        elif pr.state == "open":
             status = CRStatus.OPEN
         else:
             status = CRStatus.CLOSED
 
-        return CodeReview(url=pr["html_url"], status=status)
+        return CodeReview(url=pr.html_url, status=status)
 
     def get_create_cr_url(
         self,
