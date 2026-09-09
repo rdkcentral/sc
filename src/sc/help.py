@@ -23,7 +23,7 @@ class GroupedHelp(click.Group):
     Then in the help message commands will be organised by section, in the section order
     provided.
 
-    It also is modified to provide non truncated help messages on --help
+    It also is modified to provide non-truncated help messages on --help.
     """
     def format_commands(self, ctx, formatter):
         sections = defaultdict(list)
@@ -41,7 +41,7 @@ class GroupedHelp(click.Group):
 
             # Using cmd.help here differs from usual behaviour of cmd.get_short_help_str()
             # meaning --help provides entire help strings.
-            sections[sec].append((name, cmd.help))
+            sections[sec].append((name, cmd.help or ""))
             section_order[sec] = order
 
         for sec in sorted(sections, key=lambda s: section_order.get(s, 50)):

@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Run build commands using commands predfined in a config."""
+"""Run build commands using commands predefined in a config."""
 
 from dataclasses import dataclass
 import logging
@@ -75,7 +75,8 @@ class Build(Command):
 
         try:
             completed_commands = yr.execute(list(self.arguments))
-            sys.exit(max(completed_commands).exit_code)
+            exit_code = max((c.exit_code for c in completed_commands), default=0)
+            sys.exit(exit_code)
         except YamlRunnerError as e:
             logger.error(f"Failed to execute command: {e}")
             sys.exit(1)

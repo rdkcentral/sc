@@ -210,7 +210,7 @@ def branch_rm_merged(no_merged, all, yes, git, dry):
     SCBranching.branch_rm_merged(no_merged, all, yes, git, dry)
 
 @cli.command()
-@click.option("-c", "--config", help="Path to command setting config.")
+@click.option("-c", "--config", help="Path to the build config YAML.")
 @click.argument("arguments", nargs=-1)
 def build(config, arguments):
     """Run build commands using a predefined config."""
