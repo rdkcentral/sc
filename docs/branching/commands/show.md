@@ -2,7 +2,7 @@
 
 Display information about your Git repository or Repo workspace.
 
-## `sc show branch`
+## `sc show branch` or `sc branch show`
 
 ### Behaviour
 
