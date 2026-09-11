@@ -42,7 +42,7 @@ setup(
         'repo_library @ git+https://github.com/rdkcentral/sc-repo-library.git@master',
         'git_flow_library @ git+https://github.com/rdkcentral/sc-git-flow-library.git@master',
         'sc_manifest_parser @ git+https://github.com/rdkcentral/sc-manifest-parser.git@main',
-        'yaml_runner @ git+https://github.com/rdkcentral/yaml_runner.git@master',
+        'yaml_runner @ git+https://github.com/rdkcentral/yaml_runner.git@2.3.0',
     ],
     entry_points={
         'console_scripts': [
