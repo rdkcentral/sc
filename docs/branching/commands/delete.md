@@ -4,7 +4,7 @@ Delete a branch.
 
 ## Usage
 
-`sc <feature/release/hotfix/support> delete <branch_name>`
+`sc <feature/release/hotfix> delete <branch_name>`
 
 ## Flags
 
@@ -13,4 +13,4 @@ Delete a branch.
 ## Behaviour
 
 Git: Delete the branch in the current git repository.
-Repo: Delete the branch in all projects and in the manifest repository.
+Repo: Delete the branch in all projects without a `GIT_LOCK_STATUS` annotation and in the manifest repository.

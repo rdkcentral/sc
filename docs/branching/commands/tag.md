@@ -26,7 +26,7 @@
 ### Behaviour
 
 - Git: Deletes the tag from the git repository.
-- Repo: Deletes the tag from all projects and the manifest.
+- Repo: Deletes the tag from all non-`READ_ONLY` projects and the manifest.
 
 ### Flags
 
@@ -44,4 +44,4 @@
 ### Behaviour
 
 - Git: Checks if the tag exists in the git repository.
-- Repo: Checks if the tag exists in all projects and the manifest.
+- Repo: Checks if the tag exists in all non-`READ_ONLY` projects and the manifest.

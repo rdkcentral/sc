@@ -9,7 +9,7 @@ Display information about your Git repository or Repo workspace.
 - Git: Shows branch information for your git repository.
 - Repo: Shows branch information, lock status and groups of all projects.
 
-## `sc show repo-flow-config`
+## `sc show repo_flow_config`
 
 ### Behaviour
 

@@ -4,12 +4,14 @@ Used to finish a feature, release, or hotfix branch.
 
 ## Usage
 
-`sc <feature/release/hotfix> finish <optional_branch_name>`
+`sc feature finish <branch_name>`
+`sc release finish <branch_name>`
+`sc hotfix finish <branch_name> <base_branch>`
 
 ## Behaviour
 
 - Git: Runs `git-flow <branch_type> finish` in the git repository.
-- Repo: Runs `git-flow <branch_type> finish` in all projects. After all projects are merged runs `git-flow <branch_type> finish` in the manifest and then creates another commit on the manifest target branch with updated manifest revisions.
+- Repo: Finishes the branch in each project without a lock annotation; `READ_ONLY` projects are skipped and `TAG_ONLY` projects are tagged without being finished for release/hotfix. It then finishes the manifest and commits updated revisions on the target branch.
 
 ### How branches are finished:
 - feature: Merges the feature branch into develop.

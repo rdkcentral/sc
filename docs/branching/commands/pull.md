@@ -4,7 +4,12 @@ Used to pull from remote.
 
 ## Usage
 
-`sc <branch_type> pull <optional_branch_name>`
+`sc feature pull <branch_name>`
+`sc release pull <branch_name>`
+`sc hotfix pull <branch_name>`
+`sc support pull <branch_name>`
+`sc develop pull`
+`sc master pull`
 
 ## Behaviour
 

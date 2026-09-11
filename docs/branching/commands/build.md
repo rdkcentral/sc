@@ -30,7 +30,7 @@ commands:
     params:
       passthrough: true
   command_with_args:
-    description: This command takes postional arguments.
+    description: This command takes positional arguments.
     command: echo {{greeting}} {{name}}
     args:
       greeting:

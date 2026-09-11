@@ -3,7 +3,7 @@
 Groups are only applicable to Repo workspaces and not git projects. In the manifest projects can be assigned a group:
 
 ```xml
-  <project name="remote/project/path.git" revision="12345" group="GroupA">
+  <project name="remote/project/path.git" revision="12345" groups="GroupA">
 ```
 
 Then group commands can be used to act on all projects in a certain group.

@@ -1,11 +1,11 @@
 # Branching Branch Commands
 
-## `sc branch rename <branch>`
+## `sc branch rename <old_branch> <new_branch>`
 
 ### Behaviour
 
 Git: Rename the current git branch.
-Repo: Rename the branch of all projects in the manifest and the manifests branch.
+Repo: Rename the branch of all projects without a `GIT_LOCK_STATUS` in the manifest and the manifests branch.
 
 ## `sc branch show` or `sc show branch`
 
@@ -27,4 +27,4 @@ Repo: Remove all feature branches that have been merged into develop in the mani
 `-a, --all` - Show all feature branches instead.
 `-y, --yes` - Delete branches without being prompted.
 `-g, --git` - Target the git repository you are currently in instead of looking for a Repo workspace to target.
-`-d, --dry` - Dry run, display which branches would be targetted if you ran this command.
+`-d, --dry` - Dry run, display which branches would be targeted if you ran this command.

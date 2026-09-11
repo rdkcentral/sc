@@ -6,7 +6,7 @@ sc branching is a collection of tools used for managing git repositories or repo
 
 ## git-repo (Repo)
 
-sc branching works closely with Googles [git-repo](https://gerrit.googlesource.com/git-repo) and uses it to allow users to apply git-flow branching strategy on multiple repositories at once.
+sc branching works closely with Google's [git-repo](https://gerrit.googlesource.com/git-repo) and uses it to allow users to apply git-flow branching strategy on multiple repositories at once.
 
 Useful terms and ideas when discussing Repo in these docs:
 

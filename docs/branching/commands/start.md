@@ -23,4 +23,4 @@ Starts a new hotfix branch from a base (N.B. the base must be a support branch).
 ## Behaviour
 
 - Git: Starts the branch in the git repository.
-- Repo: Starts the branch in all projects and the manifest. Doesn't allow you to start branches that already exist on the manifest and pushes the branch to remote on the manifest to prevent starting the same branch twice.
+- Repo: Starts the branch in each project without a `GIT_LOCK_STATUS` annotation and in the manifest. It rejects branches that already exist on the manifest, then commits and pushes the new manifest branch.
