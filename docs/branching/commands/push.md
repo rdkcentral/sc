@@ -8,5 +8,5 @@ Used to push the local state to the remote.
 
 ## Behaviour
 
-- Git: Runs `git push <remote> <branch>`.
+- Git: Runs `git push -u <remote> <branch>` and then pushes all local tags with `git push --tags`.
 - Repo: Pushes each eligible project branch and its tags; `READ_ONLY` projects are skipped and `TAG_ONLY` projects push tags only. It updates and commits manifest revisions, then pushes the manifest branch and tags.
