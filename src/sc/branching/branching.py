@@ -24,6 +24,7 @@ from repo_library import RepoLibrary
 from .branch import Branch, BranchType
 from .commands.branch_rename import BranchRename
 from .commands.branch_rm_merged import BranchRmMerged
+from .commands.build import Build
 from .commands.checkout import Checkout
 from .commands.clean import Clean
 from .commands.command import Command
@@ -341,6 +342,14 @@ class SCBranching:
         top_dir, project_type = detect_project(run_dir)
         run_command_by_project_type(
             BranchRmMerged(top_dir, not_merged, all, yes, git_only, dry_run),
+            project_type
+        )
+
+    @staticmethod
+    def build(config: str | None, arguments: tuple[str, ...], run_dir: Path = Path.cwd()):
+        top_dir, project_type = detect_project(run_dir)
+        run_command_by_project_type(
+            Build(top_dir, config, arguments),
             project_type
         )
 
