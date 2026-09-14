@@ -24,3 +24,12 @@ class Prompter:
     @staticmethod
     def ask(msg: str) -> str:
         return input(f"{msg}\n> ").strip()
+
+    @staticmethod
+    def choice(msg: str, choices: tuple[str]) -> str:
+        prompt = f"{msg}: "
+        while True:
+            out = input(prompt).strip().lower()
+            if out in choices:
+                return out
+            logger.info(f"Answer {out} not in choices, please select one of ({'/'.join(choices)})")

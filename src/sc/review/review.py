@@ -21,7 +21,8 @@ from git_flow_library import GitFlowLibrary
 from repo_library import RepoLibrary
 
 from .git_instances import GitFactory
-from .repo_source import ManifestRepoSource, SingleRepoSource
+from .git_host_service import GitHostService
+from .repo_source import ManifestRepoSource, RepoSource, SingleRepoSource
 from .review_config import GitHostConfig, GitHostModel
 from sc.exceptions import ScError
 from ..services.tickets.ticketing_instances import TicketingInstanceFactory
@@ -32,22 +33,26 @@ logger = logging.getLogger(__name__)
 
 def update_ticket(single_git: bool = False):
     """Add commit/PR information to your ticket."""
-    if not single_git and (root := RepoLibrary.get_repo_root_dir(Path.cwd())):
-        repo_source = ManifestRepoSource(root.parent)
-    elif root := GitFlowLibrary.get_git_root(Path.cwd()):
-        repo_source = SingleRepoSource(root.parent)
-    else:
-        logger.error(
-            "Not in a git repository!"
-            if single_git else
-            "Not in a git repository or repo workspace!")
-        sys.exit(1)
+    repo_source = _get_repo_source(single_git)
 
     try:
         TicketUpdater(repo_source).run()
     except (ScError, ConnectionError, RuntimeError) as e:
         logger.error(e)
         sys.exit(1)
+
+def print_cr_urls(single_git: bool = False):
+    logger.info("Code review URLs or links to create if missing:")
+    git_host_svc = GitHostService()
+
+    repo_source = _get_repo_source(single_git)
+    repo_infos = repo_source.get_repos()
+    for repo_info in repo_infos:
+        cr = git_host_svc.get_code_review_data(repo_info)
+        if cr.exists():
+            logger.info(f"{repo_info.directory} [Exists]: {cr.url}")
+        else:
+            logger.info(f"{repo_info.directory} [Needs Creation]: {cr.create_url}")
 
 def add_git_instance():
     """Add a VCS instance for sc review."""
@@ -169,3 +174,15 @@ def add_ticketing_instance():
     TicketHostConfig().write(branch_prefix, ticket_cfg)
 
     logger.info("Added ticketing instance!")
+
+def _get_repo_source(single_git: bool) -> RepoSource:
+    if not single_git and (root := RepoLibrary.get_repo_root_dir(Path.cwd())):
+        return ManifestRepoSource(root.parent)
+    elif root := GitFlowLibrary.get_git_root(Path.cwd()):
+        return SingleRepoSource(root.parent)
+    else:
+        logger.error(
+            "Not in a git repository!"
+            if single_git else
+            "Not in a git repository or repo workspace!")
+        sys.exit(1)

@@ -31,18 +31,11 @@ class GitHostService:
         self._factory = factory or GitFactory()
         self._branch_strategy = branch_strategy or GitFlowBranchStrategy()
 
-    def get_git_review_data(self, repo_info: RepoInfo) -> CodeReview | None:
-        git_instance = self._create_git_instance(repo_info.remote_url)
-        return git_instance.get_code_review(repo_info.repo_slug, repo_info.branch)
-
-    def get_create_cr_url(
-        self,
-        repo_info: RepoInfo,
-    ) -> str:
+    def get_code_review_data(self, repo_info: RepoInfo) -> CodeReview:
         git_instance = self._create_git_instance(repo_info.remote_url)
         target_branch = self._branch_strategy.get_target_branch(
             repo_info.directory, repo_info.branch)
-        return git_instance.get_create_cr_url(repo_info.repo_slug, repo_info.branch, target_branch)
+        return git_instance.get_code_review(repo_info.repo_slug, repo_info.branch, target_branch)
 
     def _create_git_instance(self, remote_url: str) -> GitInstance:
         remote_pattern = _match_remote_pattern(
