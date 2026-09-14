@@ -35,6 +35,7 @@ setup(
         'jira>=3.10',
         'pydantic>=2',
         'python-redmine>=2.5',
+        'PyGithub>=2.10.0',
         'pyyaml~=6.0',
         'rich>=14',
         'requests==2.31.0', # Docker SDK breaks on 2.32.0
