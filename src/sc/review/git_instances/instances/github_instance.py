@@ -65,7 +65,7 @@ class GithubInstance(GitInstance):
 
         if matching_prs.totalCount == 0:
             create_cr_url = self._get_create_cr_url(repo, source_branch, target_branch)
-            return CodeReview(url=None, status=None, create_url=create_cr_url)
+            return CodeReview(url=None, status=CRStatus.NOT_CREATED, create_url=create_cr_url)
 
         pr = matching_prs[0]
         # GitHub marks merged PRs as state="closed", merged=True

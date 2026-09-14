@@ -116,4 +116,4 @@ class TicketUpdater:
         return f"\n{'-'*100}\n".join(c.to_ticket() for c in comments)
 
     def _code_review_missing(self, comments: list[CommentData]) -> bool:
-        return any(not c.has_code_review for c in comments)
+        return any(not c.code_review.exists() for c in comments)

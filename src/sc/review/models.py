@@ -21,15 +21,16 @@ class CRStatus(str, Enum):
     OPEN = "Open"
     CLOSED = "Closed"
     MERGED = "Merged"
+    NOT_CREATED = "Not Created"
 
     def __str__(self):
         return self.value
 
 @dataclass
 class CodeReview:
-    url: str | None
-    status: CRStatus | None
-    create_url: str | None
+    url: str | None = None
+    status: CRStatus | None = None
+    create_url: str | None = None
 
     def exists(self) -> bool:
         return self.url is not None
@@ -126,12 +127,12 @@ class CommentData:
 
         ticket_link = f"Ticket: [{self.ticket_url}]"
         ticket_title = f"Ticket Title: [{self.ticket_title}]"
-        if self.review_url:
-            review_status = f"Review Status: [{self.review_status}]"
-            review_link = f"Review URL: [{self.review_url}]"
+        if self.code_review.exists():
+            review_status = f"Review Status: [{self.code_review.status}]"
+            review_link = f"Review URL: [{self.code_review.url}]"
         else:
-            review_status = f"Review Status: [{self.review_status}]"
-            review_link = f"Create Review URL: [{self.create_cr_url}]"
+            review_status = f"Review Status: [{self.code_review.status}]"
+            review_link = f"Create Review URL: [{self.code_review.create_url}]"
 
         review = [ticket_link, ticket_title, review_status, review_link]
 

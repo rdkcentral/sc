@@ -85,7 +85,7 @@ class GitlabInstance(GitInstance):
 
         if not prs:
             create_cr_url = self._get_create_cr_url(repo, source_branch, target_branch)
-            return CodeReview(url=None, status=None, create_url=create_cr_url)
+            return CodeReview(url=None, status=CRStatus.NOT_CREATED, create_url=create_cr_url)
         pr = prs[0]
 
         state = pr["state"]
