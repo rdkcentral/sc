@@ -35,13 +35,15 @@ setup(
         'jira>=3.10',
         'pydantic>=2',
         'python-redmine>=2.5',
+        'PyGithub>=2.10.0',
         'pyyaml~=6.0',
         'rich>=14',
         'requests==2.31.0', # Docker SDK breaks on 2.32.0
         'filelock==3.29.7',
         'repo_library @ git+https://github.com/rdkcentral/sc-repo-library.git@master',
         'git_flow_library @ git+https://github.com/rdkcentral/sc-git-flow-library.git@master',
-        'sc_manifest_parser @ git+https://github.com/rdkcentral/sc-manifest-parser.git@main'
+        'sc_manifest_parser @ git+https://github.com/rdkcentral/sc-manifest-parser.git@main',
+        'yaml_runner @ git+https://github.com/rdkcentral/yaml_runner.git@2.3.0',
     ],
     entry_points={
         'console_scripts': [
