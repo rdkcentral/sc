@@ -50,19 +50,16 @@ class TicketUpdater:
             print()
 
             if self._code_review_missing(comments):
-                choice = self._prompter.choice(
-                    "Update ticket? [y/n/r - refresh code reviews]",
-                    ("y", "n", "r")
-                )
-            else:
-                choice = self._prompter.choice("Update ticket? [y/n]", ("y", "n"))
+                choice = self._prompter.yn("Code review missing, search again?")
+                if choice == True:
+                    print("-"*100)
+                    continue
 
-            if choice == "y":
+            choice = self._prompter.yn("Update ticket?")
+
+            if choice == True:
                 ticket_comment = self._generate_combined_ticket_comment(comments)
                 ticket.add_comment(ticket_comment)
-            elif choice == "r":
-                continue
-
             return
 
     def _get_ticket(self) -> Ticket:

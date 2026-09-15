@@ -73,10 +73,6 @@ class CommentData:
     commit_date: datetime
     commit_message: str
 
-    @property
-    def has_code_review(self) -> bool:
-        return self.review_url is not None
-
     def to_terminal(self) -> str:
         """Generate the information for one repo to be displayed in the terminal.
 

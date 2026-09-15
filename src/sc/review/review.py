@@ -42,17 +42,21 @@ def update_ticket(single_git: bool = False):
         sys.exit(1)
 
 def print_cr_urls(single_git: bool = False):
-    logger.info("Code review URLs or links to create if missing:")
-    git_host_svc = GitHostService()
+    try:
+        logger.info("Code review URLs or links to create if missing:")
+        git_host_svc = GitHostService()
 
-    repo_source = _get_repo_source(single_git)
-    repo_infos = repo_source.get_repos()
-    for repo_info in repo_infos:
-        cr = git_host_svc.get_code_review_data(repo_info)
-        if cr.exists():
-            logger.info(f"{repo_info.directory} [Exists]: {cr.url}")
-        else:
-            logger.info(f"{repo_info.directory} [Needs Creation]: {cr.create_url}")
+        repo_source = _get_repo_source(single_git)
+        repo_infos = repo_source.get_repos()
+        for repo_info in repo_infos:
+            cr = git_host_svc.get_code_review_data(repo_info)
+            if cr.exists():
+                logger.info(f"{repo_info.directory} [Exists]: {cr.url}")
+            else:
+                logger.info(f"{repo_info.directory} [Needs Creation]: {cr.create_url}")
+    except (ScError, ConnectionError, RuntimeError) as e:
+        logger.error(e)
+        sys.exit(1)
 
 def add_git_instance():
     """Add a VCS instance for sc review."""
