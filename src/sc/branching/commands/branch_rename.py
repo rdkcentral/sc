@@ -11,9 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+"""Rename a branch in a git repository or all branches in a Repo project."""
 from dataclasses import dataclass
-from enum import Enum, auto
 import logging
 from pathlib import Path
 
