@@ -26,7 +26,7 @@ class GithubInstance(GitInstance):
 
     def validate_connection(self) -> bool:
         try:
-            # Strangely it's only when you try to use the user object, 
+            # Strangely it's only when you try to use the user object,
             # that the exception is thrown
             self._gh.get_user().id
         except BadCredentialsException as e:
@@ -35,18 +35,20 @@ class GithubInstance(GitInstance):
             raise ConnectionError("Network connection to GitHub failed.") from e
         return True
 
-    def get_code_review(self, repo: str, source_branch: str) -> CodeReview | None:
+    def get_code_review(
+            self, repo: str, source_branch: str, target_branch: str) -> CodeReview:
         """Get information about a code review.
 
         Args:
             repo (str): An identifier for the repo e.g. org/repo
             source_branch (str): The source branch of review.
+            target_branch (str): The target branch of the review.
 
         Raises:
             RuntimeError: If an error occurs.
 
         Returns:
-            CodeReview | None: An object describing a code review.
+            CodeReview: An object describing a code review.
         """
         try:
             gh_repo = self._gh.get_repo(f'{repo}')
@@ -62,7 +64,8 @@ class GithubInstance(GitInstance):
             raise RuntimeError(f"Github API error {status}: {message}") from e
 
         if matching_prs.totalCount == 0:
-            return None
+            create_cr_url = self._get_create_cr_url(repo, source_branch, target_branch)
+            return CodeReview(url=None, status=CRStatus.NOT_CREATED, create_url=create_cr_url)
 
         pr = matching_prs[0]
         # GitHub marks merged PRs as state="closed", merged=True
@@ -75,7 +78,7 @@ class GithubInstance(GitInstance):
 
         return CodeReview(url=pr.html_url, status=status)
 
-    def get_create_cr_url(
+    def _get_create_cr_url(
         self,
         repo: str,
         source_branch: str,

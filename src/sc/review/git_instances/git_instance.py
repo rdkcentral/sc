@@ -35,21 +35,21 @@ class GitInstance(ABC):
         pass
 
     @abstractmethod
-    def get_code_review(self, repo: str, source_branch: str) -> CodeReview | None:
+    def get_code_review(self, repo: str, source_branch: str, target_branch: str) -> CodeReview:
         """Get information about a branches code review.
 
         Args:
             repo (str): An identifier of the repo in the instance e.g "org/repo".
             source_branch (str): The branch the code review is made from.
+            target_branch (str): The target branch of the review.
 
         Returns:
-            CodeReview | None: dataclass with information about the code review or None
-                if not found.
+            CodeReview: dataclass with information about the code review.
         """
         pass
 
     @abstractmethod
-    def get_create_cr_url(
+    def _get_create_cr_url(
         self,
         repo: str,
         source_branch: str,
