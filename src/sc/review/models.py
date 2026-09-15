@@ -21,14 +21,19 @@ class CRStatus(str, Enum):
     OPEN = "Open"
     CLOSED = "Closed"
     MERGED = "Merged"
+    NOT_CREATED = "Not Created"
 
     def __str__(self):
         return self.value
 
 @dataclass
 class CodeReview:
-    url: str
-    status: CRStatus
+    url: str | None = None
+    status: CRStatus | None = None
+    create_url: str | None = None
+
+    def exists(self) -> bool:
+        return self.url is not None
 
 @dataclass
 class RepoInfo:
@@ -62,9 +67,7 @@ class CommentData:
     remote_url: str
     ticket_url: str
     ticket_title: str
-    review_status: str
-    review_url: str | None
-    create_cr_url: str | None
+    code_review: CodeReview
     commit_sha: str
     commit_author: str
     commit_date: datetime
@@ -87,12 +90,12 @@ class CommentData:
 
         ticket_link = f"Ticket: [{c('34', self.ticket_url)}]"
         ticket_title = f"Ticket Title: [{c('34', self.ticket_title)}]"
-        if self.review_url:
-            review_status = f"Review Status: [{c('32', self.review_status)}]"
-            review_link = f"Review URL: [{c('32', self.review_url)}]"
+        if self.code_review.exists():
+            review_status = f"Review Status: [{c('32', self.code_review.status)}]"
+            review_link = f"Review URL: [{c('32', self.code_review.url)}]"
         else:
-            review_status = f"Review Status: [{c('31', self.review_status)}]"
-            review_link = f"Create Review URL: [{c('33', self.create_cr_url)}]"
+            review_status = f"Review Status: [{c('31', 'Not Created')}]"
+            review_link = f"Create Review URL: [{c('33', self.code_review.create_url)}]"
 
         review = [ticket_link, ticket_title, review_status, review_link]
 
@@ -120,12 +123,12 @@ class CommentData:
 
         ticket_link = f"Ticket: [{self.ticket_url}]"
         ticket_title = f"Ticket Title: [{self.ticket_title}]"
-        if self.review_url:
-            review_status = f"Review Status: [{self.review_status}]"
-            review_link = f"Review URL: [{self.review_url}]"
+        if self.code_review.exists():
+            review_status = f"Review Status: [{self.code_review.status}]"
+            review_link = f"Review URL: [{self.code_review.url}]"
         else:
-            review_status = f"Review Status: [{self.review_status}]"
-            review_link = f"Create Review URL: [{self.create_cr_url}]"
+            review_status = f"Review Status: [{self.code_review.status}]"
+            review_link = f"Create Review URL: [{self.code_review.create_url}]"
 
         review = [ticket_link, ticket_title, review_status, review_link]
 

@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import unittest
 from unittest.mock import MagicMock
 
@@ -18,7 +19,7 @@ class TestGitHostService(unittest.TestCase):
             branch_strategy=self.mock_strategy
         )
 
-    def test_get_git_review_data(self):
+    def test_get_code_review_data(self):
         repo_info = MagicMock(
             remote_url="https://gitlab.com/org/repo",
             repo_slug="org/repo",
@@ -35,39 +36,12 @@ class TestGitHostService(unittest.TestCase):
         mock_instance = MagicMock()
         self.mock_factory.create.return_value = mock_instance
         mock_instance.get_code_review.return_value = "review"
+        self.mock_strategy.get_target_branch.return_value = "main"
 
-        result = self.service.get_git_review_data(repo_info)
+        result = self.service.get_code_review_data(repo_info)
 
         self.assertEqual(result, "review")
-        mock_instance.get_code_review.assert_called_once_with("org/repo", "feature-1")
-
-    def test_get_create_cr_url(self):
-        repo_info = MagicMock(
-            remote_url="https://github.com/org/repo",
-            repo_slug="org/repo",
-            branch="feature-1",
-            directory="/repo"
-        )
-
-        self.mock_config.get_patterns.return_value = ["github.com"]
-        self.mock_config.get.return_value = MagicMock(
-            provider="github",
-            token="token",
-            url="base"
-        )
-
-        mock_instance = MagicMock()
-        self.mock_factory.create.return_value = mock_instance
-
-        self.mock_strategy.get_target_branch.return_value = "main"
-        mock_instance.get_create_cr_url.return_value = "url"
-
-        result = self.service.get_create_cr_url(repo_info)
-
-        self.assertEqual(result, "url")
-        mock_instance.get_create_cr_url.assert_called_once_with(
-            "org/repo", "feature-1", "main"
-        )
+        mock_instance.get_code_review.assert_called_once_with("org/repo", "feature-1", "main")
 
     def test_create_git_instance(self):
         self.mock_config.get_patterns.return_value = ["github.com"]

@@ -22,9 +22,13 @@ def cli():
 
 @cli.command(name="review")
 @click.option("-s", "--single-git", is_flag=True, help="Review only the current git repo.")
-def update_ticket(single_git: bool):
+@click.option("-u", "--url", is_flag=True, help="Print code review URLs.")
+def update_ticket(single_git: bool, url: bool):
     """Add commit/PR information to your ticket."""
-    review.update_ticket(single_git)
+    if url:
+        review.print_cr_urls(single_git)
+    else:
+        review.update_ticket(single_git)
 
 @cli.command()
 def add_git_instance():

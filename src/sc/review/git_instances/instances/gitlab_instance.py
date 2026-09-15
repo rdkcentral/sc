@@ -14,6 +14,7 @@
 
 import requests
 import urllib.parse
+import urllib3
 
 from sc.review.models import CodeReview, CRStatus
 from ..git_instance import GitInstance
@@ -21,6 +22,7 @@ from ..git_instance import GitInstance
 class GitlabInstance(GitInstance):
     def __init__(self, token: str, base_url: str):
         super().__init__(token, base_url)
+        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
     def _headers(self) -> dict[str, str]:
         return {"Private-Token": self._token}
@@ -47,18 +49,20 @@ class GitlabInstance(GitInstance):
             raise ConnectionError(
                 f"Network connection to GitLab failed for {self.base_url}") from e
 
-    def get_code_review(self, repo: str, source_branch: str) -> CodeReview | None:
+    def get_code_review(
+            self, repo: str, source_branch: str, target_branch: str) -> CodeReview:
         """Get information about a code review.
 
         Args:
             repo (str): An identifier for the repo e.g. org/repo
             source_branch (str): The source branch of review.
+            target_branch (str): The target branch of review.
 
         Raises:
             RuntimeError: If an error occurs.
 
         Returns:
-            CodeReview | None: An object describing a code review.
+            CodeReview: An object describing a code review.
         """
         safe_repo = urllib.parse.quote(repo, safe='')
         url = f"{self.base_url}/api/v4/projects/{safe_repo}/merge_requests"
@@ -80,7 +84,8 @@ class GitlabInstance(GitInstance):
             raise RuntimeError(f"Gitlab request failed for {self.base_url}") from e
 
         if not prs:
-            return None
+            create_cr_url = self._get_create_cr_url(repo, source_branch, target_branch)
+            return CodeReview(url=None, status=CRStatus.NOT_CREATED, create_url=create_cr_url)
         pr = prs[0]
 
         state = pr["state"]
@@ -93,7 +98,7 @@ class GitlabInstance(GitInstance):
 
         return CodeReview(url=pr["web_url"], status=status)
 
-    def get_create_cr_url(
+    def _get_create_cr_url(
             self,
             repo: str,
             source_branch: str,

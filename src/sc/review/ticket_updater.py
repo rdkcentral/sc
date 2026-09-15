@@ -39,24 +39,28 @@ class TicketUpdater:
 
     def run(self):
         ticket = self._get_ticket()
+        repo_infos = self.repo_source.get_repos()
 
-        comments = []
-        for repo_info in self.repo_source.get_repos():
-            create_cr_url = None
-            cr = self._git_service.get_git_review_data(repo_info)
-            if not cr:
-                create_cr_url = self._git_service.get_create_cr_url(repo_info)
+        while True:
+            comments = self._get_comments(ticket, repo_infos)
 
-            comments.append(self._create_comment_data(repo_info, ticket, cr, create_cr_url))
+            logger.info(f"Ticket URL: [{ticket.url if ticket else 'None'}]")
+            logger.info("Ticket info: \n")
+            print(self._generate_combined_terminal_comment(comments))
+            print()
 
-        logger.info(f"Ticket URL: [{ticket.url if ticket else 'None'}]")
-        logger.info("Ticket info: \n")
-        print(self._generate_combined_terminal_comment(comments))
-        print()
+            if self._code_review_missing(comments):
+                choice = self._prompter.yn("Code review missing, search again?")
+                if choice == True:
+                    print("-"*100)
+                    continue
 
-        if self._prompter.yn("Update ticket?"):
-            ticket_comment = self._generate_combined_ticket_comment(comments)
-            ticket.add_comment(ticket_comment)
+            choice = self._prompter.yn("Update ticket?")
+
+            if choice == True:
+                ticket_comment = self._generate_combined_ticket_comment(comments)
+                ticket.add_comment(ticket_comment)
+            return
 
     def _get_ticket(self) -> Ticket:
         """Get ticket and ticketing instance from branch, on failure prompt the user
@@ -75,24 +79,27 @@ class TicketUpdater:
 
             ticket = self._ticket_service.prompt_ticket()
 
+    def _get_comments(self, ticket: Ticket, repo_infos: list[RepoInfo]) -> list[CommentData]:
+        comments = []
+
+        for repo_info in repo_infos:
+            cr = self._git_service.get_code_review_data(repo_info)
+            comments.append(self._create_comment_data(repo_info, ticket, cr))
+
+        return comments
+
     def _create_comment_data(
             self,
             repo_info: RepoInfo,
             ticket: Ticket,
-            cr: CodeReview | None,
-            create_cr_url: str | None) -> CommentData:
-        review_status = str(cr.status) if cr else "Not Created"
-        review_url = cr.url if cr else None
-
+            cr: CodeReview) -> CommentData:
         return CommentData(
             branch=repo_info.branch,
             directory=repo_info.directory,
             remote_url=repo_info.remote_url,
             ticket_url=ticket.url,
             ticket_title=ticket.title,
-            review_status=review_status,
-            review_url=review_url,
-            create_cr_url=create_cr_url,
+            code_review=cr,
             commit_sha=repo_info.commit_sha,
             commit_author=repo_info.commit_author,
             commit_date=repo_info.commit_date,
@@ -105,3 +112,5 @@ class TicketUpdater:
     def _generate_combined_ticket_comment(self, comments: list[CommentData]) -> str:
         return f"\n{'-'*100}\n".join(c.to_ticket() for c in comments)
 
+    def _code_review_missing(self, comments: list[CommentData]) -> bool:
+        return any(not c.code_review.exists() for c in comments)

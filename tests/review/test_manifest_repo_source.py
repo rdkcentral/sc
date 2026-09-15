@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import unittest
 from unittest.mock import MagicMock, patch
 from pathlib import Path
@@ -82,3 +83,6 @@ class TestManifestRepoSource(unittest.TestCase):
 
         self.assertEqual(repos, ["proj_info", "manifest_info"])
         self.source._get_repo_info.assert_called_with(mock_repo_instance)
+
+if __name__ == "__main__":
+    unittest.main()
