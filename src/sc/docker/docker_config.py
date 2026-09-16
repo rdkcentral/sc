@@ -15,15 +15,12 @@
 
 from netrc import netrc, NetrcParseError
 import os
-from pathlib import Path
 from typing import Literal
 
 from pydantic import BaseModel, model_validator
 
 from .exceptions import ScDockerConfigError, NetrcError
-from sc.config_manager import ConfigManager
-
-REGISTRY_WHITELIST = Path("/etc/sc/docker_registry_whitelist")
+from sc.config_manager import ConfigManager, MergePolicy
 
 class RegistryConfig(BaseModel):
     url: str
@@ -47,27 +44,31 @@ class DockerConfigManager:
     RegistryConfig models.
     """
     def __init__(
-            self,
-            config_manager: ConfigManager | None = None,
-            whitelist_path: Path = REGISTRY_WHITELIST):
-        self._docker_config_manager = config_manager or ConfigManager('docker')
-        self._whitelist_path = whitelist_path
-        self._whitelisted_registries = self._load_whitelisted_registries()
+        self,
+        config_manager: ConfigManager | None = None,
+    ):
+        self._config_manager = config_manager or ConfigManager(
+            'docker',
+            merge_policy={
+                "options": MergePolicy.ADMIN_ONLY,
+                "whitelist": MergePolicy.ADMIN_ONLY,
+                "registries": MergePolicy.PREFER_ADMIN
+            }
+        )
+        self._config = self._config_manager.get_config()
 
-    def get_whitelisted_registries(self) -> tuple[str, ...]:
-        """Returns a tuple of whitelisted registries. If the tuple is empty all
-        registries are valid.
-        """
-        return self._whitelisted_registries
+    @property
+    def whitelist(self) -> tuple[str, ...]:
+        return self._config.get("whitelist") or ()
 
     def is_registry_allowed(self, registry_url: str) -> bool:
-        if not self._whitelisted_registries or registry_url in self._whitelisted_registries:
+        if not self.whitelist or registry_url in self.whitelist:
             return True
         return False
 
     def list_registry_urls(self) -> list[str]:
         """Return all registry URLs defined in the config."""
-        return list(self._docker_config_manager.get_config().keys())
+        return list(self._config.get("registries").keys())
 
     def get_registry(self, registry_url: str) -> RegistryConfig | None:
         """Get registry config for a registry by its URL with netrc credentials resolved.
@@ -77,7 +78,7 @@ class DockerConfigManager:
         """
         self._validate_registry_url(registry_url)
 
-        config = self._docker_config_manager.get_config().get(registry_url)
+        config = self._config.get(registry_url)
 
         if config is None:
             return None
@@ -93,7 +94,7 @@ class DockerConfigManager:
         return registry
 
     def delete_registry(self, registry_url: str):
-        self._docker_config_manager.delete_key_from_config(registry_url)
+        self._config_manager.delete_key_from_config(registry_url)
 
     def add_registry(
             self,
@@ -125,7 +126,7 @@ class DockerConfigManager:
             config_dict[registry_url]["api_key"] = api_key
 
         try:
-            self._docker_config_manager.update_config(config_dict)
+            self._config_manager.update_config(config_dict)
         except Exception as e:
             raise ScDockerConfigError(f"Failed to write to config {str(e)}") from e
 
@@ -157,14 +158,6 @@ class DockerConfigManager:
         if not self.is_registry_allowed(registry_url):
             error_msg = [f"Registry '{registry_url}' is not whitelisted"]
             error_msg.append("Allowed registries:")
-            for reg in self._whitelisted_registries:
+            for reg in self.whitelist:
                 error_msg.append(f"- {reg}")
             raise ScDockerConfigError("\n".join(error_msg))
-
-    def _load_whitelisted_registries(self) -> tuple[str, ...]:
-        """Load registries from whitelist file and remove comments (lines starting with #)"""
-        if self._whitelist_path.exists():
-            with self._whitelist_path.open('r') as file:
-                stripped_lines = [line.strip() for line in file]
-                return tuple(line for line in stripped_lines if line and not line.startswith("#"))
-        return ()
