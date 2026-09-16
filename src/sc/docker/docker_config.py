@@ -68,7 +68,7 @@ class DockerConfigManager:
 
     def list_registry_urls(self) -> list[str]:
         """Return all registry URLs defined in the config."""
-        return list(self._config.get("registries").keys())
+        return list(self._config.get("registries", {}).keys())
 
     def get_registry(self, registry_url: str) -> RegistryConfig | None:
         """Get registry config for a registry by its URL with netrc credentials resolved.
@@ -78,7 +78,7 @@ class DockerConfigManager:
         """
         self._validate_registry_url(registry_url)
 
-        config = self._config.get(registry_url)
+        config = self._config.get("registries", {}).get(registry_url)
 
         if config is None:
             return None
@@ -126,7 +126,7 @@ class DockerConfigManager:
             config_dict[registry_url]["api_key"] = api_key
 
         try:
-            self._config_manager.update_config(config_dict)
+            self._config_manager.update_config("registries", config_dict)
         except Exception as e:
             raise ScDockerConfigError(f"Failed to write to config {str(e)}") from e
 
