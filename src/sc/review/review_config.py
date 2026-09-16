@@ -15,7 +15,7 @@
 from pydantic import BaseModel, ConfigDict, ValidationError
 
 from sc.exceptions import ConfigError
-from sc.config_manager import ConfigManager
+from sc.config_manager import ConfigManager, MergePolicy
 
 class GitHostModel(BaseModel):
     model_config = ConfigDict(extra='forbid')
@@ -25,16 +25,22 @@ class GitHostModel(BaseModel):
     provider: str
 
 class GitHostConfig:
-    def __init__(self):
-        self._git_config = ConfigManager('git_instances')
+    def __init__(self, config_manager: ConfigManager | None = None):
+        self._config_manager = config_manager or ConfigManager(
+            "review",
+            merge_policy={"git_instances": MergePolicy.PREFER_ADMIN},
+        )
+
+    def _get_config(self) -> dict:
+        return self._config_manager.get_config().get("git_instances", {})
 
     def get_patterns(self) -> set[str]:
         """Return all configured git URL patterns."""
-        return self._git_config.get_config().keys()
+        return self._get_config().keys()
 
     def get(self, url_pattern: str) -> GitHostModel:
         """Return the git config for a specific URL pattern."""
-        data = self._git_config.get_config().get(url_pattern)
+        data = self._get_config().get(url_pattern)
         if not data:
             raise ConfigError(f"Git config doesn't contain entry for {url_pattern}")
         try:
@@ -44,4 +50,7 @@ class GitHostConfig:
 
     def write(self, pattern: str, git_config: GitHostModel):
         """Persist the config for a specific git host."""
-        self._git_config.update_config({pattern: git_config.model_dump(exclude_none=True)})
+        self._config_manager.update_config(
+            "git_instances",
+            {pattern: git_config.model_dump(exclude_none=True)},
+        )

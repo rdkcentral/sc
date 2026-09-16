@@ -24,6 +24,17 @@ ADMIN_CONFIG_DIR = Path("/etc/sc")
 ADMIN_CONFIG_PATH = ADMIN_CONFIG_DIR / "config.yaml"
 USER_CONFIG_DIR = Path().home() / ".sc_config"
 USER_DEFAULT_CONFIG_PATH = USER_CONFIG_DIR / "config.yaml"
+CONFIG_VERSION_KEY = "config_version"
+CURRENT_CONFIG_VERSION = 2
+
+# Version 1 stored each section directly in the main config. This maps each
+# legacy section to its version 2 tool file and the section within that file.
+LEGACY_CONFIG_LOCATIONS = {
+    "clone": ("clone", "project_lists"),
+    "docker": ("docker", "registries"),
+    "git_instances": ("review", "git_instances"),
+    "ticketing_instances": ("review", "ticketing_instances"),
+}
 
 class MergePolicy(Enum):
     ADMIN_ONLY = "admin_only"
@@ -45,9 +56,13 @@ class ConfigManager:
 
         self._user_config_path = Path(os.getenv("SC_USER_CONFIG", USER_DEFAULT_CONFIG_PATH))
         self._admin_config_path = ADMIN_CONFIG_PATH
+        self._migrate_user_config()
 
         self._user_tool_config_path = self._get_tool_config_path(
-            self._user_config_path, tool, USER_CONFIG_DIR / "tools" / f"{tool}.yaml")
+            self._user_config_path,
+            tool,
+            self._user_config_path.parent / "tools" / f"{tool}.yaml",
+        )
         self._admin_tool_config_path = self._get_tool_config_path(self._admin_config_path, tool)
 
         self._user_tool_config = self._load_config(self._user_tool_config_path)
@@ -61,13 +76,13 @@ class ConfigManager:
 
     def get_config(self) -> dict:
         """Returns the merged section."""
-        return self.merged_section
+        return self._effective_config
 
     def update_config(self, key: str, updates: dict):
         """Updates the user config's section and writes it back."""
         self._user_tool_config.setdefault(key, {}).update(updates)
         self._save_user_tool_config()
-        self.merged_section = self._merge_config()
+        self._effective_config = self._merge_config()
 
     def delete_key_from_config(self, key: str) -> bool:
         """Deletes a key from the user config's section and writes it back."""
@@ -76,7 +91,7 @@ class ConfigManager:
 
         del self._user_tool_config[key]
         self._save_user_tool_config()
-        self.merged_section = self._merge_config()
+        self._effective_config = self._merge_config()
         return True
 
     def _get_tool_config_path(
@@ -90,7 +105,10 @@ class ConfigManager:
                 data = yaml.safe_load(f)
 
             if isinstance(data, dict) and tool in data:
-                return Path(data[tool])
+                tool_path = Path(data[tool]).expanduser()
+                if not tool_path.is_absolute():
+                    tool_path = config_path.parent / tool_path
+                return tool_path
 
         return default_path
 
@@ -105,6 +123,56 @@ class ConfigManager:
             return {}
 
         return data
+
+    def _migrate_user_config(self) -> None:
+        """Upgrade the user's monolithic config to the split-file layout.
+
+        Admin configuration is intentionally not migrated here. The main user
+        config is written last so an interrupted migration can safely be run
+        again on the next invocation.
+        """
+        if not self._user_config_path.exists():
+            return
+
+        config = self._load_config(self._user_config_path)
+        version = config.get(CONFIG_VERSION_KEY, 1)
+        if not isinstance(version, int):
+            raise ConfigError(f"Invalid user config version: {version!r}")
+        if version > CURRENT_CONFIG_VERSION:
+            raise ConfigError(
+                f"User config version {version} is newer than supported version "
+                f"{CURRENT_CONFIG_VERSION}"
+            )
+        if version == CURRENT_CONFIG_VERSION:
+            return
+
+        migrated_config = {}
+        migrated_tools = {}
+        for legacy_section, section_config in config.items():
+            if legacy_section == CONFIG_VERSION_KEY:
+                continue
+
+            if not isinstance(section_config, dict):
+                # This entry is already a link to a split tool config.
+                migrated_config[legacy_section] = section_config
+                continue
+
+            tool, section = LEGACY_CONFIG_LOCATIONS.get(
+                legacy_section, (legacy_section, None)
+            )
+            relative_path = Path("tools") / f"{tool}.yaml"
+            migrated_config[tool] = str(relative_path)
+            if section is None:
+                migrated_tools.setdefault(tool, {}).update(section_config)
+            else:
+                migrated_tools.setdefault(tool, {})[section] = section_config
+
+        for tool, tool_config in migrated_tools.items():
+            tool_path = self._user_config_path.parent / "tools" / f"{tool}.yaml"
+            self._save_config(tool_path, tool_config)
+
+        migrated_config[CONFIG_VERSION_KEY] = CURRENT_CONFIG_VERSION
+        self._save_config(self._user_config_path, migrated_config)
 
     def _merge_config(self) -> dict:
         result = {}
@@ -121,6 +189,28 @@ class ConfigManager:
                 case MergePolicy.PREFER_ADMIN:
                     result[key] = {**(user or {}), **(admin or {})}
 
+        return result
+
     def _save_user_tool_config(self):
-        with open(self._user_tool_config_path, "w") as f:
-            yaml.dump(self._user_tool_config, f, default_flow_style=False, sort_keys=False)
+        self._save_config(self._user_tool_config_path, self._user_tool_config)
+        self._save_user_config_index()
+
+    def _save_user_config_index(self) -> None:
+        config = self._load_config(self._user_config_path)
+        config[CONFIG_VERSION_KEY] = CURRENT_CONFIG_VERSION
+        if self.tool not in config:
+            try:
+                tool_path = self._user_tool_config_path.relative_to(
+                    self._user_config_path.parent
+                )
+            except ValueError:
+                tool_path = self._user_tool_config_path
+            config[self.tool] = str(tool_path)
+        self._save_config(self._user_config_path, config)
+
+    def _save_config(self, path: Path, config: dict) -> None:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        temporary_path = path.with_suffix(f"{path.suffix}.tmp")
+        with temporary_path.open("w") as f:
+            yaml.safe_dump(config, f, default_flow_style=False, sort_keys=False)
+        temporary_path.replace(path)
