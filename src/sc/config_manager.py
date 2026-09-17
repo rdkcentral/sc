@@ -15,6 +15,8 @@
 from enum import Enum
 import os
 from pathlib import Path
+import stat
+import tempfile
 
 import yaml
 
@@ -223,7 +225,20 @@ class ConfigManager:
 
     def _save_config(self, path: Path, config: dict) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
-        temporary_path = path.with_suffix(f"{path.suffix}.tmp")
-        with temporary_path.open("w") as f:
-            yaml.safe_dump(config, f, default_flow_style=False, sort_keys=False)
-        temporary_path.replace(path)
+        file_mode = stat.S_IMODE(path.stat().st_mode) if path.exists() else 0o600
+        file_descriptor, temporary_name = tempfile.mkstemp(
+            dir=path.parent,
+            prefix=f".{path.name}.",
+        )
+        temporary_path = Path(temporary_name)
+
+        try:
+            with os.fdopen(file_descriptor, "w") as f:
+                yaml.safe_dump(config, f, default_flow_style=False, sort_keys=False)
+                f.flush()
+                os.fsync(f.fileno())
+
+            temporary_path.chmod(file_mode)
+            temporary_path.replace(path)
+        finally:
+            temporary_path.unlink(missing_ok=True)

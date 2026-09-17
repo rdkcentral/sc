@@ -235,6 +235,28 @@ class TestConfigManager(unittest.TestCase):
         ):
             ConfigManager("clone", {})
 
+    def test_new_config_files_are_owner_readable_and_writable_only(self):
+        config_path = self.root / "new" / "config.yaml"
+        manager = ConfigManager.__new__(ConfigManager)
+
+        manager._save_config(config_path, {"config_version": 2})
+
+        self.assertEqual(config_path.stat().st_mode & 0o777, 0o600)
+
+    def test_save_config_preserves_existing_file_mode(self):
+        config_path = self.root / "config.yaml"
+        config_path.write_text("config_version: 1\n")
+        config_path.chmod(0o640)
+        manager = ConfigManager.__new__(ConfigManager)
+
+        manager._save_config(config_path, {"config_version": 2})
+
+        self.assertEqual(config_path.stat().st_mode & 0o777, 0o640)
+        self.assertEqual(
+            yaml.safe_load(config_path.read_text()),
+            {"config_version": 2},
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
