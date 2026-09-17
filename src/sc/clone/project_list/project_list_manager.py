@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 class ProjectListSource(BaseModel):
     """Information on how to load a ProjectList.
 
-    In the context of this tool it will be stored in the sc config.
+    Sources are stored under ``project_lists`` in the user's clone tool config.
     """
     model_config = ConfigDict(extra='forbid')
 

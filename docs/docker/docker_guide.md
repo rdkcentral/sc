@@ -1,6 +1,6 @@
 # SC Docker Guide
 
-SC docker module allows users to run docker containers in a standardised manner, using known docker registries. 
+SC docker module allows users to run docker containers in a standardised manner, using known docker registries.
 
 ## Table of Contents
   - [Quick Start](#quick-start)
@@ -27,13 +27,28 @@ The usage document provides examples demonstrating the functionality of the modu
 
 ## Admin Tools
 
-* To whitelist registries write them in the directory /etc/sc/docker_registry_whitelist seperated by newlines.
-* To set server-wide registry logins add them to /etc/sc/.config.yaml in the following format:
+The administrator configuration index links to the Docker tool configuration:
+
 ```yaml
-docker:
+# /etc/sc/config.yaml
+config_version: 2
+docker: /etc/sc/tools/docker.yaml
+```
+
+Define the registry whitelist and server-wide credentials in the linked file:
+
+```yaml
+# /etc/sc/tools/docker.yaml
+whitelist:
+  - ghcr.io/your-org
+
+registries:
   ghcr.io/your-org:
     reg_type: github
     credential_store: config
     username: your_username
     api_key: your_api_key
 ```
+
+An empty or omitted whitelist allows any registry. Administrator registry
+definitions take precedence over user definitions with the same URL.
