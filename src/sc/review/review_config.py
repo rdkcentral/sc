@@ -38,7 +38,7 @@ class GitHostConfig:
 
     def get_patterns(self) -> set[str]:
         """Return all configured git URL patterns."""
-        return set(self._get_config().keys())
+        return self._get_config().keys()
 
     def get(self, url_pattern: str) -> GitHostModel:
         """Return the git config for a specific URL pattern."""
