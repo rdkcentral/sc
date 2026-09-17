@@ -18,6 +18,8 @@ class TicketHostModel(BaseModel):
     cert: str | None = None
 
 class TicketHostConfig:
+    """Manage ``ticketing_instances`` in the shared review tool configuration."""
+
     def __init__(self, config_manager: ConfigManager | None = None):
         self._config_manager = config_manager or ConfigManager(
             "review",

@@ -20,7 +20,11 @@ from .project_list.project_list_manager import ProjectListSource
 
 
 class CloneConfigManager:
-    """Clone-specific configuration composed over the generic config manager."""
+    """Manage the ``project_lists`` section of the clone tool configuration.
+
+    User and administrator project lists are merged by name, with administrator
+    definitions taking precedence.
+    """
 
     def __init__(self, config_manager: ConfigManager | None = None):
         self._config_manager = config_manager or ConfigManager(

@@ -25,6 +25,8 @@ class GitHostModel(BaseModel):
     provider: str
 
 class GitHostConfig:
+    """Manage ``git_instances`` in the shared review tool configuration."""
+
     def __init__(self, config_manager: ConfigManager | None = None):
         self._config_manager = config_manager or ConfigManager(
             "review",
@@ -36,7 +38,7 @@ class GitHostConfig:
 
     def get_patterns(self) -> set[str]:
         """Return all configured git URL patterns."""
-        return self._get_config().keys()
+        return set(self._get_config().keys())
 
     def get(self, url_pattern: str) -> GitHostModel:
         """Return the git config for a specific URL pattern."""

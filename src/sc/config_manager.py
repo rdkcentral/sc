@@ -41,15 +41,18 @@ class MergePolicy(Enum):
     PREFER_ADMIN = "prefer_admin"
 
 class ConfigManager:
-    """
-    Manages sc configurations by loading a user and an admin yaml file, merging a specific
-    section, and allowing modifications only to the users config.
+    """Load and merge one tool's user and administrator configuration.
+
+    The user and administrator index files link to separate YAML files for each
+    tool. Merge policies apply to the top-level sections within that tool file.
+    Only the user tool file can be changed through this manager.
     """
     def __init__(self, tool: str, merge_policy: dict[str, MergePolicy]):
-        """Loads configuration files and merges a tools subconfig.
+        """Load and merge a tool's configuration files.
 
         Args:
-            tool (str): A tool which has it's own subconfig.
+            tool: Name used to find the tool file in each configuration index.
+            merge_policy: Merge behavior keyed by section in the tool file.
         """
         self.tool = tool
         self._merge_policy = merge_policy
@@ -72,24 +75,34 @@ class ConfigManager:
 
     @property
     def config_path(self) -> Path:
+        """Return the path to the user configuration index."""
         return self._user_config_path
 
     def get_config(self) -> dict:
-        """Returns the merged section."""
+        """Return the effective configuration for this tool."""
         return self._effective_config
 
     def update_config(self, key: str, updates: dict):
-        """Updates the user config's section and writes it back."""
+        """Shallow-update a section in the user tool configuration."""
         self._user_tool_config.setdefault(key, {}).update(updates)
         self._save_user_tool_config()
         self._effective_config = self._merge_config()
 
-    def delete_key_from_config(self, key: str) -> bool:
-        """Deletes a key from the user config's section and writes it back."""
-        if key not in self._user_tool_config:
+    def delete_key_from_config(self, section: str, key: str) -> bool:
+        """Delete a key from a user section, returning whether it existed.
+
+        Administrator values cannot be deleted. If the administrator config
+        defines the same key, its value becomes effective after the user value
+        is removed.
+        """
+        user_section = self._user_tool_config.get(section)
+
+        if not isinstance(user_section, dict) or key not in user_section:
             return False
 
-        del self._user_tool_config[key]
+        del user_section[key]
+        if not user_section:
+            del self._user_tool_config[section]
         self._save_user_tool_config()
         self._effective_config = self._merge_config()
         return True

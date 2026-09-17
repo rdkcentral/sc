@@ -37,11 +37,11 @@ class RegistryConfig(BaseModel):
         return self
 
 class DockerConfigManager:
-    """Manages the docker portion of config in ~/.sc_config/config.yaml and the
-    docker registry whitelist.
+    """Manage the ``registries`` and ``whitelist`` sections of docker.yaml.
 
-    The layout is keys are registry urls (ghcr.io/org) and the values are
-    RegistryConfig models.
+    Registry entries from the user and administrator files are merged, with
+    administrator entries taking precedence. The whitelist is administrator
+    controlled; an empty whitelist permits any registry.
     """
     def __init__(
         self,
@@ -55,11 +55,15 @@ class DockerConfigManager:
                 "registries": MergePolicy.PREFER_ADMIN
             }
         )
-        self._config = self._config_manager.get_config()
+
+    @property
+    def _config(self) -> dict:
+        """Return the latest effective Docker configuration."""
+        return self._config_manager.get_config()
 
     @property
     def whitelist(self) -> tuple[str, ...]:
-        return self._config.get("whitelist") or ()
+        return tuple(self._config.get("whitelist") or ())
 
     def is_registry_allowed(self, registry_url: str) -> bool:
         if not self.whitelist or registry_url in self.whitelist:
@@ -93,8 +97,9 @@ class DockerConfigManager:
 
         return registry
 
-    def delete_registry(self, registry_url: str):
-        self._config_manager.delete_key_from_config(registry_url)
+    def delete_registry(self, registry_url: str) -> bool:
+        """Delete a registry from the user Docker configuration."""
+        return self._config_manager.delete_key_from_config("registries", registry_url)
 
     def add_registry(
             self,
@@ -104,7 +109,7 @@ class DockerConfigManager:
             username: str | None = None,
             api_key: str | None = None
         ):
-        """Add a registry to the config.
+        """Add a registry to the user Docker configuration.
 
         Raises:
             ScDockerConfigError: If an error occurs writing to the config

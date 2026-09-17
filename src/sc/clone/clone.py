@@ -91,8 +91,8 @@ class SCClone:
         ClonerRunner().clone(target_directory, project_config, cli_overrides)
 
     def add_project_list(self):
-        """Cli method to add new project index to the config."""
-        click.echo('Enter a name for this project index:')
+        """CLI method to add a project list to the user clone configuration."""
+        click.echo('Enter a name for this project list:')
         click.echo('Alphanumeric and underscores, no spaces.')
         name = click.prompt('> ')
         if not re.match(r"^[a-zA-Z_][a-zA-Z0-9_]*$", name):
@@ -104,7 +104,7 @@ class SCClone:
             sys.exit(1)
 
         click.echo()
-        click.echo('Enter the URL for the project index to add: ')
+        click.echo('Enter the URL for the project list to add: ')
         click.echo('Please note this should be a URL for the raw file.')
         url = click.prompt('> ')
 
@@ -269,4 +269,3 @@ class SCClone:
                 colour = ("green", "blue", "magenta")[line["indent"] % 3]
                 lines.append(click.style(f"{space}{line['name']}", fg=colour))
         return "\n".join(lines)
-

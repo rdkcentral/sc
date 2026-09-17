@@ -82,6 +82,58 @@ class TestConfigManager(unittest.TestCase):
             {"config_version": 2, "clone": "tools/clone.yaml"},
         )
 
+    def test_delete_key_removes_nested_user_value(self):
+        user_main = self.root / "config.yaml"
+        user_main.write_text("config_version: 2\ndocker: tools/docker.yaml\n")
+        tool_path = self.root / "tools" / "docker.yaml"
+        tool_path.parent.mkdir()
+        tool_path.write_text(
+            "registries:\n"
+            "  ghcr.io/remove:\n"
+            "    reg_type: github\n"
+            "  ghcr.io/keep:\n"
+            "    reg_type: github\n"
+        )
+
+        with (
+            patch(
+                "sc.config_manager.ADMIN_CONFIG_PATH",
+                self.root / "missing.yaml",
+            ),
+            patch.dict(os.environ, {"SC_USER_CONFIG": str(user_main)}),
+        ):
+            manager = ConfigManager(
+                "docker", {"registries": MergePolicy.PREFER_ADMIN}
+            )
+            deleted = manager.delete_key_from_config(
+                "registries", "ghcr.io/remove"
+            )
+
+        self.assertTrue(deleted)
+        self.assertEqual(
+            yaml.safe_load(tool_path.read_text()),
+            {"registries": {"ghcr.io/keep": {"reg_type": "github"}}},
+        )
+
+    def test_delete_key_returns_false_for_missing_user_value(self):
+        user_main = self.root / "config.yaml"
+        user_main.write_text("config_version: 2\ndocker: tools/docker.yaml\n")
+
+        with (
+            patch(
+                "sc.config_manager.ADMIN_CONFIG_PATH",
+                self.root / "missing.yaml",
+            ),
+            patch.dict(os.environ, {"SC_USER_CONFIG": str(user_main)}),
+        ):
+            manager = ConfigManager(
+                "docker", {"registries": MergePolicy.PREFER_ADMIN}
+            )
+
+        self.assertFalse(
+            manager.delete_key_from_config("registries", "ghcr.io/missing")
+        )
+
     def test_migrates_legacy_user_config_to_split_files(self):
         user_main = self.root / "user" / "config.yaml"
         user_main.parent.mkdir()
