@@ -14,7 +14,11 @@ class TestSCDockerRunCommand(unittest.TestCase):
 
         with (
             patch("sc.docker.docker.STANDARD_MOUNT_DIRS", []),
-            patch.dict("os.environ", {}, clear=True),
+            patch.dict(
+                "os.environ",
+                {"HOME": "/home/test-user", "USER": "test-user"},
+                clear=True
+            ),
         ):
             command = sc_docker._generate_docker_run_command(
                 image="ghcr.io/example/image",
