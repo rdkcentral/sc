@@ -157,7 +157,7 @@ class SCDocker:
 
         click.secho(f"ERROR: Login attempt failed. {registry_url} is not whitelisted!", fg="red")
         click.secho("You can only log in to these registries:", fg="green")
-        for reg in self.config_manager.get_whitelisted_registries():
+        for reg in self.config_manager.whitelist:
             click.echo(f"- {reg}")
         sys.exit(1)
 
