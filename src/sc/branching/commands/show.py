@@ -49,15 +49,15 @@ class ShowBranch(Command):
         proj_dir = self.top_dir / proj.path
         logger.info(f"Project: {proj_dir}")
         logger.info(
-            f"Lock Status: \[[bold yellow]{proj.lock_status or 'NORMAL'}[/]]",
+            rf"Lock Status: \[[bold yellow]{proj.lock_status or 'NORMAL'}[/]]",
             extra={"markup": True}
         )
 
         if proj.groups:
             groups = proj.groups.split(",")
-            group_str = " ".join([f"\[[bold yellow]{g}[/]]" for g in groups])
+            group_str = " ".join([rf"\[[bold yellow]{g}[/]]" for g in groups])
         else:
-            group_str = "\[[red bold]No Groups[/]]"
+            group_str = "\\[[red bold]No Groups[/]]"
 
         logger.info(f"Groups: {group_str}", extra={"markup": True})
 

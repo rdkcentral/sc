@@ -519,6 +519,8 @@ class SCDocker:
             else:
                 self._warn_x11_not_forwarded(display, xauth_line)
 
+        docker_args += [f"--cpus={self.config_manager.max_cpus}"]
+
         coverity_dir = Path('/opt/coverity').resolve()
         if Path('/opt/coverity').is_symlink() and Path(coverity_dir).exists():
             docker_args += ["-v", f"{coverity_dir}:{coverity_dir}"]

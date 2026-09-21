@@ -17,7 +17,7 @@ from netrc import netrc, NetrcParseError
 import os
 from typing import Literal
 
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, ConfigDict, PositiveInt, ValidationError, model_validator
 
 from .exceptions import ScDockerConfigError, NetrcError
 from sc.config_manager import ConfigManager, MergePolicy
@@ -36,8 +36,17 @@ class RegistryConfig(BaseModel):
                 f"Registry with config credential store must define username and api_key.")
         return self
 
+
+class DockerOptions(BaseModel):
+    """Administrator-controlled options applied to Docker containers."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    max_cpus: PositiveInt = 4
+
+
 class DockerConfigManager:
-    """Manage the ``registries`` and ``whitelist`` sections of docker.yaml.
+    """Manage Docker's `options`, `registries`, and `whitelist` sections.
 
     Registry entries from the user and administrator files are merged, with
     administrator entries taking precedence. The whitelist is administrator
@@ -64,6 +73,15 @@ class DockerConfigManager:
     @property
     def whitelist(self) -> tuple[str, ...]:
         return tuple(self._config.get("whitelist") or ())
+
+    @property
+    def max_cpus(self) -> int:
+        """Return the configured container CPU limit, defaulting to four."""
+        try:
+            options = DockerOptions.model_validate(self._config.get("options") or {})
+        except ValidationError as e:
+            raise ScDockerConfigError(f"Invalid Docker options config: {e}") from e
+        return options.max_cpus
 
     def is_registry_allowed(self, registry_url: str) -> bool:
         if not self.whitelist or registry_url in self.whitelist:

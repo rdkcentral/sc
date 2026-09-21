@@ -39,6 +39,9 @@ Define the registry whitelist and server-wide credentials in the linked file:
 
 ```yaml
 # /etc/sc/tools/docker.yaml
+options:
+  max_cpus: 4
+
 whitelist:
   - ghcr.io/your-org
 
@@ -52,3 +55,5 @@ registries:
 
 An empty or omitted whitelist allows any registry. Administrator registry
 definitions take precedence over user definitions with the same URL.
+The `max_cpus` option limits how many CPUs a container can use and defaults to
+4 when it is omitted.
