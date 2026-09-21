@@ -519,8 +519,7 @@ class SCDocker:
             else:
                 self._warn_x11_not_forwarded(display, xauth_line)
 
-        if max_cpu := self._get_cpu_limit():
-            docker_args += [f"--cpuset-cpus=0-{max_cpu}"]
+        docker_args += [f"--cpus={self.config_manager.max_cpus}"]
 
         coverity_dir = Path('/opt/coverity').resolve()
         if Path('/opt/coverity').is_symlink() and Path(coverity_dir).exists():
@@ -617,13 +616,3 @@ class SCDocker:
             click.secho(
                 "WARNING: Failed to get line from xauthority.", fg="yellow")
         click.secho("WARNING: X11 not forwarded into docker.", fg="yellow")
-
-    def _get_cpu_limit(self) -> int | None:
-        """Get the highest CPU ID to leave at least 4 cores free."""
-        cpu_count = os.cpu_count() or 1
-
-        if cpu_count >= 20:
-            # We leave 4 cores free, but CPU IDs start from zero so minus 5
-            return cpu_count - 5
-        else:
-            return None
