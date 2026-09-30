@@ -40,6 +40,25 @@ class TestDockerConfigManager(unittest.TestCase):
         self.assertEqual(manager.whitelist, ())
         self.assertTrue(manager.is_registry_allowed("anything.example.com"))
 
+    def test_cpu_limit_returns_configured_value(self):
+        manager = self.create_manager({"options": {"cpu_limit": 8}})
+
+        self.assertEqual(manager.cpu_limit, 8)
+
+    def test_cpu_limit_defaults_to_zero(self):
+        manager = self.create_manager()
+
+        self.assertEqual(manager.cpu_limit, 0)
+
+    def test_cpu_limit_rejects_non_integer_value(self):
+        manager = self.create_manager({"options": {"cpu_limit": "invalid"}})
+
+        with self.assertRaisesRegex(
+            ScDockerConfigError,
+            "Invalid Docker options config",
+        ):
+            manager.cpu_limit
+
     def test_is_registry_allowed_returns_true(self):
         manager = self.create_manager({"whitelist": ["ghcr.io/example"]})
 
