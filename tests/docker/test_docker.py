@@ -48,8 +48,11 @@ class TestSCDockerRunCommand(unittest.TestCase):
             (24, 30, ["--cpuset-cpus=0-23"]),
             (24, 1, ["--cpuset-cpus=0-0"]),
             (20, -4, ["--cpuset-cpus=0-15"]),
-            (19, -4, []),
-            (None, -4, []),
+            (19, -4, ["--cpuset-cpus=0-14"]),
+            (4, -4, ["--cpuset-cpus=0-0"]),
+            (4, 6, ["--cpuset-cpus=0-3"]),
+            (4, 0, []),
+            (None, -4, ["--cpuset-cpus=0-0"]),
         )
         for cpu_count, configured, expected in cases:
             with (
@@ -72,7 +75,7 @@ class TestSCDockerRunCommand(unittest.TestCase):
                 )
                 self.assertFalse(any(arg.startswith("--cpus=") for arg in command))
 
-    def test_generate_docker_run_command_does_not_limit_nineteen_cpu_host(self):
+    def test_generate_docker_run_command_limits_nineteen_cpu_host(self):
         sc_docker = SCDocker.__new__(SCDocker)
         sc_docker.config_manager = MagicMock()
         sc_docker.config_manager.cpu_limit = 6
@@ -99,7 +102,7 @@ class TestSCDockerRunCommand(unittest.TestCase):
             )
 
         self.assertFalse(any(arg.startswith("--cpus=") for arg in command))
-        self.assertFalse(any(arg.startswith("--cpuset-cpus=") for arg in command))
+        self.assertIn("--cpuset-cpus=0-5", command)
 
 
 if __name__ == "__main__":

@@ -522,8 +522,9 @@ class SCDocker:
         cpu_count = os.cpu_count() or 1
         cpu_limit = self.config_manager.cpu_limit
         if cpu_limit < 0:
-            cpu_limit = max(1, cpu_count + cpu_limit)
-        if cpu_limit > 0:
+            max_cpu = max(1, cpu_count + cpu_limit) - 1
+            docker_args += [f"--cpuset-cpus=0-{max_cpu}"]
+        elif cpu_limit > 0:
             max_cpu = min(cpu_limit, cpu_count) - 1
             docker_args += [f"--cpuset-cpus=0-{max_cpu}"]
 

@@ -42,7 +42,7 @@ class DockerOptions(BaseModel):
 
     Attributes:
         cpu_limit (int): Number of logical CPUs in the shared CPU range used by
-            SC containers on hosts with at least 20 CPUs. Zero means no limit;
+            SC containers. Zero means no limit;
             negative values leave that many CPUs outside the range. The range
             starts at CPU 0 and contains at least one CPU, up to the host total.
     """
