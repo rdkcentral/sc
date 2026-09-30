@@ -17,7 +17,7 @@ from netrc import netrc, NetrcParseError
 import os
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, PositiveInt, ValidationError, model_validator
+from pydantic import BaseModel, ConfigDict, ValidationError, model_validator
 
 from .exceptions import ScDockerConfigError, NetrcError
 from sc.config_manager import ConfigManager, MergePolicy
@@ -38,11 +38,18 @@ class RegistryConfig(BaseModel):
 
 
 class DockerOptions(BaseModel):
-    """Administrator-controlled options applied to Docker containers."""
+    """Administrator-controlled options applied to Docker containers.
+
+    Attributes:
+        cpu_limit (int): Number of logical CPUs in the shared CPU range used by
+            SC containers on hosts with at least 20 CPUs. Zero means no limit;
+            negative values leave that many CPUs outside the range. The range
+            starts at CPU 0 and contains at least one CPU, up to the host total.
+    """
 
     model_config = ConfigDict(extra="forbid")
 
-    max_cpus: PositiveInt = 4
+    cpu_limit: int = 0
 
 
 class DockerConfigManager:
@@ -75,13 +82,13 @@ class DockerConfigManager:
         return tuple(self._config.get("whitelist") or ())
 
     @property
-    def max_cpus(self) -> int:
-        """Return the configured container CPU limit, defaulting to four."""
+    def cpu_limit(self) -> int:
+        """Return the configured container CPU limit, defaulting to zero (unlimited)."""
         try:
             options = DockerOptions.model_validate(self._config.get("options") or {})
         except ValidationError as e:
             raise ScDockerConfigError(f"Invalid Docker options config: {e}") from e
-        return options.max_cpus
+        return options.cpu_limit
 
     def is_registry_allowed(self, registry_url: str) -> bool:
         if not self.whitelist or registry_url in self.whitelist:

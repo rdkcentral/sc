@@ -5,7 +5,8 @@ SC docker module allows users to run docker containers in a standardised manner,
 ## Table of Contents
   - [Quick Start](#quick-start)
   - [Usage](#usage)
-  - [Design Doc](#design-doc)
+  - [Admin Tools](#admin-tools)
+    - [CPU Limits](#cpu-limits)
 
 ## Quick Start
 
@@ -35,12 +36,12 @@ config_version: 2
 docker: /etc/sc/tools/docker.yaml
 ```
 
-Define the registry whitelist and server-wide credentials in the linked file:
+Define container options, the registry whitelist, and server-wide credentials in the linked file:
 
 ```yaml
 # /etc/sc/tools/docker.yaml
 options:
-  max_cpus: 4
+  cpu_limit: -4
 
 whitelist:
   - ghcr.io/your-org
@@ -55,5 +56,15 @@ registries:
 
 An empty or omitted whitelist allows any registry. Administrator registry
 definitions take precedence over user definitions with the same URL.
-The `max_cpus` option limits how many CPUs a container can use and defaults to
-4 when it is omitted.
+
+### CPU Limits
+
+On hosts with at least 20 logical CPUs, administrator option `cpu_limit` restricts
+all SC containers to the same CPU range, starting at CPU 0:
+
+- `0` (default): no limit.
+- Positive values: number of CPUs to use.
+- Negative values: number of CPUs to leave free, with at least one CPU used.
+
+For example, `cpu_limit: -4` on a 24-CPU host uses CPUs 0–19, leaving the last
+four CPUs free from SC builds. Hosts with fewer than 20 CPUs are not limited.
