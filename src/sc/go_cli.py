@@ -18,15 +18,15 @@ import re
 
 import click
 from lxml.etree import XMLSyntaxError
-from sc_manifest_parser import ScManifest
+from sc_manifest_parser import ProjectElementInterface, ScManifest
 
 
 @click.group()
-def cli():
+def cli() -> None:
     pass
 
 
-def _workspace_root():
+def _workspace_root() -> Path:
     current = Path.cwd()
     for directory in (current, *current.parents):
         if (directory / ".repo").is_dir():
@@ -34,7 +34,7 @@ def _workspace_root():
     raise click.ClickException(f"'{current}' does not belong to a repo workspace.")
 
 
-def _describe(project, verbose=False):
+def _describe(project: ProjectElementInterface, verbose: bool = False):
     click.echo(
         f"[ {project.path} ] [ {project.name} ] "
         f"LOCK_STATUS: [{project.lock_status or 'NORMAL'}]", err=True
@@ -57,7 +57,7 @@ def _describe(project, verbose=False):
               help="Show matched project attributes and annotations on stderr.")
 @click.option("-w", "--w", "--word", "word", is_flag=True,
               help="Require whole-word matches, as with the original go.sh -w.")
-def go(pattern, list_projects, verbose, word):
+def go(pattern: str | None, list_projects: bool, verbose: bool, word: bool):
     """Print a project path, or the special destinations root and manifest.
 
     PATTERN is a case-insensitive regular expression matching project names,
@@ -66,7 +66,7 @@ def go(pattern, list_projects, verbose, word):
     if not pattern and not list_projects:
         raise click.UsageError("Supply a project pattern, root, manifest, or --list.")
     root = _workspace_root()
-    destination = None
+    destination: Path | None = None
     if pattern in ("root", "manifest"):
         destination = root if pattern == "root" else root / ".repo" / "manifests"
     if destination is None or list_projects:
@@ -87,8 +87,8 @@ def go(pattern, list_projects, verbose, word):
                 )
             except re.error as error:
                 raise click.BadParameter(str(error), param_hint="PATTERN") from error
-            exact = []
-            matches = []
+            exact: list[ProjectElementInterface] = []
+            matches: list[ProjectElementInterface] = []
             for project in projects:
                 names = (project.name, project.path, Path(project.path).name)
                 if any(pattern.casefold() == name.casefold() for name in names):
@@ -115,7 +115,7 @@ def go(pattern, list_projects, verbose, word):
 
 @cli.command("go-init")
 @click.argument("shell", type=click.Choice(["bash", "zsh"]), default="bash")
-def go_init(shell):
+def go_init(shell: str):
     """Print shell integration (defaults to bash).
 
     Add eval "$(sc go-init bash)" to ~/.bashrc, or
