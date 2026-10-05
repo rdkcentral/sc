@@ -58,11 +58,7 @@ def _describe(project: ProjectElementInterface, verbose: bool = False):
 @click.option("-w", "--w", "--word", "word", is_flag=True,
               help="Require whole-word matches, as with the original go.sh -w.")
 def go(pattern: str | None, list_projects: bool, verbose: bool, word: bool):
-    """Print a project path, or the special destinations root and manifest.
-
-    PATTERN is a case-insensitive regular expression matching project names,
-    paths, or directory names. An exact name or path takes precedence.
-    """
+    """Print a project path, or the special destinations root and manifest."""
     if not pattern and not list_projects:
         raise click.UsageError("Supply a project pattern, root, manifest, or --list.")
     root = _workspace_root()
@@ -120,6 +116,9 @@ def go_init(shell: str):
 
     Add eval "$(sc go-init bash)" to ~/.bashrc, or
     eval "$(sc go-init zsh)" to ~/.zshrc.
+
+    After loading the integration, use `go PROJECT` to change directory.
+    Running `sc go PROJECT` only prints the destination path.
     """
     # Keep user Zsh options from changing the function's behavior. -L restores
     # those options when the function returns.
