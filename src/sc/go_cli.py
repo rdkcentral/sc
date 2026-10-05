@@ -26,7 +26,7 @@ def cli():
     pass
 
 
-def workspace_root():
+def _workspace_root():
     current = Path.cwd()
     for directory in (current, *current.parents):
         if (directory / ".repo").is_dir():
@@ -34,7 +34,7 @@ def workspace_root():
     raise click.ClickException(f"'{current}' does not belong to a repo workspace.")
 
 
-def describe(project, verbose=False):
+def _describe(project, verbose=False):
     click.echo(
         f"[ {project.path} ] [ {project.name} ] "
         f"LOCK_STATUS: [{project.lock_status or 'NORMAL'}]", err=True
@@ -65,7 +65,7 @@ def go(pattern, list_projects, verbose, word):
     """
     if not pattern and not list_projects:
         raise click.UsageError("Supply a project pattern, root, manifest, or --list.")
-    root = workspace_root()
+    root = _workspace_root()
     destination = None
     if pattern in ("root", "manifest"):
         destination = root if pattern == "root" else root / ".repo" / "manifests"
@@ -76,7 +76,7 @@ def go(pattern, list_projects, verbose, word):
             raise click.ClickException(f"Cannot read workspace manifest: {error}") from error
         if list_projects:
             for project in projects:
-                describe(project, verbose)
+                _describe(project, verbose)
         if not pattern:
             return
         if destination is None:
@@ -100,13 +100,13 @@ def go(pattern, list_projects, verbose, word):
                 raise click.ClickException(f"No project matches '{pattern}'.")
             if len(matches) > 1:
                 for project in matches:
-                    describe(project)
+                    _describe(project)
                 raise click.ClickException(
                     f"Multiple projects match '{pattern}'; use a full project name or path."
                 )
             project = matches[0]
             if verbose and not list_projects:
-                describe(project, verbose=True)
+                _describe(project, verbose=True)
             destination = root / project.path
     if not destination.is_dir():
         raise click.ClickException(f"Directory does not exist: {destination}")
