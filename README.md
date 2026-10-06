@@ -51,7 +51,7 @@ uv tool uninstall sc
 
 ## Workspace navigation
 
-For Bash, add this to `~/.bashrc`, after any old `go` alias or function setup:
+For Bash, add this to `~/.bashrc`:
 
 ```bash
 eval "$(sc go-init bash)"
@@ -64,7 +64,6 @@ eval "$(sc go-init zsh)"
 ```
 
 Start a new shell or run the corresponding line in your current shell.
-`sc go-init` without a shell argument still defaults to Bash.
 
 From anywhere inside a repo workspace:
 
@@ -76,14 +75,3 @@ go -l                 # List projects without changing directory
 go -v project_name    # Navigate and show manifest attributes/annotations
 go -w project_name    # Whole-word search
 ```
-
-Searches use case-insensitive regular expressions. Exact project names, paths,
-or directory names take precedence over partial matches. Ambiguous searches
-show the candidates and fail; use a full name or path to select one.
-Missing checkouts and failed searches leave your current directory unchanged.
-
-`sc go project_name` prints only the destination path to stdout, so it can also
-be used as `cd "$(sc go project_name)"`. Listings, verbose output, and errors go
-to stderr. The commands use `sc-manifest-parser`, including its manifest include
-and remove-project handling; they do not invoke `repo forall` or use `~/.go.var`.
-The old script's internal `--find` option is no longer needed.

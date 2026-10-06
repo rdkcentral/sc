@@ -34,6 +34,13 @@ def _workspace_root() -> Path:
     raise click.ClickException(f"'{current}' does not belong to a repo workspace.")
 
 
+def _load_projects(root: Path) -> list[ProjectElementInterface]:
+    try:
+        return ScManifest.from_repo_root(root / ".repo").projects
+    except (OSError, ValueError, XMLSyntaxError) as error:
+        raise click.ClickException(f"Cannot read workspace manifest: {error}") from error
+
+
 def _describe(project: ProjectElementInterface, verbose: bool = False):
     click.echo(
         f"[ {project.path} ] [ {project.name} ] "
@@ -51,59 +58,56 @@ def _describe(project: ProjectElementInterface, verbose: bool = False):
 
 @cli.command()
 @click.argument("pattern", required=False)
-@click.option("-l", "--l", "--list", "list_projects", is_flag=True,
-              help="List all projects on stderr; optionally navigate to PATTERN.")
-@click.option("-v", "--v", "--verbose", "verbose", is_flag=True,
+@click.option("-l", "--list", "list_projects", is_flag=True,
+              help="List all projects on stderr and exit; ignore PATTERN.")
+@click.option("-v", "--verbose", "verbose", is_flag=True,
               help="Show matched project attributes and annotations on stderr.")
-@click.option("-w", "--w", "--word", "word", is_flag=True,
+@click.option("-w", "--word", "word", is_flag=True,
               help="Require whole-word matches, as with the original go.sh -w.")
 def go(pattern: str | None, list_projects: bool, verbose: bool, word: bool):
     """Print a project path, or the special destinations root and manifest."""
     if not pattern and not list_projects:
         raise click.UsageError("Supply a project pattern, root, manifest, or --list.")
     root = _workspace_root()
-    destination: Path | None = None
-    if pattern in ("root", "manifest"):
-        destination = root if pattern == "root" else root / ".repo" / "manifests"
-    if destination is None or list_projects:
+    if list_projects:
+        for project in _load_projects(root):
+            _describe(project, verbose)
+        return
+
+    if pattern == "root":
+        destination = root
+    elif pattern == "manifest":
+        destination = root / ".repo" / "manifests"
+    else:
+        projects = _load_projects(root)
         try:
-            projects = ScManifest.from_repo_root(root / ".repo").projects
-        except (OSError, ValueError, XMLSyntaxError) as error:
-            raise click.ClickException(f"Cannot read workspace manifest: {error}") from error
-        if list_projects:
-            for project in projects:
+            expression = re.compile(
+                rf"(?<!\w)(?:{pattern})(?!\w)" if word else pattern,
+                re.IGNORECASE,
+            )
+        except re.error as error:
+            raise click.BadParameter(str(error), param_hint="PATTERN") from error
+        exact: list[ProjectElementInterface] = []
+        matches: list[ProjectElementInterface] = []
+        for project in projects:
+            names = (project.name, project.path, Path(project.path).name)
+            if any(pattern.casefold() == name.casefold() for name in names):
+                exact.append(project)
+            if any(expression.search(name) for name in names):
+                matches.append(project)
+        matches = exact or matches
+        if not matches:
+            raise click.ClickException(f"No project matches '{pattern}'.")
+        if len(matches) > 1:
+            for project in matches:
                 _describe(project, verbose)
-        if not pattern:
-            return
-        if destination is None:
-            try:
-                expression = re.compile(
-                    rf"(?<!\w)(?:{pattern})(?!\w)" if word else pattern,
-                    re.IGNORECASE,
-                )
-            except re.error as error:
-                raise click.BadParameter(str(error), param_hint="PATTERN") from error
-            exact: list[ProjectElementInterface] = []
-            matches: list[ProjectElementInterface] = []
-            for project in projects:
-                names = (project.name, project.path, Path(project.path).name)
-                if any(pattern.casefold() == name.casefold() for name in names):
-                    exact.append(project)
-                if any(expression.search(name) for name in names):
-                    matches.append(project)
-            matches = exact or matches
-            if not matches:
-                raise click.ClickException(f"No project matches '{pattern}'.")
-            if len(matches) > 1:
-                for project in matches:
-                    _describe(project)
-                raise click.ClickException(
-                    f"Multiple projects match '{pattern}'; use a full project name or path."
-                )
-            project = matches[0]
-            if verbose and not list_projects:
-                _describe(project, verbose=True)
-            destination = root / project.path
+            raise click.ClickException(
+                f"Multiple projects match '{pattern}'; use a full project name or path."
+            )
+        project = matches[0]
+        if verbose:
+            _describe(project, verbose=True)
+        destination = root / project.path
     if not destination.is_dir():
         raise click.ClickException(f"Directory does not exist: {destination}")
     click.echo(str(destination))
