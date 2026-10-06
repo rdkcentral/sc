@@ -64,17 +64,44 @@ class GoTests(unittest.TestCase):
                 self.assertEqual(result.stdout, "")
                 self.assertIn(message, result.stderr)
 
+    def test_ambiguous_matches_respect_verbose(self):
+        for verbose in (False, True):
+            with self.subTest(verbose=verbose):
+                args = ["go", "team"] + (["--verbose"] if verbose else [])
+                result = self.runner.invoke(cli, args)
+                self.assertNotEqual(result.exit_code, 0)
+                self.assertEqual(result.stdout, "")
+                self.assertIn("Multiple projects match", result.stderr)
+                for name in ("team/alpha", "team/alpha-tools"):
+                    self.assertIn(name, result.stderr)
+                    detail = f"REPO_PROJECT: [ {name} ]"
+                    if verbose:
+                        self.assertIn(detail, result.stderr)
+                    else:
+                        self.assertNotIn(detail, result.stderr)
+
+    def test_listing_ignores_pattern_and_never_returns_destination(self):
+        for pattern in ("alpha", "root", "manifest", "missing", "absent", "["):
+            with self.subTest(pattern=pattern):
+                result = self.runner.invoke(cli, ["go", "--list", "--verbose", pattern])
+                self.assertEqual(result.exit_code, 0, result.output)
+                self.assertEqual(result.stdout, "")
+                self.assertIn("team/alpha", result.stderr)
+                self.assertIn("team/alpha-tools", result.stderr)
+                self.assertIn("REPO_REMOTE: [ origin ]", result.stderr)
+
     def test_listing_and_verbose_keep_stdout_clean(self):
         result = self.runner.invoke(cli, ["go", "-l"])
         self.assertEqual(result.exit_code, 0, result.output)
         self.assertEqual(result.stdout, "")
         self.assertIn("READ_ONLY", result.stderr)
-        result = self.runner.invoke(cli, ["go", "--v", "alpha"])
+        result = self.runner.invoke(cli, ["go", "--verbose", "alpha"])
         self.assertEqual(result.stdout, str(self.root / "apps/alpha") + "\n")
         self.assertIn("REPO_REMOTE: [ origin ]", result.stderr)
         self.assertIn("REPO_RREV: [ main ]", result.stderr)
-        result = self.runner.invoke(cli, ["go", "--w", "lpha"])
+        result = self.runner.invoke(cli, ["go", "--word", "lpha"])
         self.assertNotEqual(result.exit_code, 0)
+        self.assertIn("No project matches", result.stderr)
 
     def test_invalid_workspace_and_manifest(self):
         with patch("sc.go_cli.Path.cwd", return_value=self.root.parent):
@@ -120,6 +147,7 @@ go absent 2>/dev/null && exit 11
 printf '%s\n' "$PWD"
 go --help >/dev/null || exit 12
 go -l 2>/dev/null || exit 13
+go -l root 2>/dev/null || exit 15
 printf '%s\n' "$PWD"
 go root || exit 14
 printf '%s\n' "$PWD"
