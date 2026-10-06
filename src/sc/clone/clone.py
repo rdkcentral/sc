@@ -22,9 +22,9 @@ import sys
 import click
 
 from .cloners.cloner_runner import ClonerRunner
+from .clone_config import CloneConfigManager
 from .project_list.project_list import ProjectList
 from .project_list.project_list_manager import ProjectListManager, ProjectListSource
-from sc.config_manager import ConfigManager
 
 from typing import TypedDict, TYPE_CHECKING
 if TYPE_CHECKING:
@@ -42,10 +42,10 @@ class CliOverrides(TypedDict):
 
 class SCClone:
     """An SC module to clone projects using git-repo by yaml configuration files."""
-    def __init__(self):
-        self._config_manager = ConfigManager("clone")
+    def __init__(self, config_manager: CloneConfigManager | None = None):
+        self._config_manager = config_manager or CloneConfigManager()
         self._project_list_manager = ProjectListManager(
-            Path(self._config_manager.config_dir) / 'project_lists'
+            self._config_manager.project_list_dir
         )
 
     def clone(
@@ -91,20 +91,20 @@ class SCClone:
         ClonerRunner().clone(target_directory, project_config, cli_overrides)
 
     def add_project_list(self):
-        """Cli method to add new project index to the config."""
-        click.echo('Enter a name for this project index:')
+        """CLI method to add a project list to the user clone configuration."""
+        click.echo('Enter a name for this project list:')
         click.echo('Alphanumeric and underscores, no spaces.')
         name = click.prompt('> ')
         if not re.match(r"^[a-zA-Z_][a-zA-Z0-9_]*$", name):
             logger.error('Name is not valid (must be alphanumeric and no spaces).')
             sys.exit(1)
 
-        if name in self._config_manager.get_config():
+        if name in self._config_manager.get_project_lists():
             logger.error(f"A index named {name} already exists.")
             sys.exit(1)
 
         click.echo()
-        click.echo('Enter the URL for the project index to add: ')
+        click.echo('Enter the URL for the project list to add: ')
         click.echo('Please note this should be a URL for the raw file.')
         url = click.prompt('> ')
 
@@ -138,7 +138,7 @@ class SCClone:
         if not project_list:
             sys.exit(1)
 
-        self._config_manager.update_config({name: source.model_dump(exclude_none=True)})
+        self._config_manager.add_project_list(name, source)
         click.echo(f'Added project list {name} to config!')
 
     def print_projects_hierarchy(self):
@@ -187,7 +187,7 @@ class SCClone:
         if override_path:
             return self._get_overridden_project_list(override_path)
         else:
-            config = self._config_manager.get_config()
+            config = self._config_manager.get_project_lists()
             return self._project_list_manager.load_project_lists_from_config(config)
 
     def _get_overridden_project_list(self, override_path: Path | str):
@@ -269,5 +269,3 @@ class SCClone:
                 colour = ("green", "blue", "magenta")[line["indent"] % 3]
                 lines.append(click.style(f"{space}{line['name']}", fg=colour))
         return "\n".join(lines)
-
-

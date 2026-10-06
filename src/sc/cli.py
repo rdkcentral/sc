@@ -16,15 +16,11 @@
 
 from importlib import metadata
 import os
-from pathlib import Path
 
 import click
 
 from . import branching_cli, clone_cli, docker_cli, review_cli, project_cli, sc_logging
 from .help import GroupedHelp
-
-CONFIG_DIR = Path(Path.home(), '.sc_config')
-CONFIG_PATH = Path(CONFIG_DIR, 'config.yaml')
 
 if os.environ.get("SC_DEBUG") == "1":
     DEBUG_MODE = True
@@ -34,9 +30,6 @@ else:
 # Use entry_point instead of pointing directly at cli due to needing to load
 # plugins before the click group is ran.
 def entry_point():
-    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-    CONFIG_PATH.touch()
-
     # Logging
     sc_logging.setup_logging(DEBUG_MODE)
     sc_logging.enable_library_logging("repo_library")

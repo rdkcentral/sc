@@ -157,7 +157,7 @@ class SCDocker:
 
         click.secho(f"ERROR: Login attempt failed. {registry_url} is not whitelisted!", fg="red")
         click.secho("You can only log in to these registries:", fg="green")
-        for reg in self.config_manager.get_whitelisted_registries():
+        for reg in self.config_manager.whitelist:
             click.echo(f"- {reg}")
         sys.exit(1)
 
@@ -518,6 +518,15 @@ class SCDocker:
                 ]
             else:
                 self._warn_x11_not_forwarded(display, xauth_line)
+
+        cpu_count = os.cpu_count() or 1
+        cpu_limit = self.config_manager.cpu_limit
+        if cpu_limit < 0:
+            max_cpu = max(1, cpu_count + cpu_limit) - 1
+            docker_args += [f"--cpuset-cpus=0-{max_cpu}"]
+        elif cpu_limit > 0:
+            max_cpu = min(cpu_limit, cpu_count) - 1
+            docker_args += [f"--cpuset-cpus=0-{max_cpu}"]
 
         coverity_dir = Path('/opt/coverity').resolve()
         if Path('/opt/coverity').is_symlink() and Path(coverity_dir).exists():
