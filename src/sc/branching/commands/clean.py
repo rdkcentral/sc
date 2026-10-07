@@ -35,5 +35,5 @@ class Clean(Command):
         for project in manifest.projects:
             if project.lock_status is not None:
                 continue
-            self._clean_repo(self.top_dir)
+            self._clean_repo(self.top_dir / project.path)
         self._clean_repo(manifest_dir)
