@@ -82,7 +82,7 @@ def go(pattern: str | None, list_projects: bool, verbose: bool, word: bool):
         projects = _load_projects(root)
         try:
             expression = re.compile(
-                rf"(?<!\w)(?:{pattern})(?!\w)" if word else pattern,
+                rf"(?<!\w)(?:{re.escape(pattern)})(?!\w)" if word else re.escape(pattern),
                 re.IGNORECASE,
             )
         except re.error as error:
