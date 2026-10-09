@@ -19,7 +19,7 @@ import os
 
 import click
 
-from . import branching_cli, clone_cli, docker_cli, review_cli, project_cli, sc_logging
+from . import branching_cli, clone_cli, docker_cli, review_cli, project_cli, go_cli, sc_logging
 from .help import GroupedHelp
 
 if os.environ.get("SC_DEBUG") == "1":
@@ -41,6 +41,7 @@ def entry_point():
     add_commands_under_cli(clone_cli.cli, "Clone", 2)
     add_commands_under_cli(docker_cli.cli, "Docker", 3)
     add_commands_under_cli(review_cli.cli, "Review", 4)
+    add_commands_under_cli(go_cli.cli, "Navigation", 5)
 
     cli()
 

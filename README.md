@@ -11,6 +11,7 @@ SC is a collection of CLI tools, centered around version control and docker work
 ## Table of Contents
 - [Requirements](#requirements)
 - [Installing](#installing)
+- [Workspace navigation](#workspace-navigation)
 
 ## Requirements
 
@@ -46,4 +47,31 @@ uv tool upgrade sc
 
 # Uninstall sc
 uv tool uninstall sc
+```
+
+## Workspace navigation
+
+For Bash, add this to `~/.bashrc`:
+
+```bash
+eval "$(sc go-init bash)"
+```
+
+For Zsh, add this to `~/.zshrc`:
+
+```zsh
+eval "$(sc go-init zsh)"
+```
+
+Start a new shell or run the corresponding line in your current shell.
+
+From anywhere inside a repo workspace:
+
+```bash
+go project_name       # Navigate by manifest project name or checkout path
+go root               # Workspace root
+go manifest           # .repo/manifests
+go -l                 # List projects without changing directory
+go -v project_name    # Navigate and show manifest attributes/annotations
+go -w project_name    # Whole-word search
 ```
