@@ -49,7 +49,7 @@ class GoTests(unittest.TestCase):
         for query, relative in (("root", "."), ("manifest", ".repo/manifests"),
                                 ("ALPHA", "apps/alpha"), ("team/alpha", "apps/alpha"),
                                 ("apps/alpha", "apps/alpha"), ("space", "apps/space dir"),
-                                ("included", "included"), ("tools$", "tools/alpha-tools")):
+                                ("included", "included"), ("tools", "tools/alpha-tools")):
             with self.subTest(query=query):
                 result = self.runner.invoke(cli, ["go", query])
                 self.assertEqual(result.exit_code, 0, result.output)
@@ -57,12 +57,46 @@ class GoTests(unittest.TestCase):
 
     def test_failures_have_no_destination(self):
         for query, message in (("team", "Multiple projects"), ("removed", "No project"),
-                               ("missing", "Directory does not exist"), ("[", "Invalid value")):
+                               ("missing", "Directory does not exist"), ("[", "No project"),
+                               ("tools$", "No project"), ("alpha.*", "No project")):
             with self.subTest(query=query):
                 result = self.runner.invoke(cli, ["go", query])
                 self.assertNotEqual(result.exit_code, 0)
                 self.assertEqual(result.stdout, "")
                 self.assertIn(message, result.stderr)
+
+    def test_regex_characters_are_literal(self):
+        for query, decoy in (("lib.v1", "libXv1"), ("lib[1]", "lib1"),
+                             ("foo(bar)", "foobar"), ("foo+", "foooo"),
+                             ("tools$", "tools"), ("foo[", "foo")):
+            relative = f"apps/prefix-{query}-suffix"
+            decoy_relative = f"apps/prefix-{decoy}"
+            (self.root / relative).mkdir(parents=True)
+            (self.root / decoy_relative).mkdir(parents=True)
+            (self.root / ".repo/manifests/extra.xml").write_text(
+                f'<manifest><project name="literal" path="{relative}"/>'
+                f'<project name="decoy" path="{decoy_relative}"/></manifest>'
+            )
+            for word in (False, True):
+                with self.subTest(query=query, word=word):
+                    args = ["go", query.upper()] + (["--word"] if word else [])
+                    result = self.runner.invoke(cli, args)
+                    self.assertEqual(result.exit_code, 0, result.output)
+                    self.assertEqual(result.stdout, str(self.root / relative) + "\n")
+
+    def test_literal_substrings_respect_word_boundaries(self):
+        relative = "apps/mylib.v1_tools"
+        (self.root / relative).mkdir(parents=True)
+        (self.root / ".repo/manifests/extra.xml").write_text(
+            f'<manifest><project name="literal" path="{relative}"/></manifest>'
+        )
+        result = self.runner.invoke(cli, ["go", "lib.v1"])
+        self.assertEqual(result.exit_code, 0, result.output)
+        self.assertEqual(result.stdout, str(self.root / relative) + "\n")
+        result = self.runner.invoke(cli, ["go", "--word", "lib.v1"])
+        self.assertNotEqual(result.exit_code, 0)
+        self.assertEqual(result.stdout, "")
+        self.assertIn("No project matches", result.stderr)
 
     def test_ambiguous_matches_respect_verbose(self):
         for verbose in (False, True):
