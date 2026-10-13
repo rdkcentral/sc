@@ -24,6 +24,7 @@ from .pull import Pull
 logger = logging.getLogger(__name__)
 
 class Sync(Command):
+    """Shorthand for sc pull for the current branch."""
     force_sync: bool
     no_checkout: bool
 

@@ -39,6 +39,7 @@ def status():
 @click.option("-f", "--force-sync", help="Force syncing.")
 @click.option("-n", "--no-checkout", help="Leave the projects in a detached head state.")
 def sync(force_sync, no_checkout):
+    """Shorthand for sc pull for the current branch."""
     SCBranching.sync(force_sync, no_checkout)
 
 @cli.command()
