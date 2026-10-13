@@ -39,6 +39,7 @@ from .commands.push import Push
 from .commands.show import ShowBranch, ShowLog, ShowRepoFlowConfig, ShowMergedRelease
 from .commands.start import Start
 from .commands.status import Status
+from .commands.sync import Sync
 from .commands.tag import (TagCheck, TagCreate, TagList, TagPush,
                            TagRm, TagShow)
 from .commands.reset import Reset
@@ -58,11 +59,17 @@ class SCBranching:
         run_command_by_project_type(Init(top_dir), project_type)
 
     @staticmethod
-    def pull(branch_type: BranchType, name: str | None = None, run_dir: Path = Path.cwd()):
+    def pull(
+        branch_type: BranchType,
+        name: str | None = None,
+        force_sync: bool = False,
+        no_checkout: bool = False,
+        run_dir: Path = Path.cwd(),
+    ):
         top_dir, project_type = detect_project(run_dir)
         branch = create_branch(project_type, top_dir, branch_type, name)
         run_command_by_project_type(
-            Pull(top_dir, branch),
+            Pull(top_dir, branch, force_sync, no_checkout),
             project_type
         )
 
@@ -111,6 +118,18 @@ class SCBranching:
         top_dir, project_type = detect_project(run_dir)
         run_command_by_project_type(
             Status(top_dir),
+            project_type
+        )
+
+    @staticmethod
+    def sync(
+        force_sync: bool = False,
+        no_checkout: bool = False,
+        run_dir: Path = Path.cwd(),
+    ):
+        top_dir, project_type = detect_project(run_dir)
+        run_command_by_project_type(
+            Sync(top_dir, force_sync, no_checkout),
             project_type
         )
 

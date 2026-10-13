@@ -36,6 +36,12 @@ def status():
     SCBranching.status()
 
 @cli.command()
+@click.option("-f", "--force-sync", help="Force syncing.")
+@click.option("-n", "--no-checkout", help="Leave the projects in a detached head state.")
+def sync(force_sync, no_checkout):
+    SCBranching.sync(force_sync, no_checkout)
+
+@cli.command()
 def reset():
     """Clean and Reset all modules to remote manifest. (git reset --hard REMOTE)"""
     SCBranching.reset()

@@ -29,6 +29,8 @@ logger = logging.getLogger(__name__)
 @dataclass
 class Pull(Command):
     branch: Branch
+    force_sync: bool
+    no_checkout: bool
 
     def run_git_command(self):
         repo = Repo(self.top_dir)
@@ -53,6 +55,10 @@ class Pull(Command):
 
         RepoLibrary.sync(self.top_dir, detach=True)
 
+        if not self.no_checkout:
+            self._checkout_projects(manifest)
+
+    def _checkout_projects(self, manifest: ScManifest):
         errors = []
         for project in manifest.projects:
             if project.lock_status is not None:
