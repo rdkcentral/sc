@@ -51,9 +51,9 @@ class Pull(Command):
 
         manifests_repo.remotes.origin.pull()
 
-        manifest = ScManifest.from_repo_root(self.top_dir / '.repo')
-
         RepoLibrary.sync(self.top_dir, force_sync=self.force_sync, detach=True)
+
+        manifest = ScManifest.from_repo_root(self.top_dir / '.repo')
 
         if not self.no_checkout:
             self._checkout_projects(manifest)
