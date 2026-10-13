@@ -35,6 +35,11 @@ class BranchType(str, Enum):
         except ValueError:
             return False
 
+    @staticmethod
+    def valid_types() -> list[str]:
+        """Returns valid branch types."""
+        return [branch.value for branch in BranchType]
+
 @dataclass
 class Branch:
     type: BranchType
