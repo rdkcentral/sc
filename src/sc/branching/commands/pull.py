@@ -53,7 +53,7 @@ class Pull(Command):
 
         manifest = ScManifest.from_repo_root(self.top_dir / '.repo')
 
-        RepoLibrary.sync(self.top_dir, detach=True)
+        RepoLibrary.sync(self.top_dir, force_sync=self.force_sync, detach=True)
 
         if not self.no_checkout:
             self._checkout_projects(manifest)
