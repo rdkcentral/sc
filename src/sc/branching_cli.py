@@ -89,7 +89,7 @@ def develop():
 @click.option("-n", "--no-checkout", is_flag=True, help="Leave the projects in a detached head state.")
 def pull(force_sync, no_checkout):
     """Pull from develop branch."""
-    SCBranching.pull(BranchType.DEVELOP, force_sync, no_checkout)
+    SCBranching.pull(BranchType.DEVELOP, force_sync=force_sync, no_checkout=no_checkout)
 
 
 @develop.command()
@@ -118,7 +118,7 @@ def master():
 @click.option("-n", "--no-checkout", is_flag=True, help="Leave the projects in a detached head state.")
 def pull(force_sync, no_checkout):
     """Pull from master branch."""
-    SCBranching.pull(BranchType.MASTER, force_sync, no_checkout)
+    SCBranching.pull(BranchType.MASTER, force_sync=force_sync, no_checkout=no_checkout)
 
 
 @master.command()
