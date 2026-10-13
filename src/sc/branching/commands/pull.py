@@ -29,8 +29,8 @@ logger = logging.getLogger(__name__)
 @dataclass
 class Pull(Command):
     branch: Branch
-    force_sync: bool
-    no_checkout: bool
+    force_sync: bool = False
+    no_checkout: bool = False
 
     def run_git_command(self):
         repo = Repo(self.top_dir)

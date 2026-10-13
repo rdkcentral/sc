@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from dataclasses import dataclass
 import logging
-import subprocess
+import sys
 
 from repo_library import RepoLibrary
 
@@ -23,6 +24,7 @@ from .pull import Pull
 
 logger = logging.getLogger(__name__)
 
+@dataclass
 class Sync(Command):
     """Shorthand for sc pull for the current branch."""
     force_sync: bool
@@ -30,6 +32,7 @@ class Sync(Command):
 
     def run_git_command(self):
         logger.error("No git equivalent for sc sync.")
+        sys.exit(1)
 
     def run_repo_command(self):
         branch_str = RepoLibrary.get_manifest_branch(self.top_dir)
@@ -40,7 +43,7 @@ class Sync(Command):
             branch,
             force_sync=self.force_sync,
             no_checkout=self.no_checkout
-        )
+        ).run_repo_command()
 
     def _resolve_branch(self, branch: str):
         if branch == "master" or branch == "develop":
@@ -49,11 +52,13 @@ class Sync(Command):
         if "/" not in branch:
             logger.error(
                 f"Invalid branch {branch} must contain '/' if not master or develop.")
+            sys.exit(1)
 
         branch_type, suffix = branch.split("/", 1)
 
         if not BranchType.is_valid(branch_type):
             logger.error(
                 f"Invalid branch {branch} must start with {', '.join(BranchType.valid_types())}.")
+            sys.exit(1)
 
         return Branch(BranchType(branch_type), suffix)

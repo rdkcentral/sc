@@ -45,8 +45,8 @@ def checkout(name, force, verify):
 
 @feature.command()
 @click.argument('name', required=False)
-@click.option("-f", "--force-sync", help="Force syncing.")
-@click.option("-n", "--no-checkout", help="Leave the projects in a detached head state.")
+@click.option("-f", "--force-sync", is_flag=True, help="Force syncing.")
+@click.option("-n", "--no-checkout", is_flag=True, help="Leave the projects in a detached head state.")
 def pull(name, force_sync, no_checkout):
     """Pull the remote branch"""
     SCBranching.pull(BranchType.FEATURE, name, force_sync, no_checkout)
@@ -85,8 +85,8 @@ def develop():
 
 
 @develop.command()
-@click.option("-f", "--force-sync", help="Force syncing.")
-@click.option("-n", "--no-checkout", help="Leave the projects in a detached head state.")
+@click.option("-f", "--force-sync", is_flag=True, help="Force syncing.")
+@click.option("-n", "--no-checkout", is_flag=True, help="Leave the projects in a detached head state.")
 def pull(force_sync, no_checkout):
     """Pull from develop branch."""
     SCBranching.pull(BranchType.DEVELOP, force_sync, no_checkout)
@@ -114,8 +114,8 @@ def master():
 
 
 @master.command()
-@click.option("-f", "--force-sync", help="Force syncing.")
-@click.option("-n", "--no-checkout", help="Leave the projects in a detached head state.")
+@click.option("-f", "--force-sync", is_flag=True, help="Force syncing.")
+@click.option("-n", "--no-checkout", is_flag=True, help="Leave the projects in a detached head state.")
 def pull(force_sync, no_checkout):
     """Pull from master branch."""
     SCBranching.pull(BranchType.MASTER, force_sync, no_checkout)
@@ -157,8 +157,8 @@ def finish(name):
 
 @release.command()
 @click.argument('name')
-@click.option("-f", "--force-sync", help="Force syncing.")
-@click.option("-n", "--no-checkout", help="Leave the projects in a detached head state.")
+@click.option("-f", "--force-sync", is_flag=True, help="Force syncing.")
+@click.option("-n", "--no-checkout", is_flag=True, help="Leave the projects in a detached head state.")
 def pull(name: str | None, force_sync, no_checkout):
     """Pull down the latest changes from the remote branch."""
     SCBranching.pull(BranchType.RELEASE, name, force_sync, no_checkout)
@@ -221,8 +221,8 @@ def push(name):
 
 @hotfix.command()
 @click.argument('name')
-@click.option("-f", "--force-sync", help="Force syncing.")
-@click.option("-n", "--no-checkout", help="Leave the projects in a detached head state.")
+@click.option("-f", "--force-sync", is_flag=True, help="Force syncing.")
+@click.option("-n", "--no-checkout", is_flag=True, help="Leave the projects in a detached head state.")
 def pull(name: str | None, force_sync, no_checkout):
     """Pull from the remote hotfix branch"""
     SCBranching.pull(BranchType.HOTFIX, name, force_sync, no_checkout)
@@ -270,8 +270,8 @@ def push(name):
 
 @support.command()
 @click.argument('name')
-@click.option("-f", "--force-sync", help="Force syncing.")
-@click.option("-n", "--no-checkout", help="Leave the projects in a detached head state.")
+@click.option("-f", "--force-sync", is_flag=True, help="Force syncing.")
+@click.option("-n", "--no-checkout", is_flag=True, help="Leave the projects in a detached head state.")
 def pull(name: str | None, force_sync, no_checkout):
     """Pull from the remote support branch"""
     SCBranching.pull(BranchType.SUPPORT, name, force_sync, no_checkout)
