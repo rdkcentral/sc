@@ -21,6 +21,7 @@ import sys
 import time
 
 from filelock import SoftFileLock, Timeout
+from git import Repo
 from pydantic import BaseModel
 
 from .cloner import Cloner, RefType
@@ -105,6 +106,8 @@ class RepoCloner(Cloner):
         SCBranching.init(directory)
 
         manifest = ScManifest.from_repo_root(directory / '.repo')
+        for proj in manifest:
+            Repo(directory / proj.path).git.lfs("pull")
         manifests_dir = Path(directory, '.repo', 'manifests')
         for hook in manifest.post_sync_scripts:
             self._run_post_sync_script(manifests_dir / hook.path)

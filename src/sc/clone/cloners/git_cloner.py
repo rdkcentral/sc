@@ -72,6 +72,7 @@ class GitCloner(Cloner):
                 )
                 repo.git.fetch("origin", self.config.branch)
                 repo.git.checkout(self.config.branch)
+                repo.git.lfs("pull")
             else:
                 repo = Repo.clone_from(
                     self.config.uri,
@@ -79,6 +80,7 @@ class GitCloner(Cloner):
                     branch=self.config.branch,
                     multi_options=["--no-tags"] if self.config.no_tags else None
                 )
+                repo.git.lfs("pull")
         except GitCommandError as e:
             logger.error(f"Git error {e}")
             sys.exit(1)
