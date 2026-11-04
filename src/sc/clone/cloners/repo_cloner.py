@@ -21,6 +21,8 @@ import sys
 import time
 
 from filelock import SoftFileLock, Timeout
+from git import Repo
+from git.exc import GitCommandError, InvalidGitRepositoryError, NoSuchPathError
 from pydantic import BaseModel
 
 from .cloner import Cloner, RefType
@@ -105,6 +107,20 @@ class RepoCloner(Cloner):
         SCBranching.init(directory)
 
         manifest = ScManifest.from_repo_root(directory / '.repo')
+        for proj in manifest.projects:
+            project_dir = directory / proj.path
+            try:
+                Repo(project_dir).git.lfs("pull")
+            except (InvalidGitRepositoryError, NoSuchPathError):
+                logger.warning(
+                    "Skipping Git LFS for %s, repository missing or invalid",
+                    project_dir
+                )
+            except GitCommandError as e:
+                logger.warning(
+                    "Git LFS pull failed for %s; LFS files may be unavailable: %s",
+                    project_dir, e
+                )
         manifests_dir = Path(directory, '.repo', 'manifests')
         for hook in manifest.post_sync_scripts:
             self._run_post_sync_script(manifests_dir / hook.path)
