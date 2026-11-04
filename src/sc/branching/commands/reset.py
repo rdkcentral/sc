@@ -23,6 +23,12 @@ logger = logging.getLogger(__name__)
 class Reset(Command):
     def _reset_repo(self, dir: Path | str, revision: str):
         subprocess.run(
+            ["git", "clean", "-fdx", "-e", ".repo*"],
+            cwd = dir,
+            encoding = "utf-8",
+            check = False,
+        )
+        subprocess.run(
             ["git", "reset", "--hard", revision],
             cwd = dir,
             encoding = "utf-8",
