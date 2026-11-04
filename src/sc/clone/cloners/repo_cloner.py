@@ -106,8 +106,10 @@ class RepoCloner(Cloner):
         SCBranching.init(directory)
 
         manifest = ScManifest.from_repo_root(directory / '.repo')
-        for proj in manifest:
-            Repo(directory / proj.path).git.lfs("pull")
+        for proj in manifest.projects:
+            project_dir = directory / proj.path
+            if project_dir.is_dir():
+                Repo(project_dir).git.lfs("pull")
         manifests_dir = Path(directory, '.repo', 'manifests')
         for hook in manifest.post_sync_scripts:
             self._run_post_sync_script(manifests_dir / hook.path)
