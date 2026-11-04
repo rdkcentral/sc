@@ -72,6 +72,7 @@ class GitCloner(Cloner):
                 )
                 repo.git.fetch("origin", self.config.branch)
                 repo.git.checkout(self.config.branch)
+                self._git_lfs_pull(repo)
             else:
                 repo = Repo.clone_from(
                     self.config.uri,
@@ -79,6 +80,16 @@ class GitCloner(Cloner):
                     branch=self.config.branch,
                     multi_options=["--no-tags"] if self.config.no_tags else None
                 )
+                self._git_lfs_pull(repo)
         except GitCommandError as e:
             logger.error(f"Git error {e}")
             sys.exit(1)
+
+    def _git_lfs_pull(self, repo: Repo):
+        try:
+            repo.git.lfs("pull")
+        except GitCommandError as e:
+            logger.warning(
+                "Git LFS pull failed for %s; LFS files may be unavailable: %s",
+                repo.working_dir, e
+            )
