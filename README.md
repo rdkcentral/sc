@@ -16,11 +16,13 @@ SC is a collection of CLI tools, centered around version control and docker work
 ## Requirements
 
 * Install Python 3.10+
+* [Git](https://git-scm/com/)
+* [Git LFS](https://git-lfs/com/)
 * Googles git-repo tool, install instructions [here.](https://gerrit.googlesource.com/git-repo)
 * The docker engine must be installed.
     * Installation instructions can be found [here.](https://docs.docker.com/engine/install/)
 * Access to the docker engine
-    * Access to the docker engine, could require privileged permissions, on linux it requires the user to be part of the docker group. See installation instructions above for more about this.
+    * Access to the docker engine, could require privileged permissions, on linux it requires the user to be part of the docker group.
 
 ## Installing
 
