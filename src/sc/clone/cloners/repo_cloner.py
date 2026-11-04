@@ -113,7 +113,7 @@ class RepoCloner(Cloner):
                 Repo(project_dir).git.lfs("pull")
             except (InvalidGitRepositoryError, NoSuchPathError):
                 logger.warning(
-                    "Skpping Git LFS for %s, repository missing or invalid",
+                    "Skipping Git LFS for %s, repository missing or invalid",
                     project_dir
                 )
             except GitCommandError as e:
