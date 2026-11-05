@@ -33,7 +33,5 @@ class Clean(Command):
         manifest = ScManifest.from_repo_root(self.top_dir / '.repo')
         manifest_dir = self.top_dir / '.repo' / 'manifests'
         for project in manifest.projects:
-            if project.lock_status is not None:
-                continue
             self._clean_repo(self.top_dir / project.path)
         self._clean_repo(manifest_dir)
